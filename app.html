@@ -155,7 +155,11 @@
     t.className = "toast" + (isErr ? " err" : "");
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3500);
+    setTimeout(() => {
+      t.classList.add("leaving");
+      t.addEventListener("transitionend", () => t.remove(), { once: true });
+      setTimeout(() => t.remove(), 400); // fallback if transitionend doesn't fire
+    }, 3200);
   }
 
   function fillYearMonthSelects(yearSel, monthSel) {
