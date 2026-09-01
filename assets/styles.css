@@ -70,7 +70,7 @@
 }
 
 *{box-sizing:border-box;}
-html,body{height:100%;}
+html,body{height:100%; max-width:100%; overflow-x:hidden;}
 body{
   margin:0; background:var(--page); color:var(--ink);
   font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, system-ui, sans-serif;
@@ -99,15 +99,15 @@ header.topnav::before{
   header.topnav{background:var(--surface); backdrop-filter:none; -webkit-backdrop-filter:none; border-bottom-color:var(--line-strong);}
   header.topnav::before{display:none;}
 }
-header.topnav .wrap{position:relative; display:flex; align-items:center; justify-content:space-between; height:60px; gap:16px;}
-.brandline{display:flex; align-items:center; gap:10px;}
+header.topnav .wrap{position:relative; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px 16px; padding-top:10px; padding-bottom:10px; min-height:60px;}
+.brandline{display:flex; align-items:center; gap:10px; flex-wrap:wrap; row-gap:8px;}
 .brandmark{
   width:30px; height:30px; border-radius:9px; background:var(--brand);
   display:flex; align-items:center; justify-content:center; color:var(--surface);
   font-family:ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace; font-weight:700; font-size:12px; flex-shrink:0;
 }
 .brand-title{font-size:15px; font-weight:600; letter-spacing:-.005em;}
-.nav-right{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft);}
+.nav-right{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); flex-wrap:wrap; justify-content:flex-end;}
 
 /* ---------- buttons / inputs ---------- */
 button, input, select{font-family:inherit;}
@@ -225,9 +225,12 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 .period-bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
 .period-bar select{width:auto; min-width:140px;}
 .share-box{
-  display:flex; align-items:center; gap:8px; font-family:ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace; font-size:12px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-family:ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace; font-size:12px;
   background:var(--accent-soft); border:1px solid var(--line); border-radius:var(--radius-sm); padding:6px 10px; color:var(--brand-soft);
+  max-width:100%; box-sizing:border-box;
 }
+.share-box #shareUrl{min-width:0; overflow-wrap:break-word; word-break:break-all;}
 .share-box button{
   display:inline-flex; align-items:center; gap:4px;
   background:none; border:none; color:var(--accent); cursor:pointer; font-size:12px; font-weight:600; font-family:inherit;
@@ -293,7 +296,7 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 .grid-2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:16px; align-items:start;}
 @media (max-width: 900px){ .grid-2{grid-template-columns:1fr;} }
 .exp-body{padding:16px 18px;}
-.exp-chart{height:220px; margin-bottom:8px;}
+.exp-chart{position:relative; width:100%; height:220px; margin-bottom:8px;}
 .exp-row{display:grid; grid-template-columns:150px 1fr 92px; align-items:center; gap:10px; padding:6px 0;}
 .exp-row + .exp-row{border-top:1px solid var(--line);}
 .exp-name{font-size:12.5px; color:var(--ink-soft);}
@@ -334,7 +337,7 @@ table.sku tbody tr:hover{background:var(--surface-2);}
 .cost-warn{color:var(--ink-mute); font-style:italic; font-size:11.5px;}
 tfoot td{padding:10px 14px; border-top:1px solid var(--line-strong); background:var(--surface-2); font-weight:600; font-size:12.5px;}
 .empty{padding:40px 20px; text-align:center; color:var(--ink-mute); font-size:13px;}
-.skubar{height:260px; padding:14px 18px 4px;}
+.skubar{position:relative; width:100%; height:260px; padding:14px 18px 4px; box-sizing:border-box;}
 
 /* ---------- manual entry table ---------- */
 table.costs{width:100%; border-collapse:collapse; font-size:12.5px;}
