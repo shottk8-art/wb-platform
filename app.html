@@ -238,7 +238,16 @@
 
   async function renderCurrentPeriod() {
     const sel = document.getElementById("periodSelect");
-    if (!sel.value) return;
+    if (!sel.value) {
+      // магазин без единого загруженного периода — явно сбрасываем панель,
+      // иначе остаются данные, отрисованные для предыдущего магазина
+      const empty = window.WBDashboard.computeDerived(null, [], new Map());
+      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null);
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty);
+      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
+      document.getElementById("adsInput").value = 0;
+      return;
+    }
     const [year, month] = sel.value.split("-").map(Number);
     const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
     const derived = window.WBDashboard.computeDerived(report, skus, costMap);
