@@ -20,6 +20,11 @@
   --radius:      14px;
   --radius-sm:   10px;
   --ease:        cubic-bezier(.2,.8,.2,1);
+  /* Фиксированные (не зависят от темы) цвета hero-карточки прибыли —
+     всегда тёмный градиент с белым текстом, чтобы не терять контраст,
+     когда --brand в тёмной теме становится светлым (см. ниже). */
+  --hero-1:      #2f3e63;
+  --hero-2:      #1f2a44;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -240,8 +245,8 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 .kpi-value .kpi-unit{font-size:13px; font-weight:500; color:var(--ink-mute);}
 .kpi--hero{
   position:relative; overflow:hidden;
-  background:linear-gradient(155deg, var(--brand-soft), var(--brand));
-  border-color:var(--brand);
+  background:linear-gradient(155deg, var(--hero-1), var(--hero-2));
+  border-color:var(--hero-2);
   box-shadow:0 1px 2px rgba(0,0,0,.1), 0 14px 32px -16px rgba(15,20,35,.5);
 }
 .kpi--hero::before{
