@@ -9,14 +9,16 @@ create extension if not exists "pgcrypto";
 -- 1. МАГАЗИНЫ
 -- Один пользователь может владеть несколькими магазинами.
 -- slug — человекочитаемый идентификатор для публичной ссылки
--- (например, https://ваш-сайт.netlify.app/s/green-flow)
+-- (например, https://ваш-сайт.netlify.app/s/green-flow).
+-- share_enabled по умолчанию false — магазин приватный, пока владелец
+-- сам не включит витрину переключателем в кабинете.
 -- ---------------------------------------------------------------------
 create table if not exists shops (
   id            uuid primary key default gen_random_uuid(),
   owner_id      uuid not null references auth.users(id) on delete cascade,
   name          text not null,
   slug          text not null unique,
-  share_enabled boolean not null default true,
+  share_enabled boolean not null default false,
   created_at    timestamptz not null default now()
 );
 

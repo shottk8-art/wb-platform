@@ -54,9 +54,14 @@
     const session = await getSession();
     if (!session) return null;
 
+    // ВАЖНО: явный фильтр по owner_id обязателен. RLS-политика на чтение
+    // shops разрешает читать И свои магазины, И любые чужие с
+    // share_enabled = true (это нужно для публичной витрины) — без этого
+    // фильтра пользователю мог бы достаться чужой магазин.
     const { data: shops, error } = await sb()
       .from("shops")
       .select("*")
+      .eq("owner_id", session.user.id)
       .order("created_at", { ascending: true });
     if (error) throw error;
 
@@ -76,7 +81,14 @@
   }
 
   async function listMyShops() {
-    const { data, error } = await sb().from("shops").select("*").order("created_at");
+    const session = await getSession();
+    if (!session) return [];
+    // См. комментарий в ensureShop — фильтр по owner_id обязателен.
+    const { data, error } = await sb()
+      .from("shops")
+      .select("*")
+      .eq("owner_id", session.user.id)
+      .order("created_at");
     if (error) throw error;
     return data;
   }
