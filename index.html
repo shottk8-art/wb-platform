@@ -103,8 +103,12 @@
 <script src="/assets/dashboard.js"></script>
 <script>
 (function () {
+  // /s/<slug> доходит до браузера как есть (Netlify рерайтит на сервере,
+  // адресная строка и location.search этого не видят) — слаг берём из
+  // пути; ?shop=<slug> (кнопка "Открыть витрину") остаётся как запасной вариант.
   const params = new URLSearchParams(location.search);
-  const slug = params.get("shop");
+  const pathMatch = location.pathname.match(/^\/s\/([^/]+)/);
+  const slug = (pathMatch && decodeURIComponent(pathMatch[1])) || params.get("shop");
 
   const loading = document.getElementById("loadingScreen");
   const authScreen = document.getElementById("authScreen");

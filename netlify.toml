@@ -2,10 +2,11 @@
   publish = "."
   command = "echo 'Статический сайт, сборка не требуется'"
 
-# Красивые ссылки на витрину магазина: /s/my-shop -> /index.html?shop=my-shop
+# Красивые ссылки на витрину магазина: /s/my-shop отдаёт index.html,
+# который сам разбирает slug из location.pathname (см. index.html).
 [[redirects]]
   from = "/s/*"
-  to = "/index.html?shop=:splat"
+  to = "/index.html"
   status = 200
 
 [[headers]]
