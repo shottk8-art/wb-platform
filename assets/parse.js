@@ -201,8 +201,12 @@
       if (!byMonth.has(key)) byMonth.set(key, { year, month, balance: 0, promo: 0 });
       const entry = byMonth.get(key);
       const amount = num(row[i.sum]);
-      const source = String(row[i.source] ?? "").trim();
-      if (source === "Промобонусы") entry.promo += amount;
+      // Сравниваем по вхождению, а не точным совпадением — формулировка
+      // источника в реальных выгрузках WB встречается с вариациями
+      // ("Промобонусы", "промо бонусы" и т.п.), точное сравнение такое
+      // пропускало и всё уходило в баланс.
+      const source = String(row[i.source] ?? "").trim().toLowerCase();
+      if (source.includes("промо")) entry.promo += amount;
       else entry.balance += amount; // "Баланс" и любой другой источник — считаем как реальный расход
 
       transactionCount++;
