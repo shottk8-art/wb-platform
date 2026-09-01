@@ -84,6 +84,12 @@
           <div class="dz-status" id="dzSalesStatus"></div>
           <input type="file" id="fileSales" accept=".xlsx,.xls">
         </div>
+        <div class="dropzone" id="dzAds">
+          <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> История затрат на рекламу</div>
+          <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Период файла может быть любым — расход разложится по месяцам сам, по дате списания.</div>
+          <div class="dz-status" id="dzAdsStatus"></div>
+          <input type="file" id="fileAds" accept=".xlsx,.xls">
+        </div>
       </div>
       </div></div>
     </section>
@@ -117,6 +123,7 @@
         </div>
         <button class="primary" id="saveAdsBtn">Сохранить</button>
         <span class="save-hint" id="adsSaveHint"></span>
+        <span class="hint" id="adsPromoInfo" style="width:100%;"></span>
       </div>
     </section>
 
@@ -189,6 +196,7 @@
 (function () {
   let shop = null;
   let periods = [];
+  const fmtMoney = (n) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(n));
 
   const loading = document.getElementById("loadingScreen");
   const appScreen = document.getElementById("appScreen");
@@ -257,6 +265,7 @@
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
       document.getElementById("adsInput").value = 0;
+      document.getElementById("adsPromoInfo").textContent = "";
       return;
     }
     const [year, month] = sel.value.split("-").map(Number);
@@ -276,6 +285,11 @@
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
     document.getElementById("adsInput").value = report ? report.ads_spend : 0;
+
+    const promo = report ? (report.ads_promo_spend || 0) : 0;
+    document.getElementById("adsPromoInfo").textContent = promo > 0
+      ? `Ещё промобонусами за месяц: ${fmtMoney(promo)} ₽ — на прибыль не влияет`
+      : "";
   }
 
   async function refreshUploadsLog() {
@@ -285,10 +299,10 @@
       tbody.innerHTML = `<tr><td colspan="5" class="empty">Загрузок пока нет</td></tr>`;
       return;
     }
-    const kindLabel = { summary: "Сводный отчёт", sales: "Продажи", costs: "Себестоимость" };
+    const kindLabel = { summary: "Сводный отчёт", sales: "Продажи", costs: "Себестоимость", ads: "Реклама" };
     tbody.innerHTML = uploads.map((u) => {
       let period = "—";
-      if (u.kind === "summary") {
+      if (u.kind === "summary" || u.kind === "ads") {
         period = (u.periods || []).map((p) => window.WBDashboard.formatPeriod(p.year, p.month)).join(", ") || "—";
       } else if (u.kind === "sales") {
         period = window.WBDashboard.formatPeriod(u.year, u.month);
@@ -511,6 +525,23 @@
         document.getElementById("periodSelect").value = `${year}-${month}`;
         await renderCurrentPeriod();
         await refreshCostsTable();
+        await refreshUploadsLog();
+      } catch (e) {
+        status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
+      }
+    });
+
+    wireDropzone("dzAds", "fileAds", async (file) => {
+      const status = document.getElementById("dzAdsStatus");
+      status.textContent = "Обрабатываем…"; status.className = "dz-status";
+      try {
+        const n = await window.WBUpload.uploadAdsSpend(shop.id, file);
+        status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
+        const sel = document.getElementById("periodSelect");
+        const cur = sel.value ? sel.value.split("-").map(Number) : [null, null];
+        await refreshPeriods(cur[0], cur[1]);
+        if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
+        await renderCurrentPeriod();
         await refreshUploadsLog();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";

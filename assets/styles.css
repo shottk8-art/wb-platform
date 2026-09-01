@@ -231,8 +231,7 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 }
 
 /* ---------- upload panel ---------- */
-.upload-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
-@media (max-width: 760px){ .upload-grid{grid-template-columns:1fr;} }
+.upload-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px;}
 .dropzone{
   border:1.5px dashed var(--line-strong); border-radius:var(--radius); padding:20px; text-align:center;
   cursor:pointer; transition:border-color .2s var(--ease), background-color .2s var(--ease), backdrop-filter .2s var(--ease);

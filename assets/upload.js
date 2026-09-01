@@ -48,6 +48,25 @@
     return skus.length;
   }
 
+  // Импорт «Истории затрат» на рекламу. Один файл может охватывать
+  // несколько месяцев — расход распределяется по месяцу даты списания.
+  // Баланс пишется в ads_spend (уменьшает прибыль), промобонусы — в
+  // ads_promo_spend (справочно, в расчёт прибыли не входит).
+  async function uploadAdsSpend(shopId, file) {
+    const { periods, transactionCount } = await window.WBParse.parseAdsSpendFile(file);
+    const payload = periods.map((p) => ({
+      shop_id: shopId, year: p.year, month: p.month,
+      ads_spend: p.balance, ads_promo_spend: p.promo,
+    }));
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,year,month" });
+    if (error) throw error;
+    await logUpload(shopId, "ads", file.name, {
+      periods: periods.map((p) => ({ year: p.year, month: p.month })),
+      row_count: transactionCount,
+    });
+    return periods.length;
+  }
+
   async function saveAdsSpend(shopId, year, month, amount) {
     const { data: existing } = await sb()
       .from("monthly_reports").select("id").eq("shop_id", shopId).eq("year", year).eq("month", month).maybeSingle();
@@ -127,13 +146,19 @@
           .eq("shop_id", shopId).in("article", upload.articles);
         if (error) throw error;
       }
+    } else if (upload.kind === "ads") {
+      for (const p of upload.periods || []) {
+        const { error } = await sb().from("monthly_reports").update({ ads_spend: 0, ads_promo_spend: 0 })
+          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+        if (error) throw error;
+      }
     }
     const { error } = await sb().from("uploads").delete().eq("id", upload.id);
     if (error) throw error;
   }
 
   window.WBUpload = {
-    uploadSummaryReport, uploadSalesReport, saveAdsSpend, saveCostPrice, listCosts, importCosts,
+    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, saveAdsSpend, saveCostPrice, listCosts, importCosts,
     listUploads, deleteUpload,
   };
 })();

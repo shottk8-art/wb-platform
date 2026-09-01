@@ -45,7 +45,8 @@ create table if not exists monthly_reports (
   damage_comp     numeric not null default 0,   -- Компенсация ущерба
   return_comp     numeric not null default 0,   -- Добровольная компенсация при возврате
   other_fees      numeric not null default 0,   -- Доплаты (прочее)
-  ads_spend       numeric not null default 0,   -- Расход на рекламу (вводится вручную)
+  ads_spend       numeric not null default 0,   -- Расход на рекламу с баланса — уменьшает прибыль
+  ads_promo_spend numeric not null default 0,   -- Расход промобонусами — справочно, прибыль не уменьшает
   updated_at      timestamptz not null default now(),
   unique (shop_id, year, month)
 );
@@ -94,7 +95,7 @@ create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
 create table if not exists uploads (
   id         uuid primary key default gen_random_uuid(),
   shop_id    uuid not null references shops(id) on delete cascade,
-  kind       text not null check (kind in ('summary','sales','costs')),
+  kind       text not null check (kind in ('summary','sales','costs','ads')),
   filename   text not null,
   periods    jsonb,
   year       int,
