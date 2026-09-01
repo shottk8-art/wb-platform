@@ -6,10 +6,19 @@
 <title>Панель продавца WB — кабинет</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-8.98A5.5 5.5 0 0 1 17.3 8.03 4 4 0 0 1 17 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 21v-7m0 0-2.5 2.5M12 14l2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M9 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2m-7 0 1 12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-12M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M9 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h3M16 16l4-4-4-4M20 12H9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 15V5a1 1 0 0 1 1-1h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+</svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
 
@@ -21,12 +30,12 @@
         <div>
           <select id="shopSwitch" style="border:none; background:none; font-weight:600; font-size:15px; padding:0; width:auto; color:var(--ink);"></select>
         </div>
-        <button class="ghost small" id="newShopBtn" title="Новый магазин">+ магазин</button>
-        <button class="ghost small" id="deleteShopBtn" title="Удалить текущий магазин">Удалить магазин</button>
+        <button class="ghost small" id="newShopBtn" title="Новый магазин"><svg class="icon icon-sm"><use href="#icon-plus"/></svg> Магазин</button>
+        <button class="ghost small" id="deleteShopBtn" title="Удалить текущий магазин"><svg class="icon icon-sm"><use href="#icon-trash"/></svg> Удалить</button>
       </div>
       <div class="nav-right">
         <span id="userEmail"></span>
-        <button class="ghost small" id="signOutBtn">Выйти</button>
+        <button class="ghost small" id="signOutBtn"><svg class="icon icon-sm"><use href="#icon-logout"/></svg> Выйти</button>
       </div>
     </div>
   </header>
@@ -38,7 +47,7 @@
       <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <div class="share-box">
           <span id="shareUrl">—</span>
-          <button id="copyShareBtn">Копировать</button>
+          <button id="copyShareBtn"><svg class="icon icon-sm"><use href="#icon-copy"/></svg> Копировать</button>
         </div>
         <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin:0;">
           <input type="checkbox" id="shareToggle" style="width:auto;"> ссылка активна
@@ -50,18 +59,20 @@
       <div class="section-head"><h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span></div>
       <div class="upload-grid">
         <div class="dropzone" id="dzSummary">
-          <div class="dz-title">Сводный отчёт по продавцу</div>
+          <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Сводный отчёт по продавцу</div>
           <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Загружаются сразу все месяцы, что есть в файле.</div>
+          <a class="dz-link" href="https://seller.wildberries.ru/analytics-reports/summary-report" target="_blank" rel="noopener" onclick="event.stopPropagation()">Скачать на Wildberries <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
           <div class="dz-status" id="dzSummaryStatus"></div>
           <input type="file" id="fileSummary" accept=".xlsx,.xls">
         </div>
         <div class="dropzone" id="dzSales">
-          <div class="dz-title">Отчёт «Продажи» (по артикулам)</div>
+          <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Отчёт «Продажи» (по артикулам)</div>
           <div class="dz-period-row" onclick="event.stopPropagation()">
             <select id="salesYear"></select>
             <select id="salesMonth"></select>
           </div>
           <div class="dz-hint">Укажите месяц выгрузки, затем перетащите файл или нажмите, чтобы выбрать.</div>
+          <a class="dz-link" href="https://seller.wildberries.ru/analytics-reports/sales" target="_blank" rel="noopener" onclick="event.stopPropagation()">Скачать на Wildberries <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
           <div class="dz-status" id="dzSalesStatus"></div>
           <input type="file" id="fileSales" accept=".xlsx,.xls">
         </div>
