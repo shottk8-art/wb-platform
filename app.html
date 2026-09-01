@@ -254,7 +254,8 @@
   async function init() {
     const session = await window.WBAuth.getSession();
     if (!session) { location.href = "/index.html"; return; }
-    document.getElementById("userEmail").textContent = session.user.email;
+    const meta = session.user.user_metadata || {};
+    document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
     shop = await window.WBAuth.ensureShop();
     await refreshShopSwitch();

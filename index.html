@@ -17,13 +17,13 @@
     <div class="brandmark" style="margin:0 auto;">WB</div>
     <h1>Панель продавца Wildberries</h1>
     <p>Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.</p>
-    <form id="loginForm">
-      <div>
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@example.com" required>
-      </div>
-      <button class="primary" type="submit">Получить ссылку для входа</button>
-    </form>
+    <div id="telegramLoginBox" style="display:flex; justify-content:center; margin:16px 0;">
+      <script async src="https://telegram.org/js/telegram-widget.js?22"
+        data-telegram-login="wb_platformbot"
+        data-size="large"
+        data-radius="8"
+        data-onauth="onTelegramAuth(user)"></script>
+    </div>
     <div id="authMsg" class="auth-msg"></div>
 
     <div class="divider-or">или</div>
@@ -115,20 +115,17 @@
     if (v) location.href = "/index.html?shop=" + encodeURIComponent(v);
   });
 
-  document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value.trim();
+  window.onTelegramAuth = async (tgUser) => {
     const msg = document.getElementById("authMsg");
-    msg.textContent = "Отправляем ссылку…"; msg.className = "auth-msg";
+    msg.textContent = "Входим через Telegram…"; msg.className = "auth-msg";
     try {
-      await window.WBAuth.signInWithMagicLink(email);
-      msg.textContent = "Проверьте почту — мы отправили ссылку для входа.";
-      msg.className = "auth-msg ok";
+      await window.WBAuth.signInWithTelegram(tgUser);
+      location.href = "/app.html";
     } catch (err) {
-      msg.textContent = "Не получилось отправить ссылку: " + err.message;
+      msg.textContent = "Не получилось войти: " + err.message;
       msg.className = "auth-msg err";
     }
-  });
+  };
 
   async function initPublic(slug) {
     const { data: shop, error } = await window.supabaseClient

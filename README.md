@@ -4,14 +4,21 @@
 по артикулам. Каждый пользователь видит только свои данные, но может поделиться
 публичной read-only ссылкой на витрину своего магазина.
 
-Стек: **статический фронтенд (HTML/CSS/JS) + Supabase (база данных + авторизация)
-+ Netlify (хостинг) + GitHub (репозиторий и авто-деплой)**. Без сборки, без
-бэкенд-сервера — вся логика на клиенте, безопасность обеспечивают политики RLS
-в Supabase.
+Стек: **статический фронтенд (HTML/CSS/JS) + Supabase (база данных + авторизация
++ Edge Function) + Netlify (хостинг) + GitHub (репозиторий и авто-деплой)**.
+Без сборки, без своего бэкенд-сервера — вся логика на клиенте и в одной
+Edge Function, безопасность обеспечивают политики RLS в Supabase.
 
 ## Как это устроено
 
-- **Авторизация** — вход по ссылке на почту (magic link), без паролей.
+- **Авторизация** — вход через Telegram (виджет Telegram Login), без паролей
+  и без email. Кнопка входа проверяется Edge-функцией `telegram-auth`
+  (`supabase/functions/telegram-auth`): она сверяет подпись данных от
+  Telegram секретным токеном бота, затем через Admin API создаёт/находит
+  пользователя Supabase (email вида `tg<id>@telegram.wbplatform.local`,
+  реальный email не используется) и отдаёт фронтенду одноразовый токен,
+  который тот сразу меняет на сессию (`auth.verifyOtp`). Письма никуда
+  не уходят.
 - **Данные** — при первом входе пользователю создаётся магазин (`shops`). Все
   остальные таблицы (`monthly_reports`, `sku_sales`, `sku_costs`) привязаны к
   `shop_id`.
@@ -28,12 +35,19 @@
 1. Зайдите на [supabase.com](https://supabase.com) → New project.
 2. Откройте **SQL Editor → New query**, вставьте содержимое файла
    `supabase/schema.sql` целиком и нажмите Run.
-3. **Authentication → Providers** — убедитесь, что Email включён (magic link
-   работает из коробки, ничего дополнительно настраивать не нужно).
-4. **Authentication → URL Configuration** — впишите адрес будущего сайта
-   (после шага 3, Netlify) в поля Site URL и Redirect URLs, например
-   `https://ваш-сайт.netlify.app/**`.
-5. **Project Settings → API** — скопируйте `Project URL` и `anon public` key.
+3. **Authentication → URL Configuration** — впишите адрес сайта (Netlify) в
+   поля Site URL и Redirect URLs, например `https://ваш-сайт.netlify.app/**`
+   (можно и через `supabase/config.toml` + `supabase config push`).
+4. **Project Settings → API** — скопируйте `Project URL` и `anon public`/
+   `publishable` key.
+5. **Edge Function `telegram-auth`**:
+   - создайте бота через [@BotFather](https://t.me/BotFather) (`/newbot`),
+     сохраните токен;
+   - `supabase secrets set TELEGRAM_BOT_TOKEN="<токен>"`;
+   - `supabase functions deploy telegram-auth --no-verify-jwt`;
+   - в @BotFather выполните `/setdomain` для вашего бота и укажите домен
+     сайта (например `wb-platform.netlify.app`) — без этого шага виджет
+     Telegram Login на сайте покажет ошибку «Bot domain invalid».
 
 ### 2. Фронтенд
 
@@ -65,7 +79,7 @@ git push -u origin main
 
 ### 5. Проверка
 
-1. Откройте сайт → введите почту → перейдите по ссылке из письма.
+1. Откройте сайт → нажмите кнопку Telegram Login → подтвердите вход в Telegram.
 2. В личном кабинете перетащите файл «Сводного отчёта по продавцу» — должны
    подхватиться все месяцы, которые есть в файле.
 3. Загрузите отчёт «Продажи» за нужный месяц (год/месяц указывается перед
@@ -79,18 +93,19 @@ git push -u origin main
 
 ```
 wb-platform/
-├── index.html          landing + вход по magic link + публичная витрина (?shop=slug)
+├── index.html          landing + вход через Telegram + публичная витрина (?shop=slug)
 ├── app.html             личный кабинет: загрузка отчётов, ручной ввод, дашборд
 ├── netlify.toml         конфиг деплоя + редирект /s/:slug
 ├── assets/
 │   ├── styles.css        дизайн-система (светлая/тёмная тема)
 │   ├── config.example.js  шаблон конфига — скопировать в config.js
 │   ├── supabaseClient.js  инициализация клиента Supabase
-│   ├── auth.js            вход по magic link, создание/переключение магазинов
+│   ├── auth.js            вход через Telegram, создание/переключение магазинов
 │   ├── parse.js           разбор XLSX-отчётов WB (SheetJS) прямо в браузере
 │   ├── upload.js          запись разобранных данных в Supabase
 │   └── dashboard.js       загрузка данных периода, расчёты, отрисовка графиков
 └── supabase/
+    └── functions/telegram-auth/  Edge Function: проверка Telegram-подписи → сессия Supabase
     └── schema.sql         таблицы + политики RLS — выполнить в Supabase один раз
 ```
 
