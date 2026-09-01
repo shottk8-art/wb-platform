@@ -2,12 +2,27 @@
 (function () {
   const sb = () => window.supabaseClient;
 
+  // Записывает загрузку в журнал (assets: не должно ронять основной
+  // сценарий загрузки, если по какой-то причине не удалось залогировать).
+  async function logUpload(shopId, kind, filename, extra) {
+    try {
+      const { error } = await sb().from("uploads").insert({ shop_id: shopId, kind, filename, ...extra });
+      if (error) console.warn("Не удалось записать в журнал загрузок:", error.message);
+    } catch (e) {
+      console.warn("Не удалось записать в журнал загрузок:", e.message);
+    }
+  }
+
   async function uploadSummaryReport(shopId, file) {
     const rows = await window.WBParse.parseSummaryReport(file);
     if (!rows.length) throw new Error("В файле не найдено ни одной строки-итога по месяцу.");
     const payload = rows.map((r) => ({ shop_id: shopId, ...r }));
     const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,year,month" });
     if (error) throw error;
+    await logUpload(shopId, "summary", file.name, {
+      periods: rows.map((r) => ({ year: r.year, month: r.month })),
+      row_count: rows.length,
+    });
     return rows.length;
   }
 
@@ -29,6 +44,7 @@
       .upsert(costsPayload, { onConflict: "shop_id,article", ignoreDuplicates: true });
     if (e2) throw e2;
 
+    await logUpload(shopId, "sales", file.name, { year, month, row_count: skus.length });
     return skus.length;
   }
 
@@ -60,7 +76,7 @@
   // Массовый импорт себестоимости из файла (см. WBParse.parseCostsFile).
   // Название артикула, если в файле его нет, берётся из уже сохранённого —
   // импорт не должен затирать то, что уже подтянулось из отчёта «Продажи».
-  async function importCosts(shopId, rows) {
+  async function importCosts(shopId, rows, filename) {
     const existing = await listCosts(shopId);
     const nameByArticle = new Map(existing.map((c) => [c.article, c.name]));
     const payload = rows.map((r) => ({
@@ -71,8 +87,53 @@
     }));
     const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,article" });
     if (error) throw error;
+    await logUpload(shopId, "costs", filename || "себестоимость.xlsx", {
+      articles: rows.map((r) => r.article),
+      row_count: payload.length,
+    });
     return payload.length;
   }
 
-  window.WBUpload = { uploadSummaryReport, uploadSalesReport, saveAdsSpend, saveCostPrice, listCosts, importCosts };
+  // ---- Журнал загрузок ----
+  async function listUploads(shopId) {
+    const { data, error } = await sb().from("uploads").select("*").eq("shop_id", shopId).order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  // Отменяет загрузку: для сводного отчёта обнуляет только поля из файла
+  // (расход на рекламу, введённый вручную, не трогаем); для продаж —
+  // удаляет строки за период; для себестоимости — обнуляет цену только
+  // у затронутых артикулов (сама карточка артикула остаётся).
+  async function deleteUpload(shopId, upload) {
+    if (upload.kind === "summary") {
+      const zeroed = {
+        sales_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
+        delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
+        damage_comp: 0, return_comp: 0, other_fees: 0,
+      };
+      for (const p of upload.periods || []) {
+        const { error } = await sb().from("monthly_reports").update(zeroed)
+          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+        if (error) throw error;
+      }
+    } else if (upload.kind === "sales") {
+      const { error } = await sb().from("sku_sales").delete()
+        .eq("shop_id", shopId).eq("year", upload.year).eq("month", upload.month);
+      if (error) throw error;
+    } else if (upload.kind === "costs") {
+      if (upload.articles && upload.articles.length) {
+        const { error } = await sb().from("sku_costs").update({ cost_price: 0 })
+          .eq("shop_id", shopId).in("article", upload.articles);
+        if (error) throw error;
+      }
+    }
+    const { error } = await sb().from("uploads").delete().eq("id", upload.id);
+    if (error) throw error;
+  }
+
+  window.WBUpload = {
+    uploadSummaryReport, uploadSalesReport, saveAdsSpend, saveCostPrice, listCosts, importCosts,
+    listUploads, deleteUpload,
+  };
 })();

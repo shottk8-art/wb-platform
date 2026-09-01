@@ -59,13 +59,31 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  function renderKPI(container, d) {
+  // prevD — тот же объект, что вернул computeDerived(), но для предыдущего
+  // календарного месяца; null, если данных за него нет (тогда сравнение не рисуем).
+  function renderDeltaChip(value, prevValue, unit) {
+    if (prevValue == null) return "";
+    const diff = value - prevValue;
+    const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const icon = dir === "up" ? "icon-trend-up" : dir === "down" ? "icon-trend-down" : "icon-trend-flat";
+    const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
+    const absStr = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
+    const pct = prevValue !== 0 ? (Math.abs(diff) / Math.abs(prevValue)) * 100 : null;
+    const pctStr = pct == null ? "" : ` · ${pct.toFixed(1)}%`;
+    return `
+      <div class="kpi-delta kpi-delta--${dir}">
+        <svg class="icon icon-sm"><use href="#${icon}"/></svg>
+        <span>${sign}${absStr} ${unit}${pctStr}</span>
+      </div>`;
+  }
+
+  function renderKPI(container, d, prevD) {
     container.innerHTML = "";
     const cards = [
-      { label: "Сумма продаж", value: d.rep.sales_amount, unit: "₽" },
-      { label: "Выкупили", value: d.rep.bought_qty, unit: "шт." },
-      { label: "Итого к перечислению (WB)", value: d.rep.transfer_total, unit: "₽" },
-      { label: "Чистая прибыль", value: d.netProfit, unit: "₽", hero: true },
+      { label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
+      { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
+      { label: "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
+      { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
     ];
     cards.forEach((c) => {
       const heroClass = c.hero ? " kpi--hero" : "";
@@ -75,6 +93,7 @@
         <div class="kpi${heroClass}">
           <div class="kpi-label">${escapeHtml(c.label)}</div>
           <div class="kpi-value${negClass}">${valStr} <span class="kpi-unit">${c.unit}</span></div>
+          ${renderDeltaChip(c.value, c.prev, c.unit)}
         </div>
       `));
     });

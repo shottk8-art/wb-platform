@@ -126,6 +126,8 @@ button.ghost{
   padding:9px 14px; font-size:13px; font-weight:500; cursor:pointer;
 }
 button.ghost:hover{border-color:var(--ink-mute); color:var(--ink);}
+button.ghost:disabled{opacity:.4; cursor:default; border-color:var(--line);}
+button.ghost:disabled:hover{border-color:var(--line); color:var(--ink-soft);}
 button.small{padding:6px 11px; font-size:12px;}
 
 /* ---------- icons ---------- */
@@ -257,6 +259,15 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 .kpi--hero .kpi-label{color:#c9d3e0;}
 .kpi--hero .kpi-value{color:#fff; font-size:24px; letter-spacing:-.02em;}
 .kpi--hero .kpi-value.neg{color:#f0837f;}
+
+/* ---------- сравнение с прошлым месяцем ---------- */
+.kpi-delta{position:relative; display:flex; align-items:center; gap:4px; margin-top:7px; font-size:11.5px; font-weight:600;}
+.kpi-delta--up{color:var(--good);}
+.kpi-delta--down{color:var(--bad);}
+.kpi-delta--flat{color:var(--ink-mute);}
+.kpi--hero .kpi-delta--up{color:#7ee787;}
+.kpi--hero .kpi-delta--down{color:#ff8a80;}
+.kpi--hero .kpi-delta--flat{color:#c9d3e0;}
 
 /* ---------- expenses ---------- */
 .grid-2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:16px; align-items:start;}

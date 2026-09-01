@@ -85,6 +85,27 @@ create table if not exists sku_costs (
 
 create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
 
+-- ---------------------------------------------------------------------
+-- 5. ЖУРНАЛ ЗАГРУЗОК (для отмены случайно загруженного файла)
+-- periods  — для kind='summary': [{"year":2026,"month":9}, ...] все месяцы из файла
+-- year/month — для kind='sales': единственный период отчёта
+-- articles — для kind='costs': список артикулов, себестоимость которых поменял файл
+-- ---------------------------------------------------------------------
+create table if not exists uploads (
+  id         uuid primary key default gen_random_uuid(),
+  shop_id    uuid not null references shops(id) on delete cascade,
+  kind       text not null check (kind in ('summary','sales','costs')),
+  filename   text not null,
+  periods    jsonb,
+  year       int,
+  month      int,
+  articles   jsonb,
+  row_count  int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists uploads_shop_idx on uploads(shop_id, created_at desc);
+
 -- =====================================================================
 -- ROW LEVEL SECURITY
 -- Владелец магазина видит и редактирует свои данные.
@@ -96,6 +117,7 @@ alter table shops           enable row level security;
 alter table monthly_reports enable row level security;
 alter table sku_sales       enable row level security;
 alter table sku_costs       enable row level security;
+alter table uploads         enable row level security;
 
 -- ---- shops ----
 create policy "owner full access to own shops"
@@ -136,6 +158,12 @@ create policy "owner full access to own sku_costs"
 create policy "anyone can read sku_costs of shared shops"
   on sku_costs for select
   using (exists (select 1 from shops s where s.id = shop_id and s.share_enabled = true));
+
+-- ---- uploads (журнал приватный — на публичной витрине не нужен) ----
+create policy "owner full access to own uploads"
+  on uploads for all
+  using (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()))
+  with check (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()));
 
 -- =====================================================================
 -- Готово. После выполнения этого файла:
