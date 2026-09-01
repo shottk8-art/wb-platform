@@ -131,5 +131,40 @@
     return { period, skus: Array.from(byArticle.values()) };
   }
 
-  window.WBParse = { parseSummaryReport, parseSalesReport };
+  // ---- Файл себестоимости -> [{article, name, cost_price}] ----
+  // Ожидаются столбцы «Артикул» и «Себестоимость» (порядок и остальные
+  // столбцы не важны), «Наименование» — опционально.
+  async function parseCostsFile(file) {
+    const wb = await readWorkbook(file);
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const aoa = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+
+    const headerIdx = detectHeaderRow(aoa, ["Артикул", "Себестоимость"]);
+    if (headerIdx === -1) {
+      throw new Error("Не удалось распознать файл — нужны столбцы «Артикул» и «Себестоимость».");
+    }
+    const header = aoa[headerIdx].map((h) => String(h ?? ""));
+    const i = {
+      article: colIndex(header, "Артикул"),
+      name: colIndex(header, "Наименование"),
+      cost: colIndex(header, "Себестоимость"),
+    };
+
+    const rows = [];
+    for (let r = headerIdx + 1; r < aoa.length; r++) {
+      const row = aoa[r];
+      if (!row) continue;
+      const article = row[i.article];
+      if (article == null || String(article).trim() === "") continue;
+      rows.push({
+        article: String(article).trim(),
+        name: i.name >= 0 && row[i.name] != null ? String(row[i.name]).trim() : "",
+        cost_price: num(row[i.cost]),
+      });
+    }
+    if (!rows.length) throw new Error("В файле не найдено ни одной строки с артикулом.");
+    return rows;
+  }
+
+  window.WBParse = { parseSummaryReport, parseSalesReport, parseCostsFile };
 })();

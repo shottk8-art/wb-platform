@@ -57,5 +57,22 @@
     return data || [];
   }
 
-  window.WBUpload = { uploadSummaryReport, uploadSalesReport, saveAdsSpend, saveCostPrice, listCosts };
+  // Массовый импорт себестоимости из файла (см. WBParse.parseCostsFile).
+  // Название артикула, если в файле его нет, берётся из уже сохранённого —
+  // импорт не должен затирать то, что уже подтянулось из отчёта «Продажи».
+  async function importCosts(shopId, rows) {
+    const existing = await listCosts(shopId);
+    const nameByArticle = new Map(existing.map((c) => [c.article, c.name]));
+    const payload = rows.map((r) => ({
+      shop_id: shopId,
+      article: r.article,
+      name: r.name || nameByArticle.get(r.article) || "",
+      cost_price: r.cost_price,
+    }));
+    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,article" });
+    if (error) throw error;
+    return payload.length;
+  }
+
+  window.WBUpload = { uploadSummaryReport, uploadSalesReport, saveAdsSpend, saveCostPrice, listCosts, importCosts };
 })();

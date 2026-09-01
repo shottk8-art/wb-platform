@@ -272,6 +272,7 @@ table.sku{width:100%; border-collapse:collapse; font-size:12.5px;}
 table.sku thead th{
   text-align:left; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-mute);
   font-weight:600; padding:10px 14px; border-bottom:1px solid var(--line-strong); background:var(--surface-2);
+  white-space:nowrap;
 }
 table.sku th.num, table.sku td.num{text-align:right;}
 table.sku td{padding:9px 14px; border-bottom:1px solid var(--line); vertical-align:middle;}
@@ -292,7 +293,7 @@ tfoot td{padding:10px 14px; border-top:1px solid var(--line-strong); background:
 
 /* ---------- manual entry table ---------- */
 table.costs{width:100%; border-collapse:collapse; font-size:12.5px;}
-table.costs th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-mute); padding:9px 14px; border-bottom:1px solid var(--line-strong); background:var(--surface-2);}
+table.costs th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-mute); padding:9px 14px; border-bottom:1px solid var(--line-strong); background:var(--surface-2); white-space:nowrap;}
 table.costs td{padding:7px 14px; border-bottom:1px solid var(--line);}
 table.costs input[type="number"]{padding:6px 8px; font-size:12.5px; max-width:140px;}
 .save-hint{font-size:11px; color:var(--ink-mute); margin-left:8px;}

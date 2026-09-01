@@ -127,7 +127,12 @@
     </section>
 
     <section class="section">
-      <div class="section-head"><h2>Себестоимость по артикулам</h2><span class="hint">действует, пока вы её не измените — не привязана к месяцу</span></div>
+      <div class="section-head">
+        <h2>Себестоимость по артикулам</h2>
+        <span class="hint">действует, пока вы её не измените — не привязана к месяцу</span>
+        <button class="ghost small" id="importCostsBtn"><svg class="icon icon-sm"><use href="#icon-upload"/></svg> Импортировать файлом</button>
+        <input type="file" id="importCostsFile" accept=".xlsx,.xls" hidden>
+      </div>
       <div class="card">
         <div class="tablewrap">
           <table class="costs">
@@ -378,6 +383,24 @@
         await refreshCostsTable();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
+      }
+    });
+
+    document.getElementById("importCostsBtn").addEventListener("click", () => {
+      document.getElementById("importCostsFile").click();
+    });
+    document.getElementById("importCostsFile").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      try {
+        const rows = await window.WBParse.parseCostsFile(file);
+        const n = await window.WBUpload.importCosts(shop.id, rows);
+        await refreshCostsTable();
+        await renderCurrentPeriod();
+        toast(`Себестоимость обновлена: ${n} артикулов`);
+      } catch (err) {
+        toast("Ошибка импорта: " + err.message, true);
       }
     });
   }
