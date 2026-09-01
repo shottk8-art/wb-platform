@@ -290,7 +290,16 @@
     tbody.innerHTML = uploads.map((u) => {
       let period = "—";
       if (u.kind === "summary" || u.kind === "ads") {
-        period = (u.periods || []).map((p) => window.WBDashboard.formatPeriod(p.year, p.month)).join(", ") || "—";
+        const list = [...(u.periods || [])].sort((a, b) => a.year - b.year || a.month - b.month);
+        if (!list.length) {
+          period = "—";
+        } else if (list.length <= 4) {
+          period = list.map((p) => window.WBDashboard.formatPeriod(p.year, p.month)).join(", ");
+        } else {
+          const first = window.WBDashboard.formatPeriod(list[0].year, list[0].month);
+          const last = window.WBDashboard.formatPeriod(list[list.length - 1].year, list[list.length - 1].month);
+          period = `${first} — ${last} (${list.length} мес.)`;
+        }
       } else if (u.kind === "sales") {
         period = window.WBDashboard.formatPeriod(u.year, u.month);
       } else if (u.kind === "costs") {
