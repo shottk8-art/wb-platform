@@ -21,6 +21,7 @@
   <symbol id="icon-trend-up" viewBox="0 0 24 24"><path d="M4 16 14 6M14 6H8M14 6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="icon-trend-down" viewBox="0 0 24 24"><path d="M4 8l10 10M14 18H8M14 18v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
@@ -58,8 +59,12 @@
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span></div>
+    <section class="section" id="secUploadForms">
+      <div class="section-head">
+        <h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
+      </div>
+      <div class="collapsible-body"><div>
       <div class="upload-grid">
         <div class="dropzone" id="dzSummary">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Сводный отчёт по продавцу</div>
@@ -80,10 +85,15 @@
           <input type="file" id="fileSales" accept=".xlsx,.xls">
         </div>
       </div>
+      </div></div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Журнал загрузок</h2><span class="hint">удаление отменяет данные, загруженные этим файлом</span></div>
+    <section class="section" id="secUploadsLog">
+      <div class="section-head">
+        <h2>Журнал загрузок</h2><span class="hint">удаление отменяет данные, загруженные этим файлом</span>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
+      </div>
+      <div class="collapsible-body"><div>
       <div class="card">
         <div class="tablewrap">
           <table class="costs">
@@ -92,6 +102,7 @@
           </table>
         </div>
       </div>
+      </div></div>
     </section>
 
     <section class="section">
@@ -363,6 +374,27 @@
     zone.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) onFile(f); });
   }
 
+  // Свернуть/развернуть секцию, состояние запоминается в этом браузере.
+  function wireCollapsible(sectionId) {
+    const section = document.getElementById(sectionId);
+    const btn = section.querySelector(".collapse-btn");
+    const storageKey = "wb_collapsed_" + sectionId;
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(storageKey) === "1"; } catch (e) {}
+
+    const apply = () => {
+      section.classList.toggle("collapsed", collapsed);
+      btn.setAttribute("aria-expanded", String(!collapsed));
+    };
+    apply();
+
+    btn.addEventListener("click", () => {
+      collapsed = !collapsed;
+      try { localStorage.setItem(storageKey, collapsed ? "1" : "0"); } catch (e) {}
+      apply();
+    });
+  }
+
   async function init() {
     const session = await window.WBAuth.getSession();
     if (!session) { location.href = "/index.html"; return; }
@@ -378,6 +410,8 @@
     await renderCurrentPeriod();
     await refreshCostsTable();
     await refreshUploadsLog();
+    wireCollapsible("secUploadForms");
+    wireCollapsible("secUploadsLog");
 
     loading.hidden = true;
     appScreen.hidden = false;
