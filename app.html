@@ -382,7 +382,12 @@
     });
   }
 
-  init().catch((e) => { loading.hidden = true; toast("Ошибка инициализации: " + e.message, true); });
+  init().catch(async (e) => {
+    loading.hidden = true;
+    toast("Ошибка инициализации: " + e.message, true);
+    // не оставляем пустой экран (например, если сессия протухла) — уводим на вход
+    await window.WBAuth.signOut();
+  });
 })();
 </script>
 </body>
