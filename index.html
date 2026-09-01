@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель продавца WB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<!-- ===================== ЭКРАН ВХОДА (без ?shop=) ===================== -->
+<div id="authScreen" class="auth-shell" hidden>
+  <div class="card auth-card">
+    <div class="brandmark" style="margin:0 auto;">WB</div>
+    <h1>Панель продавца Wildberries</h1>
+    <p>Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.</p>
+    <form id="loginForm">
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required>
+      </div>
+      <button class="primary" type="submit">Получить ссылку для входа</button>
+    </form>
+    <div id="authMsg" class="auth-msg"></div>
+
+    <div class="divider-or">или</div>
+    <label for="shopSlugInput">Открыть витрину магазина по ссылке</label>
+    <div class="shop-lookup">
+      <input type="text" id="shopSlugInput" placeholder="slug-магазина">
+      <button class="ghost" id="openShopBtn">Открыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ПУБЛИЧНАЯ ВИТРИНА (?shop=slug) ===================== -->
+<div id="publicScreen" hidden>
+  <header class="topnav">
+    <div class="wrap">
+      <div class="brandline">
+        <div class="brandmark">WB</div>
+        <div>
+          <div class="brand-title" id="shopTitle">Магазин</div>
+          <span class="badge">Публичная витрина · только просмотр</span>
+        </div>
+      </div>
+      <div class="nav-right"><a href="/index.html">Свой кабинет →</a></div>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
+    <div class="section">
+      <div class="period-bar">
+        <select id="periodSelect"></select>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="kpi-row" id="kpiRow"></div>
+    </section>
+
+    <section class="section">
+      <div class="grid-2">
+        <div>
+          <div class="section-head"><h2>Структура расходов</h2><span class="hint">руб. за период</span></div>
+          <div class="card">
+            <div class="exp-body">
+              <div class="exp-chart"><canvas id="expChart"></canvas></div>
+              <div id="expList"></div>
+            </div>
+            <div class="exp-total-row"><span>Итого расходов</span><span class="mono" id="expTotal">—</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
+          <div class="card">
+            <div class="skubar"><canvas id="skuChart"></canvas></div>
+            <div class="tablewrap">
+              <table class="sku">
+                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num">Прибыль, ₽</th></tr></thead>
+                <tbody id="skuBody"></tbody>
+                <tfoot id="skuFoot"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="note">Данные предоставлены владельцем магазина в режиме «только чтение».</footer>
+  </main>
+</div>
+
+<div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/supabaseClient.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/dashboard.js"></script>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const slug = params.get("shop");
+
+  const loading = document.getElementById("loadingScreen");
+  const authScreen = document.getElementById("authScreen");
+  const publicScreen = document.getElementById("publicScreen");
+
+  document.getElementById("openShopBtn").addEventListener("click", () => {
+    const v = document.getElementById("shopSlugInput").value.trim();
+    if (v) location.href = "/index.html?shop=" + encodeURIComponent(v);
+  });
+
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const msg = document.getElementById("authMsg");
+    msg.textContent = "Отправляем ссылку…"; msg.className = "auth-msg";
+    try {
+      await window.WBAuth.signInWithMagicLink(email);
+      msg.textContent = "Проверьте почту — мы отправили ссылку для входа.";
+      msg.className = "auth-msg ok";
+    } catch (err) {
+      msg.textContent = "Не получилось отправить ссылку: " + err.message;
+      msg.className = "auth-msg err";
+    }
+  });
+
+  async function initPublic(slug) {
+    const { data: shop, error } = await window.supabaseClient
+      .from("shops").select("*").eq("slug", slug).eq("share_enabled", true).maybeSingle();
+    loading.hidden = true;
+    if (error || !shop) {
+      authScreen.hidden = false;
+      document.getElementById("authMsg").textContent = "Магазин не найден или ссылка отключена владельцем.";
+      document.getElementById("authMsg").className = "auth-msg err";
+      return;
+    }
+    publicScreen.hidden = false;
+    document.getElementById("shopTitle").textContent = shop.name;
+
+    const periods = await window.WBDashboard.loadPeriods(shop.id);
+    const select = document.getElementById("periodSelect");
+    if (!periods.length) {
+      select.innerHTML = `<option>Нет данных</option>`;
+      return;
+    }
+    select.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
+
+    async function renderPeriod() {
+      const [year, month] = select.value.split("-").map(Number);
+      const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
+      const derived = window.WBDashboard.computeDerived(report, skus, costMap);
+      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived);
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
+      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
+    }
+    select.addEventListener("change", renderPeriod);
+    renderPeriod();
+  }
+
+  async function initAuthGate() {
+    const session = await window.WBAuth.getSession();
+    loading.hidden = true;
+    if (session) { location.href = "/app.html"; return; }
+    authScreen.hidden = false;
+  }
+
+  if (slug) initPublic(slug);
+  else initAuthGate();
+})();
+</script>
+</body>
+</html>

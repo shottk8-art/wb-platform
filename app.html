@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель продавца WB — кабинет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
+
+<div id="appScreen" hidden>
+  <header class="topnav">
+    <div class="wrap">
+      <div class="brandline">
+        <div class="brandmark">WB</div>
+        <div>
+          <select id="shopSwitch" style="border:none; background:none; font-weight:600; font-size:15px; padding:0; width:auto; color:var(--ink);"></select>
+        </div>
+        <button class="ghost small" id="newShopBtn" title="Новый магазин">+ магазин</button>
+      </div>
+      <div class="nav-right">
+        <span id="userEmail"></span>
+        <button class="ghost small" id="signOutBtn">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
+
+    <section class="section">
+      <div class="section-head"><h2>Публичная витрина</h2><span class="hint">по этой ссылке видно ту же панель, только без права редактировать</span></div>
+      <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <div class="share-box">
+          <span id="shareUrl">—</span>
+          <button id="copyShareBtn">Копировать</button>
+        </div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin:0;">
+          <input type="checkbox" id="shareToggle" style="width:auto;"> ссылка активна
+        </label>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span></div>
+      <div class="upload-grid">
+        <div class="dropzone" id="dzSummary">
+          <div class="dz-title">Сводный отчёт по продавцу</div>
+          <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Загружаются сразу все месяцы, что есть в файле.</div>
+          <div class="dz-status" id="dzSummaryStatus"></div>
+          <input type="file" id="fileSummary" accept=".xlsx,.xls">
+        </div>
+        <div class="dropzone" id="dzSales">
+          <div class="dz-title">Отчёт «Продажи» (по артикулам)</div>
+          <div class="dz-period-row" onclick="event.stopPropagation()">
+            <select id="salesYear"></select>
+            <select id="salesMonth"></select>
+          </div>
+          <div class="dz-hint">Укажите месяц выгрузки, затем перетащите файл или нажмите, чтобы выбрать.</div>
+          <div class="dz-status" id="dzSalesStatus"></div>
+          <input type="file" id="fileSales" accept=".xlsx,.xls">
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>Показатели за период</h2>
+        <div class="period-bar"><select id="periodSelect"></select></div>
+      </div>
+      <div class="card" style="padding:14px 18px; display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div style="max-width:220px;">
+          <label for="adsInput">Расход на рекламу за месяц, ₽</label>
+          <input type="number" id="adsInput" min="0" step="1">
+        </div>
+        <button class="primary" id="saveAdsBtn">Сохранить</button>
+        <span class="save-hint" id="adsSaveHint"></span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="kpi-row" id="kpiRow"></div>
+    </section>
+
+    <section class="section">
+      <div class="grid-2">
+        <div>
+          <div class="section-head"><h2>Структура расходов</h2><span class="hint">руб. за период</span></div>
+          <div class="card">
+            <div class="exp-body">
+              <div class="exp-chart"><canvas id="expChart"></canvas></div>
+              <div id="expList"></div>
+            </div>
+            <div class="exp-total-row"><span>Итого расходов</span><span class="mono" id="expTotal">—</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
+          <div class="card">
+            <div class="skubar"><canvas id="skuChart"></canvas></div>
+            <div class="tablewrap">
+              <table class="sku">
+                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num">Прибыль, ₽</th></tr></thead>
+                <tbody id="skuBody"></tbody>
+                <tfoot id="skuFoot"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Себестоимость по артикулам</h2><span class="hint">действует, пока вы её не измените — не привязана к месяцу</span></div>
+      <div class="card">
+        <div class="tablewrap">
+          <table class="costs">
+            <thead><tr><th>Артикул</th><th>Наименование</th><th>Себестоимость за шт., ₽</th><th></th></tr></thead>
+            <tbody id="costsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="note">
+      Все расчёты выполняются в браузере на основе данных, которые вы загрузили. Файлы отчётов не сохраняются —
+      сохраняются только посчитанные из них суммы.
+    </footer>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/supabaseClient.js"></script>
+<script src="assets/auth.js"></script>
+<script src="assets/parse.js"></script>
+<script src="assets/upload.js"></script>
+<script src="assets/dashboard.js"></script>
+<script>
+(function () {
+  let shop = null;
+  let periods = [];
+
+  const loading = document.getElementById("loadingScreen");
+  const appScreen = document.getElementById("appScreen");
+
+  function toast(msg, isErr) {
+    const t = document.createElement("div");
+    t.className = "toast" + (isErr ? " err" : "");
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function fillYearMonthSelects(yearSel, monthSel) {
+    const now = new Date();
+    const years = [];
+    for (let y = now.getFullYear(); y >= now.getFullYear() - 3; y--) years.push(y);
+    yearSel.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join("");
+    const months = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+    monthSel.innerHTML = months.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+    yearSel.value = now.getFullYear();
+    monthSel.value = now.getMonth() + 1;
+  }
+
+  async function refreshShopSwitch() {
+    const shops = await window.WBAuth.listMyShops();
+    const sel = document.getElementById("shopSwitch");
+    sel.innerHTML = shops.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+    sel.value = shop.id;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function updateShareBox() {
+    const url = `${location.origin}/s/${shop.slug}`;
+    document.getElementById("shareUrl").textContent = url;
+    document.getElementById("shareToggle").checked = shop.share_enabled;
+    document.getElementById("copyShareBtn").onclick = () => {
+      navigator.clipboard.writeText(url).then(() => toast("Ссылка скопирована"));
+    };
+  }
+
+  async function refreshPeriods(selectYear, selectMonth) {
+    periods = await window.WBDashboard.loadPeriods(shop.id);
+    const sel = document.getElementById("periodSelect");
+    if (!periods.length) {
+      sel.innerHTML = `<option value="">Загрузите отчёт, чтобы увидеть периоды</option>`;
+      return;
+    }
+    sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
+    if (selectYear && selectMonth) sel.value = `${selectYear}-${selectMonth}`;
+  }
+
+  async function renderCurrentPeriod() {
+    const sel = document.getElementById("periodSelect");
+    if (!sel.value) return;
+    const [year, month] = sel.value.split("-").map(Number);
+    const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
+    const derived = window.WBDashboard.computeDerived(report, skus, costMap);
+    window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived);
+    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
+    window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
+    document.getElementById("adsInput").value = report ? report.ads_spend : 0;
+  }
+
+  async function refreshCostsTable() {
+    const costs = await window.WBUpload.listCosts(shop.id);
+    const tbody = document.getElementById("costsBody");
+    if (!costs.length) {
+      tbody.innerHTML = `<tr><td colspan="4" class="empty">Загрузите отчёт «Продажи», чтобы здесь появились артикулы</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = costs.map((c) => `
+      <tr data-article="${escapeHtml(c.article)}">
+        <td class="mono">${escapeHtml(c.article)}</td>
+        <td>${escapeHtml(c.name || "")}</td>
+        <td><input type="number" min="0" step="1" value="${c.cost_price || 0}" class="cost-input"></td>
+        <td><button class="ghost small save-cost-btn">Сохранить</button></td>
+      </tr>`).join("");
+    tbody.querySelectorAll(".save-cost-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const row = btn.closest("tr");
+        const article = row.dataset.article;
+        const cost = parseFloat(row.querySelector(".cost-input").value) || 0;
+        const name = costs.find((c) => c.article === article)?.name || "";
+        try {
+          await window.WBUpload.saveCostPrice(shop.id, article, name, cost);
+          toast("Себестоимость сохранена");
+          renderCurrentPeriod();
+        } catch (e) { toast("Ошибка: " + e.message, true); }
+      });
+    });
+  }
+
+  function wireDropzone(zoneId, fileInputId, onFile) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(fileInputId);
+    zone.addEventListener("click", () => input.click());
+    input.addEventListener("change", () => { if (input.files[0]) onFile(input.files[0]); });
+    ["dragenter", "dragover"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add("drag"); }));
+    ["dragleave", "drop"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove("drag"); }));
+    zone.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f) onFile(f); });
+  }
+
+  async function init() {
+    const session = await window.WBAuth.getSession();
+    if (!session) { location.href = "/index.html"; return; }
+    document.getElementById("userEmail").textContent = session.user.email;
+
+    shop = await window.WBAuth.ensureShop();
+    await refreshShopSwitch();
+    updateShareBox();
+
+    fillYearMonthSelects(document.getElementById("salesYear"), document.getElementById("salesMonth"));
+    await refreshPeriods();
+    await renderCurrentPeriod();
+    await refreshCostsTable();
+
+    loading.hidden = true;
+    appScreen.hidden = false;
+
+    document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
+
+    document.getElementById("newShopBtn").addEventListener("click", async () => {
+      const name = prompt("Название нового магазина:");
+      if (!name) return;
+      shop = await window.WBAuth.createShop(name);
+      await refreshShopSwitch();
+      updateShareBox();
+      await refreshPeriods();
+      await renderCurrentPeriod();
+      await refreshCostsTable();
+      toast("Магазин создан");
+    });
+
+    document.getElementById("shopSwitch").addEventListener("change", async (e) => {
+      const shops = await window.WBAuth.listMyShops();
+      shop = shops.find((s) => s.id === e.target.value);
+      updateShareBox();
+      await refreshPeriods();
+      await renderCurrentPeriod();
+      await refreshCostsTable();
+    });
+
+    document.getElementById("shareToggle").addEventListener("change", async (e) => {
+      shop = await window.WBAuth.updateShop(shop.id, { share_enabled: e.target.checked });
+      toast(e.target.checked ? "Публичная ссылка включена" : "Публичная ссылка отключена");
+    });
+
+    document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
+
+    document.getElementById("saveAdsBtn").addEventListener("click", async () => {
+      const sel = document.getElementById("periodSelect");
+      if (!sel.value) { toast("Сначала загрузите отчёт за какой-нибудь период", true); return; }
+      const [year, month] = sel.value.split("-").map(Number);
+      const amount = parseFloat(document.getElementById("adsInput").value) || 0;
+      try {
+        await window.WBUpload.saveAdsSpend(shop.id, year, month, amount);
+        document.getElementById("adsSaveHint").textContent = "Сохранено";
+        setTimeout(() => (document.getElementById("adsSaveHint").textContent = ""), 2000);
+        renderCurrentPeriod();
+      } catch (e) { toast("Ошибка: " + e.message, true); }
+    });
+
+    wireDropzone("dzSummary", "fileSummary", async (file) => {
+      const status = document.getElementById("dzSummaryStatus");
+      status.textContent = "Обрабатываем…"; status.className = "dz-status";
+      try {
+        const n = await window.WBUpload.uploadSummaryReport(shop.id, file);
+        status.textContent = `Готово: загружено месяцев — ${n}`; status.className = "dz-status ok";
+        const sel = document.getElementById("periodSelect");
+        const cur = sel.value ? sel.value.split("-").map(Number) : [null, null];
+        await refreshPeriods(cur[0], cur[1]);
+        if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
+        await renderCurrentPeriod();
+      } catch (e) {
+        status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
+      }
+    });
+
+    wireDropzone("dzSales", "fileSales", async (file) => {
+      const status = document.getElementById("dzSalesStatus");
+      const year = parseInt(document.getElementById("salesYear").value, 10);
+      const month = parseInt(document.getElementById("salesMonth").value, 10);
+      status.textContent = "Обрабатываем…"; status.className = "dz-status";
+      try {
+        const n = await window.WBUpload.uploadSalesReport(shop.id, file, year, month);
+        status.textContent = `Готово: артикулов — ${n}`; status.className = "dz-status ok";
+        await refreshPeriods(year, month);
+        document.getElementById("periodSelect").value = `${year}-${month}`;
+        await renderCurrentPeriod();
+        await refreshCostsTable();
+      } catch (e) {
+        status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
+      }
+    });
+  }
+
+  init().catch((e) => { loading.hidden = true; toast("Ошибка инициализации: " + e.message, true); });
+})();
+</script>
+</body>
+</html>
