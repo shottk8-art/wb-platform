@@ -67,18 +67,6 @@
     return periods.length;
   }
 
-  async function saveAdsSpend(shopId, year, month, amount) {
-    const { data: existing } = await sb()
-      .from("monthly_reports").select("id").eq("shop_id", shopId).eq("year", year).eq("month", month).maybeSingle();
-    if (existing) {
-      const { error } = await sb().from("monthly_reports").update({ ads_spend: amount }).eq("id", existing.id);
-      if (error) throw error;
-    } else {
-      const { error } = await sb().from("monthly_reports").insert({ shop_id: shopId, year, month, ads_spend: amount });
-      if (error) throw error;
-    }
-  }
-
   async function saveCostPrice(shopId, article, name, cost) {
     const { error } = await sb()
       .from("sku_costs")
@@ -158,7 +146,7 @@
   }
 
   window.WBUpload = {
-    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, saveAdsSpend, saveCostPrice, listCosts, importCosts,
+    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, saveCostPrice, listCosts, importCosts,
     listUploads, deleteUpload,
   };
 })();

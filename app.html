@@ -116,15 +116,6 @@
         <h2>Показатели за период</h2>
         <div class="period-bar"><select id="periodSelect"></select></div>
       </div>
-      <div class="card" style="padding:14px 18px; display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-        <div style="max-width:220px;">
-          <label for="adsInput">Расход на рекламу за месяц, ₽</label>
-          <input type="number" id="adsInput" min="0" step="1">
-        </div>
-        <button class="primary" id="saveAdsBtn">Сохранить</button>
-        <span class="save-hint" id="adsSaveHint"></span>
-        <span class="hint" id="adsPromoInfo" style="width:100%;"></span>
-      </div>
     </section>
 
     <section class="section">
@@ -196,7 +187,6 @@
 (function () {
   let shop = null;
   let periods = [];
-  const fmtMoney = (n) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(Math.round(n));
 
   const loading = document.getElementById("loadingScreen");
   const appScreen = document.getElementById("appScreen");
@@ -264,8 +254,6 @@
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null);
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
-      document.getElementById("adsInput").value = 0;
-      document.getElementById("adsPromoInfo").textContent = "";
       return;
     }
     const [year, month] = sel.value.split("-").map(Number);
@@ -284,12 +272,6 @@
     window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived);
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
-    document.getElementById("adsInput").value = report ? report.ads_spend : 0;
-
-    const promo = report ? (report.ads_promo_spend || 0) : 0;
-    document.getElementById("adsPromoInfo").textContent = promo > 0
-      ? `Ещё промобонусами за месяц: ${fmtMoney(promo)} ₽ — на прибыль не влияет`
-      : "";
   }
 
   async function refreshUploadsLog() {
@@ -482,19 +464,6 @@
     });
 
     document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
-
-    document.getElementById("saveAdsBtn").addEventListener("click", async () => {
-      const sel = document.getElementById("periodSelect");
-      if (!sel.value) { toast("Сначала загрузите отчёт за какой-нибудь период", true); return; }
-      const [year, month] = sel.value.split("-").map(Number);
-      const amount = parseFloat(document.getElementById("adsInput").value) || 0;
-      try {
-        await window.WBUpload.saveAdsSpend(shop.id, year, month, amount);
-        document.getElementById("adsSaveHint").textContent = "Сохранено";
-        setTimeout(() => (document.getElementById("adsSaveHint").textContent = ""), 2000);
-        renderCurrentPeriod();
-      } catch (e) { toast("Ошибка: " + e.message, true); }
-    });
 
     wireDropzone("dzSummary", "fileSummary", async (file) => {
       const status = document.getElementById("dzSummaryStatus");

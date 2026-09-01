@@ -61,17 +61,26 @@
 
   // prevD — тот же объект, что вернул computeDerived(), но для предыдущего
   // календарного месяца; null, если данных за него нет (тогда сравнение не рисуем).
-  function renderDeltaChip(value, prevValue, unit) {
+  // opts.lowerIsBetter — цвет стрелки инвертирован (рост траты = красный);
+  // opts.neutral — цвет всегда нейтральный (для чисто справочных величин).
+  // Иконка при этом всегда показывает фактическое направление изменения.
+  function renderDeltaChip(value, prevValue, unit, opts) {
+    opts = opts || {};
     if (prevValue == null) return "";
     const diff = value - prevValue;
-    const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
-    const icon = dir === "up" ? "icon-trend-up" : dir === "down" ? "icon-trend-down" : "icon-trend-flat";
+    const rawDir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const icon = rawDir === "up" ? "icon-trend-up" : rawDir === "down" ? "icon-trend-down" : "icon-trend-flat";
+    let colorDir = rawDir;
+    if (rawDir !== "flat") {
+      if (opts.neutral) colorDir = "flat";
+      else if (opts.lowerIsBetter) colorDir = rawDir === "up" ? "down" : "up";
+    }
     const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
     const absStr = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
     const pct = prevValue !== 0 ? (Math.abs(diff) / Math.abs(prevValue)) * 100 : null;
     const pctStr = pct == null ? "" : ` · ${pct.toFixed(1)}%`;
     return `
-      <div class="kpi-delta kpi-delta--${dir}">
+      <div class="kpi-delta kpi-delta--${colorDir}">
         <svg class="icon icon-sm"><use href="#${icon}"/></svg>
         <span>${sign}${absStr} ${unit}${pctStr}</span>
       </div>`;
@@ -84,6 +93,8 @@
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
       { label: "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
       { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
+      { label: "Расход на рекламу", value: d.rep.ads_spend, prev: prevD ? prevD.rep.ads_spend : null, unit: "₽", lowerIsBetter: true },
+      { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true },
     ];
     cards.forEach((c) => {
       const heroClass = c.hero ? " kpi--hero" : "";
@@ -93,7 +104,7 @@
         <div class="kpi${heroClass}">
           <div class="kpi-label">${escapeHtml(c.label)}</div>
           <div class="kpi-value${negClass}">${valStr} <span class="kpi-unit">${c.unit}</span></div>
-          ${renderDeltaChip(c.value, c.prev, c.unit)}
+          ${renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral })}
         </div>
       `));
     });
