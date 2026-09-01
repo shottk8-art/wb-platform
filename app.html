@@ -22,6 +22,7 @@
           <select id="shopSwitch" style="border:none; background:none; font-weight:600; font-size:15px; padding:0; width:auto; color:var(--ink);"></select>
         </div>
         <button class="ghost small" id="newShopBtn" title="Новый магазин">+ магазин</button>
+        <button class="ghost small" id="deleteShopBtn" title="Удалить текущий магазин">Удалить магазин</button>
       </div>
       <div class="nav-right">
         <span id="userEmail"></span>
@@ -285,6 +286,26 @@
       await renderCurrentPeriod();
       await refreshCostsTable();
       toast("Магазин создан");
+    });
+
+    document.getElementById("deleteShopBtn").addEventListener("click", async () => {
+      const shops = await window.WBAuth.listMyShops();
+      if (shops.length <= 1) { toast("Нельзя удалить последний магазин", true); return; }
+      const ok = confirm(`Удалить магазин «${shop.name}»? Все его отчёты, продажи и себестоимость удалятся безвозвратно.`);
+      if (!ok) return;
+      try {
+        await window.WBAuth.deleteShop(shop.id);
+        const remaining = await window.WBAuth.listMyShops();
+        shop = remaining[0];
+        await refreshShopSwitch();
+        updateShareBox();
+        await refreshPeriods();
+        await renderCurrentPeriod();
+        await refreshCostsTable();
+        toast("Магазин удалён");
+      } catch (e) {
+        toast("Ошибка: " + e.message, true);
+      }
     });
 
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {

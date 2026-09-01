@@ -112,5 +112,12 @@
     return data;
   }
 
-  window.WBAuth = { signInWithMagicLink, signInWithTelegram, signOut, getSession, ensureShop, listMyShops, createShop, updateShop, slugify };
+  // Удаляет магазин и каскадно все его данные (отчёты, продажи,
+  // себестоимость — foreign key ... on delete cascade в schema.sql).
+  async function deleteShop(shopId) {
+    const { error } = await sb().from("shops").delete().eq("id", shopId);
+    if (error) throw error;
+  }
+
+  window.WBAuth = { signInWithMagicLink, signInWithTelegram, signOut, getSession, ensureShop, listMyShops, createShop, updateShop, deleteShop, slugify };
 })();
