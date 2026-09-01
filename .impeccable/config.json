@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-09-01T12:36:19.316Z",
+        "reason": "user confirmed: explicitly asked for Apple-style fonts; Inter is the standard SF Pro web-fallback paired with -apple-system/BlinkMacSystemFont so Apple devices render real SF Pro"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "app.html"
+        ],
+        "createdAt": "2026-09-01T12:36:19.368Z",
+        "reason": "user confirmed: explicitly asked for Apple-style fonts; Inter is the standard SF Pro web-fallback paired with -apple-system/BlinkMacSystemFont so Apple devices render real SF Pro"
+      }
+    ]
+  }
+}
