@@ -173,7 +173,7 @@ label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; m
 
 /* ---------- auth / landing ---------- */
 .auth-shell{
-  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;
   position:relative; overflow:hidden;
 }
 .auth-shell[hidden]{display:none;}
