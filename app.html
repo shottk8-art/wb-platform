@@ -87,6 +87,7 @@
         <div class="dropzone" id="dzAds">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> История затрат на рекламу</div>
           <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Период файла может быть любым — расход разложится по месяцам сам, по дате списания.</div>
+          <a class="dz-link" href="https://cmp.wildberries.ru/campaigns/finances" target="_blank" rel="noopener" onclick="event.stopPropagation()">Скачать на Wildberries <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
           <div class="dz-status" id="dzAdsStatus"></div>
           <input type="file" id="fileAds" accept=".xlsx,.xls">
         </div>
@@ -150,13 +151,15 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="secCosts">
       <div class="section-head">
         <h2>Себестоимость по артикулам</h2>
         <span class="hint">действует, пока вы её не измените — не привязана к месяцу</span>
         <button class="ghost small" id="importCostsBtn"><svg class="icon icon-sm"><use href="#icon-upload"/></svg> Импортировать файлом</button>
         <input type="file" id="importCostsFile" accept=".xlsx,.xls" hidden>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       </div>
+      <div class="collapsible-body"><div>
       <div class="card">
         <div class="tablewrap">
           <table class="costs">
@@ -165,6 +168,7 @@
           </table>
         </div>
       </div>
+      </div></div>
     </section>
 
     <footer class="note">
@@ -408,6 +412,7 @@
     await refreshUploadsLog();
     wireCollapsible("secUploadForms");
     wireCollapsible("secUploadsLog");
+    wireCollapsible("secCosts");
 
     loading.hidden = true;
     appScreen.hidden = false;

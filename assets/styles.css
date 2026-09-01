@@ -313,6 +313,15 @@ table.sku tbody tr:last-child td{border-bottom:none;}
 table.sku tbody tr:hover{background:var(--surface-2);}
 .sku-name{color:var(--ink); font-weight:500;}
 .sku-art{color:var(--ink-mute); font-size:11px; display:block; margin-top:1px;}
+.abc-badge{
+  display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;
+  width:18px; height:18px; margin-right:7px; border-radius:5px;
+  font-size:10px; font-weight:700; font-family:ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace;
+  cursor:default;
+}
+.abc-badge--A{background:var(--good-bg); color:var(--good);}
+.abc-badge--B{background:var(--accent-soft); color:var(--brand-soft);}
+.abc-badge--C{background:var(--surface-2); color:var(--ink-mute); border:1px solid var(--line);}
 .qty-cell{display:flex; align-items:center; gap:8px; justify-content:flex-end;}
 .qty-track{width:64px; height:6px; background:var(--surface-2); border:1px solid var(--line); border-radius:3px; overflow:hidden;}
 .qty-fill{height:100%; background:var(--accent);}

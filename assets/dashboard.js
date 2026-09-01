@@ -43,6 +43,20 @@
       return { ...s, cost_price: cost, total_cost: totalCost, profit: s.revenue - totalCost };
     }).sort((a, b) => b.bought_qty - a.bought_qty);
 
+    // ABC-анализ по выручке (Парето): группа определяется накопленной
+    // долей выручки ДО артикула (не включая его) — иначе один артикул,
+    // дающий почти всю выручку, ошибочно попал бы в C вместо A.
+    // A — до 80% накопленного итога, B — до 95%, C — остальное.
+    const totalRevenue = skuRows.reduce((s, r) => s + Math.max(r.revenue, 0), 0);
+    const abcByArticle = new Map();
+    let cum = 0;
+    [...skuRows].sort((a, b) => b.revenue - a.revenue).forEach((r) => {
+      const cumBefore = totalRevenue > 0 ? cum / totalRevenue : 0;
+      cum += Math.max(r.revenue, 0);
+      abcByArticle.set(r.article, cumBefore < 0.8 ? "A" : cumBefore < 0.95 ? "B" : "C");
+    });
+    skuRows.forEach((r) => { r.abc = abcByArticle.get(r.article) || "C"; });
+
     const cogs = skuRows.reduce((sum, s) => sum + s.total_cost, 0);
     const ads = rep.ads_spend || 0;
     const netProfit = (rep.transfer_total || 0) - ads - cogs;
@@ -160,8 +174,18 @@
     });
   }
 
+  const ABC_TITLE = {
+    A: "Группа A — вносит вклад в первые 80% выручки",
+    B: "Группа B — вносит вклад в следующие 80–95% выручки",
+    C: "Группа C — оставшиеся ~5% выручки",
+  };
+
   function renderSkuTable(tbody, tfoot, hint, canvas, d) {
-    hint.textContent = `${d.skuRows.length} ${pluralArt(d.skuRows.length)}`;
+    const counts = { A: 0, B: 0, C: 0 };
+    d.skuRows.forEach((s) => { counts[s.abc] = (counts[s.abc] || 0) + 1; });
+    hint.textContent = d.skuRows.length
+      ? `${d.skuRows.length} ${pluralArt(d.skuRows.length)} · A ${counts.A} · B ${counts.B} · C ${counts.C}`
+      : "";
     const hasCost = d.skuRows.some((s) => s.cost_price > 0);
 
     if (!d.skuRows.length) {
@@ -175,9 +199,10 @@
         const costCell = hasCost || s.cost_price > 0
           ? fmtMoney.format(Math.round(s.total_cost))
           : `<span class="cost-warn">не заполнено</span>`;
+        const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
         return `
           <tr>
-            <td><span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
+            <td>${abcBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
             <td class="num"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div></td>
             <td class="num mono">${fmtMoney.format(Math.round(s.revenue))}</td>
             <td class="num mono">${costCell}</td>
@@ -200,15 +225,27 @@
 
     if (charts.bar) charts.bar.destroy();
     const top = d.skuRows.slice(0, 10);
+    const abcColors = {
+      A: getComputedStyle(document.body).getPropertyValue("--good").trim(),
+      B: getComputedStyle(document.body).getPropertyValue("--accent").trim(),
+      C: getComputedStyle(document.body).getPropertyValue("--ink-mute").trim(),
+    };
     charts.bar = new Chart(canvas, {
       type: "bar",
       data: {
         labels: top.map((s) => s.article),
-        datasets: [{ data: top.map((s) => s.bought_qty), backgroundColor: "#2a78d6", borderRadius: 4, maxBarThickness: 34 }],
+        datasets: [{
+          data: top.map((s) => s.bought_qty),
+          backgroundColor: top.map((s) => abcColors[s.abc] || abcColors.C),
+          borderRadius: 4, maxBarThickness: 34,
+        }],
       },
       options: {
         indexAxis: "y",
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${fmtQty.format(ctx.parsed.x)} шт.` } } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ` ${fmtQty.format(ctx.parsed.x)} шт. · группа ${top[ctx.dataIndex].abc}` } },
+        },
         scales: {
           x: { grid: { color: "rgba(127,127,127,.15)" }, ticks: { color: getComputedStyle(document.body).getPropertyValue("--ink-mute") } },
           y: { grid: { display: false }, ticks: { color: getComputedStyle(document.body).getPropertyValue("--ink-soft"), font: { size: 11 } } },
