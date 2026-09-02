@@ -19,6 +19,7 @@ create table if not exists shops (
   name          text not null,
   slug          text not null unique,
   share_enabled boolean not null default false,
+  tax_rate      numeric not null default 0, -- % от суммы продаж, не привязан к месяцу
   created_at    timestamptz not null default now()
 );
 

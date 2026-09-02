@@ -167,13 +167,13 @@
     async function renderPeriod() {
       const [year, month] = select.value.split("-").map(Number);
       const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
-      const derived = window.WBDashboard.computeDerived(report, skus, costMap);
+      const derived = window.WBDashboard.computeDerived(report, skus, costMap, shop.tax_rate);
 
       const prevDate = new Date(year, month - 2, 1);
       let prevDerived = null;
       try {
         const prevData = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1);
-        if (prevData.report) prevDerived = window.WBDashboard.computeDerived(prevData.report, prevData.skus, costMap);
+        if (prevData.report) prevDerived = window.WBDashboard.computeDerived(prevData.report, prevData.skus, costMap, shop.tax_rate);
       } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived);

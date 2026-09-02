@@ -30,7 +30,9 @@
     return { report, skus: skus || [], costMap };
   }
 
-  function computeDerived(report, skus, costMap) {
+  // taxRate — ставка налога в % от суммы продаж (свойство магазина, не
+  // привязана к периоду — как и себестоимость).
+  function computeDerived(report, skus, costMap, taxRate) {
     const rep = report || {
       sales_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
       delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
@@ -59,9 +61,10 @@
 
     const cogs = skuRows.reduce((sum, s) => sum + s.total_cost, 0);
     const ads = rep.ads_spend || 0;
-    const netProfit = (rep.transfer_total || 0) - ads - cogs;
+    const tax = (rep.sales_amount || 0) * ((taxRate || 0) / 100);
+    const netProfit = (rep.transfer_total || 0) - ads - cogs - tax;
 
-    return { rep, commission, skuRows, cogs, ads, netProfit };
+    return { rep, commission, skuRows, cogs, ads, tax, netProfit };
   }
 
   function el(html) {
@@ -135,6 +138,7 @@
       ["Добровольная компенсация", d.rep.return_comp],
       ["Прочие доплаты", d.rep.other_fees],
       ["Расход на рекламу", d.ads],
+      ["Налог", d.tax],
       ["Себестоимость товара", d.cogs],
     ];
     const total = items.reduce((s, it) => s + it[1], 0);
