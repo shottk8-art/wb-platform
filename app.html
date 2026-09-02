@@ -62,7 +62,7 @@
   <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
 
     <section class="section">
-      <div class="section-head"><h2>Публичная витрина</h2><span class="hint">по этой ссылке видно ту же панель, только без права редактировать</span></div>
+      <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <div class="share-box">
           <span id="shareUrl">—</span>
@@ -74,8 +74,12 @@
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Налог</h2><span class="hint">берётся от суммы продаж, действует, пока не измените — не привязан к месяцу</span></div>
+    <section class="section" id="secTax">
+      <div class="section-head">
+        <h2>Налог</h2><span class="hint">вычитается из чистой прибыли на дашборде — укажите свою ставку (например, УСН)</span>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
+      </div>
+      <div class="collapsible-body"><div>
       <div class="card" style="padding:14px 18px; display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
         <div style="max-width:160px;">
           <label for="taxRateInput">Ставка налога, %</label>
@@ -84,10 +88,15 @@
         <button class="primary" id="saveTaxBtn">Сохранить</button>
         <span class="save-hint" id="taxSaveHint"></span>
       </div>
+      </div></div>
     </section>
 
     <section class="section" id="secMembers">
-      <div class="section-head"><h2>Участники</h2><span class="hint">дайте доступ к кабинету по нику в Telegram — доступ откроется при его следующем входе в приложение</span></div>
+      <div class="section-head">
+        <h2>Участники</h2><span class="hint">добавьте человека по нику в Telegram — увидит и сможет загружать те же данные, но не настройки магазина</span>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
+      </div>
+      <div class="collapsible-body"><div>
       <div class="card" style="padding:14px 18px;">
         <div id="memberAddRow" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
           <div style="max-width:220px; flex:1;">
@@ -101,6 +110,7 @@
           <tbody id="membersBody"></tbody>
         </table>
       </div>
+      </div></div>
     </section>
 
     <section class="section" id="secUploadForms">
@@ -141,7 +151,7 @@
 
     <section class="section" id="secUploadsLog">
       <div class="section-head">
-        <h2>Журнал загрузок</h2><span class="hint">удаление отменяет данные, загруженные этим файлом</span>
+        <h2>Журнал загрузок</h2><span class="hint">все загруженные файлы — удаление одного отменяет только те данные, что он добавил</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       </div>
       <div class="collapsible-body"><div>
@@ -158,7 +168,7 @@
 
     <section class="section">
       <div class="section-head">
-        <h2>Показатели за период</h2>
+        <h2>Показатели за период</h2><span class="hint">выберите месяц — цифры и графики ниже пересчитаются под него</span>
         <div class="period-bar"><select id="periodSelect"></select></div>
       </div>
     </section>
@@ -170,7 +180,7 @@
     <section class="section">
       <div class="grid-2">
         <div>
-          <div class="section-head"><h2>Структура расходов</h2><span class="hint">руб. за период</span></div>
+          <div class="section-head"><h2>Структура расходов</h2><span class="hint">на что уходит выручка за выбранный период</span></div>
           <div class="card">
             <div class="exp-body">
               <div class="exp-chart"><canvas id="expChart"></canvas></div>
@@ -198,7 +208,7 @@
     <section class="section" id="secCosts">
       <div class="section-head">
         <h2>Себестоимость по артикулам</h2>
-        <span class="hint">действует, пока вы её не измените — не привязана к месяцу</span>
+        <span class="hint">нужна для расчёта прибыли — заполните вручную или файлом, действует до изменения</span>
         <button class="ghost small" id="importCostsBtn"><svg class="icon icon-sm"><use href="#icon-upload"/></svg> Импортировать файлом</button>
         <input type="file" id="importCostsFile" accept=".xlsx,.xls" hidden>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
@@ -522,6 +532,8 @@
     await renderCurrentPeriod();
     await refreshCostsTable();
     await refreshUploadsLog();
+    wireCollapsible("secTax");
+    wireCollapsible("secMembers");
     wireCollapsible("secUploadForms");
     wireCollapsible("secUploadsLog");
     wireCollapsible("secCosts");
