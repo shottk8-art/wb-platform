@@ -239,6 +239,104 @@ create policy "owner removes shop_members"
   using (public.user_is_shop_owner(shop_id, auth.uid()));
 
 -- =====================================================================
+-- 7. АДМИНКА (кто пользуется платформой + вопросы от пользователей)
+-- Единственный админ — владелец проекта, id захардкожен в is_admin()
+-- (не в клиентском коде): для проекта с одним владельцем отдельная
+-- таблица ролей не нужна.
+-- =====================================================================
+
+create or replace function public.is_admin(p_user_id uuid default auth.uid())
+returns boolean
+language sql stable
+as $$
+  select p_user_id = 'bbb002c4-cd7a-490d-b9c0-72aed5424261'::uuid;
+$$;
+
+grant execute on function public.is_admin(uuid) to authenticated;
+
+-- security definer: обращается к auth.users (недоступна через PostgREST
+-- напрямую) и ко всем магазинам без ограничений RLS — доступ
+-- контролируется проверкой is_admin() внутри функции, а не грантами на
+-- таблицы, поэтому обычным пользователям admin-доступ через RLS не открыт.
+create or replace function public.admin_overview()
+returns jsonb
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  result jsonb;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  select jsonb_build_object(
+    'users', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', u.id,
+        'email', u.email,
+        'telegram_username', u.raw_user_meta_data->>'telegram_username',
+        'full_name', u.raw_user_meta_data->>'full_name',
+        'created_at', u.created_at,
+        'last_sign_in_at', u.last_sign_in_at
+      ) order by u.created_at desc), '[]'::jsonb)
+      from auth.users u
+    ),
+    'shops', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'id', s.id,
+        'name', s.name,
+        'slug', s.slug,
+        'owner_id', s.owner_id,
+        'share_enabled', s.share_enabled,
+        'created_at', s.created_at,
+        'member_count', (select count(*) from shop_members m where m.shop_id = s.id),
+        'upload_count', (select count(*) from uploads up where up.shop_id = s.id),
+        'last_upload_at', (select max(up.created_at) from uploads up where up.shop_id = s.id)
+      ) order by s.created_at desc), '[]'::jsonb)
+      from shops s
+    )
+  ) into result;
+
+  return result;
+end;
+$$;
+
+grant execute on function public.admin_overview() to authenticated;
+
+-- ---- вопросы от пользователей (кнопка "Задать вопрос") ----
+create table if not exists support_questions (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  message    text not null,
+  contact    text,
+  status     text not null default 'new' check (status in ('new','read','answered')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists support_questions_user_idx on support_questions(user_id);
+create index if not exists support_questions_created_idx on support_questions(created_at desc);
+
+alter table support_questions enable row level security;
+
+create policy "users can insert own questions"
+  on support_questions for insert
+  with check (user_id = auth.uid());
+
+create policy "users can view own questions"
+  on support_questions for select
+  using (user_id = auth.uid());
+
+create policy "admin can view all questions"
+  on support_questions for select
+  using (public.is_admin());
+
+create policy "admin can update questions"
+  on support_questions for update
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- =====================================================================
 -- Готово. После выполнения этого файла:
 --  1. Supabase → Authentication → Providers → включите Email (Magic Link).
 --  2. Supabase → Authentication → URL Configuration → добавьте адрес

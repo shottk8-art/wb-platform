@@ -22,6 +22,7 @@
   <symbol id="icon-trend-down" viewBox="0 0 24 24"><path d="M4 8l10 10M14 18H8M14 18v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.2 1-1.2 1.9v.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
@@ -39,10 +40,24 @@
       </div>
       <div class="nav-right">
         <span id="userEmail"></span>
+        <button class="ghost small" id="adminLink" hidden>Админка</button>
+        <button class="ghost small" id="askQuestionBtn"><svg class="icon icon-sm"><use href="#icon-help"/></svg> Задать вопрос</button>
         <button class="ghost small" id="signOutBtn"><svg class="icon icon-sm"><use href="#icon-logout"/></svg> Выйти</button>
       </div>
     </div>
   </header>
+
+  <div class="modal-backdrop" id="questionModal" hidden>
+    <div class="modal-card">
+      <h3>Задать вопрос</h3>
+      <p class="hint">Вопрос увидит владелец платформы — придёт ему в Telegram.</p>
+      <textarea id="questionText" placeholder="Опишите вопрос или проблему…"></textarea>
+      <div class="modal-actions">
+        <button class="ghost small" id="questionCancelBtn">Отмена</button>
+        <button class="primary" id="questionSendBtn">Отправить</button>
+      </div>
+    </div>
+  </div>
 
   <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
 
@@ -214,6 +229,8 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
+<script src="/assets/admin.js"></script>
+<script src="/assets/support.js"></script>
 <script src="/assets/parse.js"></script>
 <script src="/assets/upload.js"></script>
 <script src="/assets/dashboard.js"></script>
@@ -512,7 +529,35 @@
     loading.hidden = true;
     appScreen.hidden = false;
 
+    window.WBAdmin.isAdmin().then((admin) => {
+      document.getElementById("adminLink").hidden = !admin;
+    }).catch(() => {});
+
     document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
+    document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
+
+    const questionModal = document.getElementById("questionModal");
+    const questionText = document.getElementById("questionText");
+    const openQuestionModal = () => { questionText.value = ""; questionModal.hidden = false; questionText.focus(); };
+    const closeQuestionModal = () => { questionModal.hidden = true; };
+    document.getElementById("askQuestionBtn").addEventListener("click", openQuestionModal);
+    document.getElementById("questionCancelBtn").addEventListener("click", closeQuestionModal);
+    questionModal.addEventListener("click", (e) => { if (e.target === questionModal) closeQuestionModal(); });
+    document.getElementById("questionSendBtn").addEventListener("click", async () => {
+      const text = questionText.value;
+      if (!text.trim()) return;
+      const btn = document.getElementById("questionSendBtn");
+      btn.disabled = true;
+      try {
+        await window.WBSupport.submitQuestion(text);
+        closeQuestionModal();
+        toast("Вопрос отправлен");
+      } catch (e) {
+        toast("Ошибка: " + e.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     document.getElementById("newShopBtn").addEventListener("click", async () => {
       const name = prompt("Название нового магазина:");

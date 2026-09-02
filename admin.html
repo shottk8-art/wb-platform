@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель продавца WB — админка</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M9 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h3M16 16l4-4-4-4M20 12H9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
+
+<div id="adminScreen" hidden>
+  <header class="topnav">
+    <div class="wrap">
+      <div class="brandline">
+        <div class="brandmark">WB</div>
+        <div class="brand-title">Админка</div>
+      </div>
+      <div class="nav-right">
+        <button class="ghost small" id="backBtn">В кабинет</button>
+        <button class="ghost small" id="signOutBtn"><svg class="icon icon-sm"><use href="#icon-logout"/></svg> Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
+
+    <section class="section">
+      <div class="section-head"><h2>Обзор</h2></div>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">Пользователей</div>
+          <div class="kpi-value" id="statUsers">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Магазинов</div>
+          <div class="kpi-value" id="statShops">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Новых вопросов</div>
+          <div class="kpi-value" id="statNewQuestions">—</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Вопросы от пользователей</h2></div>
+      <div class="card">
+        <div class="tablewrap">
+        <table class="costs">
+          <thead><tr><th>От кого</th><th>Вопрос</th><th>Когда</th><th>Статус</th><th></th></tr></thead>
+          <tbody id="questionsBody"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Пользователи</h2></div>
+      <div class="card">
+        <div class="tablewrap">
+        <table class="costs">
+          <thead><tr><th>Имя / ник</th><th>Email</th><th>Регистрация</th><th>Последний вход</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Магазины</h2></div>
+      <div class="card">
+        <div class="tablewrap">
+        <table class="costs">
+          <thead><tr><th>Название</th><th>Владелец</th><th>Участников</th><th>Загрузок</th><th>Последняя загрузка</th><th>Витрина</th></tr></thead>
+          <tbody id="shopsBody"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/assets/config.js"></script>
+<script src="/assets/supabaseClient.js"></script>
+<script src="/assets/auth.js"></script>
+<script src="/assets/admin.js"></script>
+<script>
+(function () {
+  const loading = document.getElementById("loadingScreen");
+  const adminScreen = document.getElementById("adminScreen");
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  const statusLabel = { new: "Новый", read: "Прочитан", answered: "Отвечен" };
+
+  async function refreshQuestions() {
+    const questions = await window.WBAdmin.listQuestions();
+    document.getElementById("statNewQuestions").textContent = questions.filter((q) => q.status === "new").length;
+    const tbody = document.getElementById("questionsBody");
+    if (!questions.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">Вопросов пока нет</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = questions.map((q) => `
+      <tr data-id="${q.id}">
+        <td>${escapeHtml(q.contact || "—")}</td>
+        <td style="max-width:420px; white-space:pre-wrap;">${escapeHtml(q.message)}</td>
+        <td class="mono">${fmtDate(q.created_at)}</td>
+        <td><span class="badge badge--${q.status}">${statusLabel[q.status] || q.status}</span></td>
+        <td>${q.status !== "answered" ? `<button class="ghost small mark-answered-btn">Отметить отвеченным</button>` : ""}</td>
+      </tr>`).join("");
+    tbody.querySelectorAll(".mark-answered-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.closest("tr").dataset.id;
+        try {
+          await window.WBAdmin.setQuestionStatus(id, "answered");
+          await refreshQuestions();
+        } catch (e) { alert("Ошибка: " + e.message); }
+      });
+    });
+    // непрочитанные молча помечаем прочитанными при просмотре списка
+    questions.filter((q) => q.status === "new").forEach((q) => {
+      window.WBAdmin.setQuestionStatus(q.id, "read").catch(() => {});
+    });
+  }
+
+  async function init() {
+    const session = await window.WBAuth.getSession();
+    if (!session) { location.href = "/index.html"; return; }
+
+    let admin = false;
+    try { admin = await window.WBAdmin.isAdmin(); } catch (e) {}
+    if (!admin) { location.href = "/app.html"; return; }
+
+    const overview = await window.WBAdmin.getOverview();
+    const usersById = new Map((overview.users || []).map((u) => [u.id, u]));
+
+    document.getElementById("statUsers").textContent = (overview.users || []).length;
+    document.getElementById("statShops").textContent = (overview.shops || []).length;
+
+    document.getElementById("usersBody").innerHTML = (overview.users || []).map((u) => `
+      <tr>
+        <td>${escapeHtml(u.full_name || (u.telegram_username ? "@" + u.telegram_username : "—"))}</td>
+        <td class="mono">${escapeHtml(u.email || "—")}</td>
+        <td class="mono">${fmtDate(u.created_at)}</td>
+        <td class="mono">${fmtDate(u.last_sign_in_at)}</td>
+      </tr>`).join("") || `<tr><td colspan="4" class="empty">Пусто</td></tr>`;
+
+    document.getElementById("shopsBody").innerHTML = (overview.shops || []).map((s) => {
+      const owner = usersById.get(s.owner_id);
+      const ownerLabel = owner ? (owner.full_name || (owner.telegram_username ? "@" + owner.telegram_username : owner.email)) : "—";
+      return `
+      <tr>
+        <td>${escapeHtml(s.name)}</td>
+        <td>${escapeHtml(ownerLabel)}</td>
+        <td class="mono">${s.member_count}</td>
+        <td class="mono">${s.upload_count}</td>
+        <td class="mono">${fmtDate(s.last_upload_at)}</td>
+        <td>${s.share_enabled ? `<span class="badge badge--answered">включена</span>` : `<span class="badge badge--read">выключена</span>`}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="6" class="empty">Пусто</td></tr>`;
+
+    await refreshQuestions();
+
+    loading.hidden = true;
+    adminScreen.hidden = false;
+
+    document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
+    document.getElementById("backBtn").addEventListener("click", () => { location.href = "/app.html"; });
+  }
+
+  init().catch((e) => {
+    console.error(e);
+    alert("Ошибка загрузки админки: " + e.message);
+    location.href = "/app.html";
+  });
+})();
+</script>
+</body>
+</html>
