@@ -314,12 +314,13 @@ grant execute on function public.admin_overview() to authenticated;
 
 -- ---- вопросы от пользователей (кнопка "Задать вопрос") ----
 create table if not exists support_questions (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users(id) on delete cascade,
-  message    text not null,
-  contact    text,
-  status     text not null default 'new' check (status in ('new','read','answered')),
-  created_at timestamptz not null default now()
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  message         text not null,
+  contact         text,
+  status          text not null default 'new' check (status in ('new','read','answered')),
+  attachment_path text, -- путь в storage-бакете question-photos, опционально
+  created_at      timestamptz not null default now()
 );
 
 create index if not exists support_questions_user_idx on support_questions(user_id);
@@ -343,6 +344,37 @@ create policy "admin can update questions"
   on support_questions for update
   using (public.is_admin())
   with check (public.is_admin());
+
+-- ---- фото, прикреплённые к вопросу ----
+-- Приватный бакет: файл видит только автор вопроса и админ — через RLS
+-- ниже (по первому сегменту пути = user_id) плюс подписанные ссылки,
+-- которые фронтенд/Edge Function генерируют на лету (createSignedUrl).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'question-photos', 'question-photos', false,
+  8388608, -- 8 МБ
+  array['image/jpeg','image/png','image/webp','image/gif']
+)
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "users upload own question photos"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'question-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "owner or admin can read question photos"
+  on storage.objects for select
+  using (
+    bucket_id = 'question-photos'
+    and (
+      (storage.foldername(name))[1] = auth.uid()::text
+      or public.is_admin()
+    )
+  );
 
 -- =====================================================================
 -- Готово. После выполнения этого файла:

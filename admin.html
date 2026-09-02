@@ -130,7 +130,10 @@
     tbody.innerHTML = questions.map((q) => `
       <tr data-id="${q.id}">
         <td>${escapeHtml(q.contact || "—")}</td>
-        <td style="max-width:420px; white-space:pre-wrap;">${escapeHtml(q.message)}</td>
+        <td style="max-width:420px; white-space:pre-wrap;">
+          ${escapeHtml(q.message)}
+          ${q.attachment_path ? `<div class="q-thumb-slot" data-path="${escapeHtml(q.attachment_path)}" style="margin-top:6px; width:120px; height:90px; border-radius:8px; border:1px solid var(--line); background:var(--surface-2);"></div>` : ""}
+        </td>
         <td class="mono">${fmtDate(q.created_at)}</td>
         <td><span class="badge badge--${q.status}">${statusLabel[q.status] || q.status}</span></td>
         <td>${q.status !== "answered" ? `<button class="ghost small mark-answered-btn">Отметить отвеченным</button>` : ""}</td>
@@ -142,6 +145,15 @@
           await window.WBAdmin.setQuestionStatus(id, "answered");
           await refreshQuestions();
         } catch (e) { alert("Ошибка: " + e.message); }
+      });
+    });
+    tbody.querySelectorAll(".q-thumb-slot").forEach((slot) => {
+      window.WBAdmin.getAttachmentUrl(slot.dataset.path).then((url) => {
+        slot.style.background = "";
+        slot.innerHTML = `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" style="width:120px; height:90px; border-radius:8px; display:block; object-fit:cover;"></a>`;
+      }).catch((e) => {
+        slot.textContent = "…";
+        console.error("getAttachmentUrl failed", e);
       });
     });
     // непрочитанные молча помечаем прочитанными при просмотре списка

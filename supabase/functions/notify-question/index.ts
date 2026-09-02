@@ -26,10 +26,17 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData.user) throw new Error("Не авторизован");
 
-    const { message } = await req.json();
+    const { message, attachment_path } = await req.json();
     if (!message || typeof message !== "string" || !message.trim()) {
       throw new Error("Пустой вопрос");
     }
+    // Путь должен лежать в папке самого вызывающего — иначе кто-то мог бы
+    // подсунуть чужой attachment_path и заставить сервис-ключ подписать
+    // ссылку на чужое фото.
+    const safeAttachmentPath =
+      typeof attachment_path === "string" && attachment_path.startsWith(`${userData.user.id}/`)
+        ? attachment_path
+        : null;
 
     const meta = userData.user.user_metadata || {};
     const who =
@@ -40,16 +47,37 @@ Deno.serve(async (req) => {
     const chatId = Deno.env.get("ADMIN_TELEGRAM_CHAT_ID");
     if (botToken && chatId) {
       const text = `❓ Новый вопрос от ${who}\n\n${message.trim()}`;
-      const tgRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId, text }),
-      });
+
+      let photoUrl: string | null = null;
+      if (safeAttachmentPath) {
+        const admin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        );
+        const { data: signed, error: signErr } = await admin.storage
+          .from("question-photos")
+          .createSignedUrl(safeAttachmentPath, 300);
+        if (signErr) console.error("createSignedUrl failed", signErr.message);
+        photoUrl = signed?.signedUrl ?? null;
+      }
+
+      const tgRes = photoUrl
+        ? await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // caption ограничен 1024 символами у Telegram (у sendMessage — 4096)
+            body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption: text.slice(0, 1024) }),
+          })
+        : await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text }),
+          });
       if (!tgRes.ok) {
         // Вопрос уже сохранён в БД клиентом до вызова этой функции — сбой
         // отправки в Telegram не должен выглядеть как сбой всей операции,
         // но админ должен об этом узнать через логи функции.
-        console.error("Telegram sendMessage failed", await tgRes.text());
+        console.error("Telegram notify failed", await tgRes.text());
       }
     }
 

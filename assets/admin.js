@@ -30,5 +30,13 @@
     if (error) throw error;
   }
 
-  window.WBAdmin = { isAdmin, getOverview, listQuestions, setQuestionStatus };
+  // Бакет приватный — прямой URL не работает, нужна подписанная ссылка
+  // с ограниченным временем жизни (RLS: доступна автору вопроса и админу).
+  async function getAttachmentUrl(path) {
+    const { data, error } = await sb().storage.from("question-photos").createSignedUrl(path, 3600);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+
+  window.WBAdmin = { isAdmin, getOverview, listQuestions, setQuestionStatus, getAttachmentUrl };
 })();

@@ -32,6 +32,7 @@
   <symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.2 1-1.2 1.9v.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-9 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
@@ -61,6 +62,15 @@
       <h3>Задать вопрос</h3>
       <p class="hint">Вопрос увидит владелец платформы — придёт ему в Telegram.</p>
       <textarea id="questionText" placeholder="Опишите вопрос или проблему…"></textarea>
+      <div style="margin-top:10px;">
+        <input type="file" id="questionPhotoInput" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+        <button class="ghost small" id="questionAttachBtn" type="button"><svg class="icon icon-sm"><use href="#icon-image"/></svg> Прикрепить фото</button>
+        <span class="hint">JPG, PNG, WEBP или GIF, до 8 МБ</span>
+        <div id="questionPhotoPreview" hidden style="margin-top:10px; position:relative; width:160px;">
+          <img id="questionPhotoImg" style="max-width:160px; max-height:120px; border-radius:10px; border:1px solid var(--line); display:block; object-fit:cover;">
+          <button class="ghost small" id="questionPhotoRemoveBtn" type="button" title="Убрать фото" style="position:absolute; top:-9px; right:-9px; width:24px; height:24px; padding:0; border-radius:50%; background:var(--surface);"><svg class="icon icon-sm"><use href="#icon-trash"/></svg></button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="ghost small" id="questionCancelBtn">Отмена</button>
         <button class="primary" id="questionSendBtn">Отправить</button>
@@ -559,18 +569,51 @@
 
     const questionModal = document.getElementById("questionModal");
     const questionText = document.getElementById("questionText");
-    const openQuestionModal = () => { questionText.value = ""; questionModal.hidden = false; questionText.focus(); };
+    const photoInput = document.getElementById("questionPhotoInput");
+    const photoPreview = document.getElementById("questionPhotoPreview");
+    const photoImg = document.getElementById("questionPhotoImg");
+    let questionPhotoFile = null;
+    let questionPhotoUrl = null;
+
+    const resetQuestionPhoto = () => {
+      questionPhotoFile = null;
+      photoInput.value = "";
+      photoPreview.hidden = true;
+      if (questionPhotoUrl) { URL.revokeObjectURL(questionPhotoUrl); questionPhotoUrl = null; }
+      photoImg.src = "";
+    };
+    const openQuestionModal = () => { questionText.value = ""; resetQuestionPhoto(); questionModal.hidden = false; questionText.focus(); };
     const closeQuestionModal = () => { questionModal.hidden = true; };
     document.getElementById("askQuestionBtn").addEventListener("click", openQuestionModal);
     document.getElementById("questionCancelBtn").addEventListener("click", closeQuestionModal);
     questionModal.addEventListener("click", (e) => { if (e.target === questionModal) closeQuestionModal(); });
+
+    document.getElementById("questionAttachBtn").addEventListener("click", () => photoInput.click());
+    photoInput.addEventListener("change", () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      try {
+        window.WBSupport.validatePhoto(file);
+      } catch (e) {
+        toast(e.message, true);
+        photoInput.value = "";
+        return;
+      }
+      questionPhotoFile = file;
+      if (questionPhotoUrl) URL.revokeObjectURL(questionPhotoUrl);
+      questionPhotoUrl = URL.createObjectURL(file);
+      photoImg.src = questionPhotoUrl;
+      photoPreview.hidden = false;
+    });
+    document.getElementById("questionPhotoRemoveBtn").addEventListener("click", resetQuestionPhoto);
+
     document.getElementById("questionSendBtn").addEventListener("click", async () => {
       const text = questionText.value;
       if (!text.trim()) return;
       const btn = document.getElementById("questionSendBtn");
       btn.disabled = true;
       try {
-        await window.WBSupport.submitQuestion(text);
+        await window.WBSupport.submitQuestion(text, questionPhotoFile);
         closeQuestionModal();
         toast("Вопрос отправлен");
       } catch (e) {
