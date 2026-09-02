@@ -109,9 +109,31 @@ create table if not exists uploads (
 
 create index if not exists uploads_shop_idx on uploads(shop_id, created_at desc);
 
+-- ---------------------------------------------------------------------
+-- 6. УЧАСТНИКИ МАГАЗИНА (доступ по нику в Telegram)
+-- Владелец добавляет ник (без @, в нижнем регистре) — user_id остаётся
+-- пустым, пока этот человек не войдёт в приложение хотя бы раз: тогда
+-- Edge Function telegram-auth сама проставит user_id по совпадению ника.
+-- ---------------------------------------------------------------------
+create table if not exists shop_members (
+  id                uuid primary key default gen_random_uuid(),
+  shop_id           uuid not null references shops(id) on delete cascade,
+  telegram_username text not null,
+  user_id           uuid references auth.users(id) on delete cascade,
+  invited_at        timestamptz not null default now(),
+  unique (shop_id, telegram_username)
+);
+
+create index if not exists shop_members_shop_idx on shop_members(shop_id);
+create index if not exists shop_members_username_idx on shop_members(telegram_username);
+create index if not exists shop_members_user_idx on shop_members(user_id);
+
 -- =====================================================================
 -- ROW LEVEL SECURITY
--- Владелец магазина видит и редактирует свои данные.
+-- Владелец магазина видит и редактирует свои данные; участники (по
+-- приглашению в shop_members) получают такой же полный доступ к данным
+-- магазина, но не к самому магазину (переименование/удаление/шаринг/
+-- налог/список участников — только владелец).
 -- Любой человек по ссылке вида /s/<slug> видит данные ТОЛЬКО на чтение,
 -- и только если у магазина share_enabled = true.
 -- =====================================================================
@@ -121,6 +143,33 @@ alter table monthly_reports enable row level security;
 alter table sku_sales       enable row level security;
 alter table sku_costs       enable row level security;
 alter table uploads         enable row level security;
+alter table shop_members    enable row level security;
+
+-- shops-политика читает shop_members, а shop_members-политика читает
+-- shops — прямая взаимная ссылка. Postgres обходит RLS-политику каждый раз,
+-- когда подзапрос обращается к защищённой таблице, поэтому такая пара
+-- зацикливается (infinite recursion detected in policy for relation
+-- "shops") при первом же обращении. Разрываем цикл через security definer
+-- функции: они выполняются от имени владельца таблиц (роль, создавшая
+-- таблицы) и поэтому НЕ проходят через RLS повторно внутри себя.
+create or replace function public.user_is_shop_owner(p_shop_id uuid, p_user_id uuid)
+returns boolean
+language sql security definer stable
+set search_path = public
+as $$
+  select exists (select 1 from shops s where s.id = p_shop_id and s.owner_id = p_user_id);
+$$;
+
+create or replace function public.user_is_shop_member(p_shop_id uuid, p_user_id uuid)
+returns boolean
+language sql security definer stable
+set search_path = public
+as $$
+  select exists (select 1 from shop_members m where m.shop_id = p_shop_id and m.user_id = p_user_id);
+$$;
+
+grant execute on function public.user_is_shop_owner(uuid, uuid) to authenticated;
+grant execute on function public.user_is_shop_member(uuid, uuid) to authenticated;
 
 -- ---- shops ----
 create policy "owner full access to own shops"
@@ -128,45 +177,66 @@ create policy "owner full access to own shops"
   using (owner_id = auth.uid())
   with check (owner_id = auth.uid());
 
+create policy "members can read shops they belong to"
+  on shops for select
+  using (public.user_is_shop_member(id, auth.uid()));
+
 create policy "anyone can read shared shops"
   on shops for select
   using (share_enabled = true);
 
 -- ---- monthly_reports ----
-create policy "owner full access to own monthly_reports"
+create policy "owner or member full access to monthly_reports"
   on monthly_reports for all
-  using (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()))
-  with check (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()));
+  using (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()))
+  with check (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()));
 
 create policy "anyone can read monthly_reports of shared shops"
   on monthly_reports for select
   using (exists (select 1 from shops s where s.id = shop_id and s.share_enabled = true));
 
 -- ---- sku_sales ----
-create policy "owner full access to own sku_sales"
+create policy "owner or member full access to sku_sales"
   on sku_sales for all
-  using (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()))
-  with check (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()));
+  using (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()))
+  with check (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()));
 
 create policy "anyone can read sku_sales of shared shops"
   on sku_sales for select
   using (exists (select 1 from shops s where s.id = shop_id and s.share_enabled = true));
 
 -- ---- sku_costs ----
-create policy "owner full access to own sku_costs"
+create policy "owner or member full access to sku_costs"
   on sku_costs for all
-  using (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()))
-  with check (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()));
+  using (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()))
+  with check (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()));
 
 create policy "anyone can read sku_costs of shared shops"
   on sku_costs for select
   using (exists (select 1 from shops s where s.id = shop_id and s.share_enabled = true));
 
 -- ---- uploads (журнал приватный — на публичной витрине не нужен) ----
-create policy "owner full access to own uploads"
+create policy "owner or member full access to uploads"
   on uploads for all
-  using (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()))
-  with check (exists (select 1 from shops s where s.id = shop_id and s.owner_id = auth.uid()));
+  using (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()))
+  with check (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()));
+
+-- ---- shop_members ----
+-- Видит список: владелец магазина или любой уже привязанный участник
+-- этого же магазина (чтобы видеть, кто ещё имеет доступ).
+create policy "shop team can view members list"
+  on shop_members for select
+  using (public.user_is_shop_owner(shop_id, auth.uid()) or public.user_is_shop_member(shop_id, auth.uid()));
+
+-- Добавлять/удалять участников может только владелец. user_id при
+-- приглашении проставляет только Edge Function (service role, минуя RLS).
+create policy "owner adds shop_members"
+  on shop_members for insert
+  with check (public.user_is_shop_owner(shop_id, auth.uid()));
+
+create policy "owner removes shop_members"
+  on shop_members for delete
+  using (public.user_is_shop_owner(shop_id, auth.uid()));
 
 -- =====================================================================
 -- Готово. После выполнения этого файла:

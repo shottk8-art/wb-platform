@@ -103,6 +103,23 @@ Deno.serve(async (req) => {
     });
     if (error) throw error;
 
+    // Разрешаем ожидающие приглашения: если владелец другого магазина уже
+    // добавил этот ник в shop_members (user_id ещё пуст), привязываем его
+    // к только что вошедшему пользователю. Не критично для входа —
+    // ошибку здесь не считаем фатальной.
+    const username = typeof payload.username === "string" ? payload.username.trim().toLowerCase() : null;
+    if (username) {
+      try {
+        await admin
+          .from("shop_members")
+          .update({ user_id: data.user.id })
+          .eq("telegram_username", username)
+          .is("user_id", null);
+      } catch (_e) {
+        // молча игнорируем — вход важнее
+      }
+    }
+
     return new Response(
       JSON.stringify({
         token_hash: data.properties.hashed_token,

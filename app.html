@@ -71,6 +71,23 @@
       </div>
     </section>
 
+    <section class="section" id="secMembers">
+      <div class="section-head"><h2>Участники</h2><span class="hint">дайте доступ к кабинету по нику в Telegram — доступ откроется при его следующем входе в приложение</span></div>
+      <div class="card" style="padding:14px 18px;">
+        <div id="memberAddRow" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+          <div style="max-width:220px; flex:1;">
+            <label for="memberUsernameInput">Ник в Telegram</label>
+            <input type="text" id="memberUsernameInput" placeholder="username">
+          </div>
+          <button class="primary" id="addMemberBtn"><svg class="icon icon-sm"><use href="#icon-plus"/></svg> Добавить</button>
+        </div>
+        <table class="costs">
+          <thead><tr><th>Ник в Telegram</th><th>Статус</th><th></th></tr></thead>
+          <tbody id="membersBody"></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="section" id="secUploadForms">
       <div class="section-head">
         <h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span>
@@ -204,6 +221,11 @@
 (function () {
   let shop = null;
   let periods = [];
+  let session = null;
+
+  function isOwner() {
+    return !!(shop && session && shop.owner_id === session.user.id);
+  }
 
   const loading = document.getElementById("loadingScreen");
   const appScreen = document.getElementById("appScreen");
@@ -250,6 +272,55 @@
       navigator.clipboard.writeText(url).then(() => toast("Ссылка скопирована"));
     };
     document.getElementById("taxRateInput").value = shop.tax_rate || 0;
+
+    // Витрина, налог, удаление магазина и добавление участников — только
+    // владелец: RLS всё равно отклонит эти действия от участника, поэтому
+    // прячем элементы управления, чтобы не показывать ложные ошибки.
+    const owner = isOwner();
+    document.getElementById("deleteShopBtn").hidden = !owner;
+    document.getElementById("shareToggle").disabled = !owner;
+    document.getElementById("saveTaxBtn").disabled = !owner;
+    document.getElementById("taxRateInput").disabled = !owner;
+    document.getElementById("memberAddRow").style.display = owner ? "flex" : "none";
+  }
+
+  async function refreshMembers() {
+    const owner = isOwner();
+    const tbody = document.getElementById("membersBody");
+    let members = [];
+    try {
+      members = await window.WBAuth.listMembers(shop.id);
+    } catch (e) {
+      // участник не-владелец может не иметь права видеть список — просто скрываем раздел
+      document.getElementById("secMembers").hidden = true;
+      return;
+    }
+    document.getElementById("secMembers").hidden = false;
+    if (!members.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="empty">${owner ? "Пока никого не добавили" : "Участников пока нет"}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = members.map((m) => `
+      <tr data-id="${m.id}">
+        <td class="mono">@${escapeHtml(m.telegram_username)}</td>
+        <td>${m.user_id ? "Присоединился" : "Ожидает входа"}</td>
+        <td>${owner ? `<button class="ghost small remove-member-btn" title="Убрать доступ"><svg class="icon icon-sm"><use href="#icon-trash"/></svg></button>` : ""}</td>
+      </tr>`).join("");
+    if (owner) {
+      tbody.querySelectorAll(".remove-member-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const row = btn.closest("tr");
+          const member = members.find((m) => m.id === row.dataset.id);
+          const ok = confirm(`Убрать доступ у @${member.telegram_username}?`);
+          if (!ok) return;
+          try {
+            await window.WBAuth.removeMember(member.id);
+            await refreshMembers();
+            toast("Доступ убран");
+          } catch (e) { toast("Ошибка: " + e.message, true); }
+        });
+      });
+    }
   }
 
   async function refreshPeriods(selectYear, selectMonth) {
@@ -419,7 +490,7 @@
   }
 
   async function init() {
-    const session = await window.WBAuth.getSession();
+    session = await window.WBAuth.getSession();
     if (!session) { location.href = "/index.html"; return; }
     const meta = session.user.user_metadata || {};
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
@@ -427,6 +498,7 @@
     shop = await window.WBAuth.ensureShop();
     await refreshShopSwitch();
     updateShareBox();
+    await refreshMembers();
 
     fillYearMonthSelects(document.getElementById("salesYear"), document.getElementById("salesMonth"));
     await refreshPeriods();
@@ -448,6 +520,7 @@
       shop = await window.WBAuth.createShop(name);
       await refreshShopSwitch();
       updateShareBox();
+      await refreshMembers();
       await refreshPeriods();
       await renderCurrentPeriod();
       await refreshCostsTable();
@@ -466,6 +539,7 @@
         shop = remaining[0];
         await refreshShopSwitch();
         updateShareBox();
+        await refreshMembers();
         await refreshPeriods();
         await renderCurrentPeriod();
         await refreshCostsTable();
@@ -480,6 +554,7 @@
       const shops = await window.WBAuth.listMyShops();
       shop = shops.find((s) => s.id === e.target.value);
       updateShareBox();
+      await refreshMembers();
       await refreshPeriods();
       await renderCurrentPeriod();
       await refreshCostsTable();
@@ -498,6 +573,18 @@
         document.getElementById("taxSaveHint").textContent = "Сохранено";
         setTimeout(() => (document.getElementById("taxSaveHint").textContent = ""), 2000);
         await renderCurrentPeriod();
+      } catch (e) { toast("Ошибка: " + e.message, true); }
+    });
+
+    document.getElementById("addMemberBtn").addEventListener("click", async () => {
+      const input = document.getElementById("memberUsernameInput");
+      const username = input.value;
+      if (!username.trim()) return;
+      try {
+        await window.WBAuth.addMember(shop.id, username);
+        input.value = "";
+        await refreshMembers();
+        toast("Участник добавлен");
       } catch (e) { toast("Ошибка: " + e.message, true); }
     });
 

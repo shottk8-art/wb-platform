@@ -49,22 +49,13 @@
     return data.session;
   }
 
-  // Возвращает первый магазин пользователя; если магазинов нет — создаёт.
+  // Возвращает первый доступный магазин пользователя (свой или тот, куда
+  // его добавили как участника); если нет ни одного — создаёт свой.
   async function ensureShop(defaultName) {
     const session = await getSession();
     if (!session) return null;
 
-    // ВАЖНО: явный фильтр по owner_id обязателен. RLS-политика на чтение
-    // shops разрешает читать И свои магазины, И любые чужие с
-    // share_enabled = true (это нужно для публичной витрины) — без этого
-    // фильтра пользователю мог бы достаться чужой магазин.
-    const { data: shops, error } = await sb()
-      .from("shops")
-      .select("*")
-      .eq("owner_id", session.user.id)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-
+    const shops = await listMyShops();
     if (shops && shops.length) return shops[0];
 
     const name = defaultName || "Мой магазин";
@@ -80,17 +71,62 @@
     return created;
   }
 
+  // Свои магазины + магазины, куда пользователя добавили участником.
+  // ВАЖНО: явный фильтр по owner_id обязателен для "своих" — RLS-политика
+  // на чтение shops разрешает читать И свои магазины, И любые чужие с
+  // share_enabled = true (это нужно для публичной витрины) — без этого
+  // фильтра пользователю мог бы достаться чужой магазин.
   async function listMyShops() {
     const session = await getSession();
     if (!session) return [];
-    // См. комментарий в ensureShop — фильтр по owner_id обязателен.
+    const [{ data: owned, error: e1 }, { data: memberRows, error: e2 }] = await Promise.all([
+      sb().from("shops").select("*").eq("owner_id", session.user.id).order("created_at"),
+      sb().from("shop_members").select("shops(*)").eq("user_id", session.user.id),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    const merged = [...(owned || [])];
+    const seen = new Set(merged.map((s) => s.id));
+    for (const row of memberRows || []) {
+      const s = row.shops;
+      if (s && !seen.has(s.id)) { merged.push(s); seen.add(s.id); }
+    }
+    return merged;
+  }
+
+  // ---- Участники магазина (доступ по нику в Telegram) ----
+  function normalizeUsername(username) {
+    return String(username || "").trim().replace(/^@/, "").toLowerCase();
+  }
+
+  async function listMembers(shopId) {
     const { data, error } = await sb()
-      .from("shops")
+      .from("shop_members")
       .select("*")
-      .eq("owner_id", session.user.id)
-      .order("created_at");
+      .eq("shop_id", shopId)
+      .order("invited_at");
     if (error) throw error;
+    return data || [];
+  }
+
+  async function addMember(shopId, username) {
+    const telegram_username = normalizeUsername(username);
+    if (!telegram_username) throw new Error("Введите ник в Telegram");
+    const { data, error } = await sb()
+      .from("shop_members")
+      .insert({ shop_id: shopId, telegram_username })
+      .select()
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error("Этот ник уже добавлен");
+      throw error;
+    }
     return data;
+  }
+
+  async function removeMember(memberId) {
+    const { error } = await sb().from("shop_members").delete().eq("id", memberId);
+    if (error) throw error;
   }
 
   async function createShop(name) {
@@ -119,5 +155,9 @@
     if (error) throw error;
   }
 
-  window.WBAuth = { signInWithMagicLink, signInWithTelegram, signOut, getSession, ensureShop, listMyShops, createShop, updateShop, deleteShop, slugify };
+  window.WBAuth = {
+    signInWithMagicLink, signInWithTelegram, signOut, getSession,
+    ensureShop, listMyShops, createShop, updateShop, deleteShop, slugify,
+    listMembers, addMember, removeMember,
+  };
 })();
