@@ -168,8 +168,12 @@ as $$
   select exists (select 1 from shop_members m where m.shop_id = p_shop_id and m.user_id = p_user_id);
 $$;
 
-grant execute on function public.user_is_shop_owner(uuid, uuid) to authenticated;
-grant execute on function public.user_is_shop_member(uuid, uuid) to authenticated;
+-- нужны также роли anon: их вызывают политики "for all" (без ограничения
+-- по роли) на monthly_reports/sku_sales/sku_costs/uploads — Postgres
+-- вычисляет их для ЛЮБОЙ обращающейся роли, включая анонимных читателей
+-- публичной витрины, даже если результат для них заведомо false.
+grant execute on function public.user_is_shop_owner(uuid, uuid) to authenticated, anon;
+grant execute on function public.user_is_shop_member(uuid, uuid) to authenticated, anon;
 
 -- ---- shops ----
 create policy "owner full access to own shops"
@@ -252,6 +256,9 @@ as $$
   select p_user_id = 'bbb002c4-cd7a-490d-b9c0-72aed5424261'::uuid;
 $$;
 
+-- по умолчанию Postgres даёт EXECUTE на новую функцию всей PUBLIC (в т.ч.
+-- anon) — этой функции анонимные посетители не нужны, поэтому явно отзываем.
+revoke execute on function public.is_admin(uuid) from public;
 grant execute on function public.is_admin(uuid) to authenticated;
 
 -- security definer: обращается к auth.users (недоступна через PostgREST
@@ -302,6 +309,7 @@ begin
 end;
 $$;
 
+revoke execute on function public.admin_overview() from public;
 grant execute on function public.admin_overview() to authenticated;
 
 -- ---- вопросы от пользователей (кнопка "Задать вопрос") ----
