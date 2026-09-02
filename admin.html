@@ -118,6 +118,14 @@
   }
 
   const statusLabel = { new: "Новый", read: "Прочитан", answered: "Отвечен" };
+  let usersById = new Map();
+
+  function contactCell(q) {
+    const username = usersById.get(q.user_id)?.telegram_username;
+    const label = escapeHtml(q.contact || (username ? "@" + username : "—"));
+    if (!username) return label;
+    return `<a href="https://t.me/${encodeURIComponent(username)}" target="_blank" rel="noopener">${label}</a>`;
+  }
 
   async function refreshQuestions() {
     const questions = await window.WBAdmin.listQuestions();
@@ -129,7 +137,7 @@
     }
     tbody.innerHTML = questions.map((q) => `
       <tr data-id="${q.id}">
-        <td>${escapeHtml(q.contact || "—")}</td>
+        <td>${contactCell(q)}</td>
         <td style="max-width:420px; white-space:pre-wrap;">
           ${escapeHtml(q.message)}
           ${q.attachment_path ? `<div class="q-thumb-slot" data-path="${escapeHtml(q.attachment_path)}" style="margin-top:6px; width:120px; height:90px; border-radius:8px; border:1px solid var(--line); background:var(--surface-2);"></div>` : ""}
@@ -171,7 +179,7 @@
     if (!admin) { location.href = "/app.html"; return; }
 
     const overview = await window.WBAdmin.getOverview();
-    const usersById = new Map((overview.users || []).map((u) => [u.id, u]));
+    usersById = new Map((overview.users || []).map((u) => [u.id, u]));
 
     document.getElementById("statUsers").textContent = (overview.users || []).length;
     document.getElementById("statShops").textContent = (overview.shops || []).length;
