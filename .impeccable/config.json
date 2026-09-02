@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-09-01T12:36:19.368Z",
         "reason": "user confirmed: explicitly asked for Apple-style fonts; Inter is the standard SF Pro web-fallback paired with -apple-system/BlinkMacSystemFont so Apple devices render real SF Pro"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "admin.html"
+        ],
+        "createdAt": "2026-09-02T20:26:28.026Z",
+        "reason": "Inter/IBM Plex Mono is the project-wide type system (see index.html, app.html) — same intentional exception, just extended to the new admin page"
       }
     ]
   }
