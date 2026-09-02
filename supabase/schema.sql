@@ -36,6 +36,7 @@ create table if not exists monthly_reports (
   year            int not null,
   month           int not null check (month between 1 and 12),
   sales_amount    numeric not null default 0,   -- Сумма продаж по розничным ценам
+  orders_amount   numeric not null default 0,   -- Сумма заказов по розничным ценам (для ДРР(з))
   bought_qty      int     not null default 0,   -- Выкупили, шт.
   transfer_total  numeric not null default 0,   -- Итого к перечислению
   transfer_goods  numeric not null default 0,   -- К перечислению за товар (нужно для расчёта комиссии)

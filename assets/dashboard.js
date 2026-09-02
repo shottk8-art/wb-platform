@@ -34,7 +34,7 @@
   // привязана к периоду — как и себестоимость).
   function computeDerived(report, skus, costMap, taxRate) {
     const rep = report || {
-      sales_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
+      sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
       delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
       damage_comp: 0, return_comp: 0, other_fees: 0, ads_spend: 0, ads_promo_spend: 0,
     };
@@ -103,6 +103,17 @@
       </div>`;
   }
 
+  // ДРР — доля рекламных расходов. (з) — от суммы заказов, (в) — от
+  // суммы продаж (обе берутся из сводного отчёта). Прочерк, если делить не на что.
+  function renderDrrLine(rep) {
+    const ads = rep.ads_spend || 0;
+    const orders = rep.orders_amount || 0;
+    const sales = rep.sales_amount || 0;
+    const drrZ = orders > 0 ? `${((ads / orders) * 100).toFixed(1)}%` : "—";
+    const drrV = sales > 0 ? `${((ads / sales) * 100).toFixed(1)}%` : "—";
+    return `<div class="kpi-extra">ДРР(з) ${drrZ} · ДРР(в) ${drrV}</div>`;
+  }
+
   function renderKPI(container, d, prevD) {
     container.innerHTML = "";
     const cards = [
@@ -110,7 +121,7 @@
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
       { label: "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
       { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
-      { label: "Расход на рекламу", value: d.rep.ads_spend, prev: prevD ? prevD.rep.ads_spend : null, unit: "₽", lowerIsBetter: true },
+      { label: "Расход на рекламу", value: d.rep.ads_spend, prev: prevD ? prevD.rep.ads_spend : null, unit: "₽", lowerIsBetter: true, extra: renderDrrLine(d.rep) },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true },
     ];
     cards.forEach((c) => {
@@ -122,6 +133,7 @@
           <div class="kpi-label">${escapeHtml(c.label)}</div>
           <div class="kpi-value${negClass}">${valStr} <span class="kpi-unit">${c.unit}</span></div>
           ${renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral })}
+          ${c.extra || ""}
         </div>
       `));
     });

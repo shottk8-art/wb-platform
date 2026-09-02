@@ -115,7 +115,7 @@
   async function deleteUpload(shopId, upload) {
     if (upload.kind === "summary") {
       const zeroed = {
-        sales_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
+        sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
         delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
         damage_comp: 0, return_comp: 0, other_fees: 0,
       };
