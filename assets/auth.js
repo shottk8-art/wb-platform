@@ -27,12 +27,19 @@
   // tgUser — объект, который Telegram Login Widget передаёт в data-onauth
   // (id, first_name, last_name, username, photo_url, auth_date, hash).
   async function signInWithTelegram(tgUser) {
-    const res = await fetch(window.WB_CONFIG.SUPABASE_URL + "/functions/v1/telegram-auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tgUser),
-    });
-    const body = await res.json();
+    let res;
+    try {
+      res = await fetch(window.WB_CONFIG.SUPABASE_URL + "/functions/v1/telegram-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tgUser),
+      });
+    } catch (_err) {
+      throw new Error("Сервис временно недоступен. Попробуйте войти немного позже");
+    }
+
+    let body = {};
+    try { body = await res.json(); } catch (_err) { /* ответ без JSON */ }
     if (!res.ok) throw new Error(body.error || "Не удалось войти через Telegram");
 
     const { error } = await sb().auth.verifyOtp({ token_hash: body.token_hash, type: body.type });
