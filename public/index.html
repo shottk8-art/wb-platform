@@ -1,0 +1,2030 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
+<script>
+/* Тема — до первой отрисовки, иначе при запуске мигнёт чужим фоном.
+   Выбор игрока лежит в общей памяти приложения (ключ dvoeplay:v1);
+   пусто — значит берём тему из настроек телефона, как раньше. */
+(function(){try{
+  var d=JSON.parse(localStorage.getItem('dvoeplay:v1')||'{}'), t=d&&d.theme;
+  if(t!=='light'&&t!=='dark') return;
+  document.documentElement.setAttribute('data-theme',t);
+  var c=t==='dark'?'#1C1C1E':'#F2F2F7', m=document.querySelectorAll('meta[name="theme-color"]'), i;
+  for(i=0;i<m.length;i++) m[i].setAttribute('content',c);
+}catch(e){}})();
+
+/* Офлайн-режим: после первого открытия приложение работает и без сети
+   (кроме игры по сети). Регистрируем после загрузки, чтобы не отнимать
+   у страницы первые мгновения. */
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+
+/* Telegram. Его скрипт нужен только внутри мини-приложения: снаружи он
+   лишь тормозил бы загрузку, а без сети вешал бы её. Первая страница
+   внутри Telegram открывается с #tgWebAppData в адресе — это и признак;
+   дальше помним его до конца сеанса, ведь при переходе в игру хвоста
+   в адресе уже нет. */
+(function(){
+  var tg=false;
+  try{
+    tg=/tgWebApp/.test(location.hash) || !!window.TelegramWebviewProxy || sessionStorage.getItem('dp:tg')==='1';
+    if(tg) sessionStorage.setItem('dp:tg','1');
+  }catch(e){}
+  if(!tg) return;
+  var s=document.createElement('script');
+  s.src='https://telegram.org/js/telegram-web-app.js';
+  s.onload=function(){
+    var W=window.Telegram&&window.Telegram.WebApp, root=document.documentElement;
+    if(!W) return;
+    function mine(){
+      try{ var t=(JSON.parse(localStorage.getItem('dvoeplay:v1')||'{}')||{}).theme;
+           return t==='light'||t==='dark'?t:''; }catch(e){ return ''; }
+    }
+    function paint(){
+      /* своей темы игрок не выбирал — идём за темой Telegram, а не телефона */
+      if(!mine() && (W.colorScheme==='dark'||W.colorScheme==='light')) root.setAttribute('data-theme',W.colorScheme);
+      var a=root.getAttribute('data-theme');
+      var dark=a ? a==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      var bg=dark?'#1C1C1E':'#F2F2F7';
+      try{ W.setHeaderColor(bg); W.setBackgroundColor(bg); }catch(e){}
+      try{ if(W.setBottomBarColor) W.setBottomBarColor(bg); }catch(e){}
+    }
+    try{ W.ready(); }catch(e){}
+    try{ W.expand(); }catch(e){}
+    /* свайп вниз не должен сворачивать приложение посреди партии:
+       в «Матрёшке» и «Магнитном бое» фишки тянут пальцем */
+    try{ if(W.disableVerticalSwipes) W.disableVerticalSwipes(); }catch(e){}
+    paint();
+    try{ W.onEvent('themeChanged',paint); }catch(e){}
+    /* в играх кнопка «Назад» Telegram ведёт на главный экран */
+    try{
+      if(/(^|\/)(index\.html)?$/.test(location.pathname)) W.BackButton.hide();
+      else { W.BackButton.show(); W.BackButton.onClick(function(){ location.href='index.html'; }); }
+    }catch(e){}
+    try{ document.dispatchEvent(new Event('dp:telegram')); }catch(e){}
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="dvoeplay">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>dvoeplay — игры для двоих</title>
+<meta name="description" content="Десять игр для двоих — на одном телефоне и по сети: 4 в ряд, Матрёшка, Доббль, 5 букв, Взломщик кода и другие. Бесплатно, без регистрации.">
+<!-- превью ссылки в Telegram, WhatsApp и других мессенджерах: без этого приглашение
+     в сетевую игру приходит голой ссылкой. Картинка — по полному адресу, иначе не покажут -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="dvoeplay">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="dvoeplay — игры для двоих">
+<meta property="og:description" content="Десять игр для двоих — на одном телефоне и по сети: 4 в ряд, Матрёшка, Доббль, 5 букв, Взломщик кода и другие. Бесплатно, без регистрации.">
+<meta property="og:image" content="https://dvoeplay.netlify.app/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<style>
+:root{
+  color-scheme:light;      /* поля ввода и полосы прокрутки тоже светлые */
+  --bg:#F2F2F7; --surface:#FFFFFF; --well:#E8E8ED;
+  --fill:rgba(118,118,128,.12); --fill2:rgba(118,118,128,.08);
+  --label:#000000; --label2:rgba(60,60,67,.6); --label3:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.16);
+  --tint:#007AFF;
+  --red-a:#FF5247; --red-b:#E7362B;
+  --yel-a:#FFD426; --yel-b:#F5BE0A;
+  --ink:#1C1C1E;
+  --pill:#FFFFFF;             /* подложка под лидером в табло «кто кого» */
+  --card-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 26px -12px rgba(0,0,0,.18);
+  --spring:cubic-bezier(.34,1.48,.5,1);
+  --ease:cubic-bezier(.32,.72,0,1);
+}
+/* Тёмная тема. По умолчанию берётся из настроек телефона, но выбор
+   в приложении важнее: атрибут data-theme ставится ещё до отрисовки. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#1C1C1E; --surface:#2C2C2E; --well:#3A3A3C;
+    --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.16);
+    --label:#FFFFFF; --label2:rgba(235,235,245,.6); --label3:rgba(235,235,245,.3);
+    --sep:rgba(84,84,88,.6);
+    --tint:#0A84FF;
+    --card-shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px -12px rgba(0,0,0,.7);
+    --pill:#636366;
+  }
+}
+:root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#1C1C1E; --surface:#2C2C2E; --well:#3A3A3C;
+    --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.16);
+    --label:#FFFFFF; --label2:rgba(235,235,245,.6); --label3:rgba(235,235,245,.3);
+    --sep:rgba(84,84,88,.6);
+    --tint:#0A84FF;
+    --card-shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px -12px rgba(0,0,0,.7);
+    --pill:#636366;
+  }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* Атрибут hidden должен прятать всегда. Без этого правила его перебивает
+   любой display у класса: у .btn стоит display:block, и спрятанные кнопки —
+   «Сбросить статистику» при пустой истории, «Подписать имена», когда имена
+   уже есть, — всё равно оставались на экране. */
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--bg); color:var(--label);
+  font:400 17px/1.4 -apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.app{
+  position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top) + 16px) max(16px,calc((100% - 720px)/2)) calc(env(safe-area-inset-bottom) + 18px);
+}
+
+/* ---------- шапка ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+/* Логотип в шапке: ширина 152, но на узком экране он ужимается — кнопки
+   справа занимают ровно 168px и подвинуться не могут. */
+.wordmark{margin:0;width:152px;min-width:104px;line-height:0;color:var(--label);flex:0 1 auto}
+.wordmark svg{display:block;width:100%;height:auto;fill:currentColor}
+.iconbtn{
+  width:36px;height:36px;border:0;border-radius:50%;background:var(--fill);color:var(--label2);
+  display:grid;place-items:center;cursor:pointer;transition:transform .16s var(--spring);
+}
+.iconbtn:active{transform:scale(.9)}
+.tools{display:flex;align-items:center;gap:8px;flex:none}
+#sndBtn.off{color:var(--label3)}
+.iconbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+
+.section{display:flex;align-items:baseline;justify-content:space-between;margin:24px 2px 10px}
+.section h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.45px}
+.section span{font-size:13px;color:var(--label3);letter-spacing:-.05px}
+.netnote{margin:-4px 2px 12px;font-size:12.5px;line-height:1.35;color:var(--label3);letter-spacing:-.05px}
+
+/* ---------- герой ---------- */
+.hero{
+  position:relative;display:block;overflow:hidden;text-decoration:none;
+  border-radius:24px;padding:18px;height:236px;
+  background:radial-gradient(120% 130% at 82% 18%,#3A3A3F 0,#1C1C1E 62%);
+  box-shadow:var(--card-shadow);color:#fff;
+  transition:transform .18s var(--spring);
+  animation:rise .45s var(--ease) both;
+}
+.hero:active{transform:scale(.985)}
+.badge{
+  display:inline-block;padding:4px 9px;border-radius:999px;
+  background:linear-gradient(180deg,var(--red-a),var(--red-b));
+  font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;
+}
+/* Повод виден и по цвету: новое — красное, продолжить — синее, любимая —
+   жёлтая. Имена классов с приставкой: короткое .cont в этом файле уже занято
+   строкой «Продолжить», и ярлык от неё растягивался на всю карточку. */
+.badge.b-cont{background:linear-gradient(180deg,#3F9BFF,#0A72E8)}
+.badge.b-fav{background:linear-gradient(180deg,var(--yel-a),var(--yel-b));color:#1C1C1E}
+/* Текст прижат к низу плашки и занимает в ней ровно столько же места
+   при любой игре: высота плашки задана, название — одна строка, подпись —
+   две. Иначе экран под плашкой прыгал бы при каждом открытии, ведь игра
+   в ней каждый раз другая. Справа внизу лежит кнопка — под неё оставлен
+   отступ у подписи; название проходит выше неё и может быть шире. */
+.hero-foot{position:absolute;left:18px;right:18px;bottom:16px;display:flex;align-items:flex-end;gap:12px}
+/* строка повода над названием: счёт, когда играли, сколько партий.
+   Место под неё держится всегда, даже когда она пустая, — иначе
+   название прыгало бы по высоте от повода к поводу. */
+.hero-meta{
+  display:block;min-height:15px;margin-bottom:2px;font-style:normal;
+  font-size:11.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;
+  color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hero-txt{flex:1;min-width:0}
+/* Длинное название набирается мельче, но если всё равно не влезло —
+   переносится на вторую строку, а не обрезается: высота плашки задана,
+   и лишняя строка ничего не сдвинет. */
+.hero h3{
+  margin:0;font-size:24px;font-weight:700;letter-spacing:-.5px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.hero h3.mid{font-size:22px;letter-spacing:-.45px}
+.hero h3.long{font-size:20px;letter-spacing:-.4px}
+.hero p{
+  margin:3px 0 0;font-size:14px;line-height:1.35;color:rgba(255,255,255,.66);
+  letter-spacing:-.1px;min-height:4.05em;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.play{
+  flex:none;padding:10px 20px;border-radius:999px;background:#fff;color:var(--ink);
+  font-size:15px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;
+}
+/* ---------- живые картинки в плашке ---------- */
+/* У каждой из девяти игр своя: плашка — витрина, и игра в ней должна
+   двигаться. Всё на CSS, без картинок и скриптов.
+
+   Два правила, которым подчиняются все девять:
+   1. Имена классов с приставкой ha- — пространство имён в одностраничном
+      файле общее, и короткие имена уже заняты.
+   2. Кадр 0% и кадр 100% — это ПОЛНАЯ картинка, а не пустое поле. Тогда
+      петля не дёргается на стыке, а при отключённой анимации (у человека
+      в настройках телефона «уменьшить движение») в плашке остаётся
+      законченный рисунок, а не пустота. */
+.hero-art{position:absolute;right:16px;top:14px;width:150px;height:110px;transform-origin:top right}
+.hero-art i,.hero-art b{position:absolute}
+
+/* 4 в ряд: фишка падает в ряд и достраивает четвёрку */
+.ha-4r .hole{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.09)}
+.ha-4r .r1{top:70px}.ha-4r .r2{top:32px}
+.ha-4r .disc{top:72px;width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(160deg,var(--red-a),var(--red-b));animation:ha-win 3.6s var(--ease) infinite}
+.ha-4r .yel{top:34px;background:linear-gradient(160deg,var(--yel-a),var(--yel-b));animation:none}
+.ha-4r .fall{animation:ha-fall 3.6s var(--ease) infinite}
+@keyframes ha-fall{
+  0%,26%{transform:translateY(0);opacity:1}
+  27%{transform:translateY(-104px);opacity:0}
+  33%{opacity:1}
+  55%{transform:translateY(0)}
+  61%{transform:translateY(-11px)}
+  70%,100%{transform:translateY(0);opacity:1}
+}
+@keyframes ha-win{0%,70%{transform:scale(1)}78%{transform:scale(1.16)}88%,100%{transform:scale(1)}}
+
+/* Матрёшка: фишки съезжаются в стопку — большая кроет меньшую, но не
+   целиком, иначе стопка читается как одна фишка */
+.ha-mt i{border-radius:50%;bottom:18px}
+.ha-mt .s{left:8px;width:28px;height:28px;background:linear-gradient(160deg,var(--yel-a),var(--yel-b))}
+.ha-mt .m{left:44px;width:44px;height:44px;background:linear-gradient(160deg,var(--red-a),var(--red-b));
+  animation:ha-cover-m 3.6s var(--ease) infinite}
+.ha-mt .l{left:92px;width:58px;height:58px;background:linear-gradient(160deg,var(--yel-a),var(--yel-b));
+  animation:ha-cover-l 3.6s var(--ease) infinite}
+@keyframes ha-cover-m{0%,18%{transform:translateX(0)}44%,66%{transform:translateX(-31px)}88%,100%{transform:translateX(0)}}
+@keyframes ha-cover-l{0%,18%{transform:translateX(0)}44%,66%{transform:translateX(-41px)}88%,100%{transform:translateX(0)}}
+
+/* Магнитный бой: шарики сходятся, слипаются и расходятся */
+.ha-mg .ball{top:33px;width:44px;height:44px;border-radius:50%}
+.ha-mg .a{left:14px;background:linear-gradient(160deg,var(--red-a),var(--red-b));
+  animation:ha-mag-a 3.6s var(--ease) infinite}
+.ha-mg .b{left:92px;background:linear-gradient(160deg,var(--yel-a),var(--yel-b));
+  animation:ha-mag-b 3.6s var(--ease) infinite}
+.ha-mg .ring{left:41px;top:22px;width:66px;height:66px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.25);animation:ha-ring 3.6s ease-out infinite}
+@keyframes ha-mag-a{0%,18%{transform:translateX(0)}42%,66%{transform:translateX(17px)}90%,100%{transform:translateX(0)}}
+@keyframes ha-mag-b{0%,18%{transform:translateX(0)}42%,66%{transform:translateX(-17px)}90%,100%{transform:translateX(0)}}
+@keyframes ha-ring{0%,28%{transform:scale(.55);opacity:0}44%{transform:scale(1);opacity:.85}68%,100%{transform:scale(1.3);opacity:0}}
+
+/* Мемо-дуэль: две карточки переворачиваются и показывают пару */
+.ha-mm .card{top:16px;width:56px;height:78px;border-radius:13px;display:grid;place-items:center;
+  background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.3);animation:ha-flip 3.6s var(--ease) infinite}
+.ha-mm .c1{left:10px}
+.ha-mm .c2{left:84px;animation-delay:.3s}
+.ha-mm .card b{position:static;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(160deg,var(--red-a),var(--red-b));animation:ha-sym 3.6s steps(1) infinite}
+.ha-mm .c2 b{animation-delay:.3s}
+@keyframes ha-flip{
+  0%,16%{transform:rotateY(0);background:#fff}
+  30%{transform:rotateY(90deg);background:#fff}
+  31%{background:rgba(255,255,255,.16)}
+  44%,58%{transform:rotateY(0);background:rgba(255,255,255,.16)}
+  72%{transform:rotateY(90deg);background:rgba(255,255,255,.16)}
+  73%{background:#fff}
+  86%,100%{transform:rotateY(0);background:#fff}
+}
+@keyframes ha-sym{0%,30%{opacity:1}31%,72%{opacity:0}73%,100%{opacity:1}}
+
+/* Точки и квадраты: линии обводят клетку, и она закрашивается */
+.ha-dt .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.85)}
+.ha-dt .ln{background:var(--yel-b);border-radius:3px}
+.ha-dt .h{width:44px;height:6px;transform-origin:left center;animation:ha-lnh 3.6s var(--ease) infinite}
+.ha-dt .v{width:6px;height:44px;transform-origin:center top;animation:ha-lnv 3.6s var(--ease) infinite}
+.ha-dt .sq{width:38px;height:38px;border-radius:9px;
+  background:linear-gradient(160deg,var(--red-a),var(--red-b));animation:ha-sq 3.6s var(--ease) infinite}
+@keyframes ha-lnh{0%,18%{transform:scaleX(1)}26%,40%{transform:scaleX(0)}56%,100%{transform:scaleX(1)}}
+@keyframes ha-lnv{0%,18%{transform:scaleY(1)}26%,40%{transform:scaleY(0)}56%,100%{transform:scaleY(1)}}
+@keyframes ha-sq{
+  0%,14%{opacity:1;transform:scale(1)}
+  22%,62%{opacity:0;transform:scale(.35)}
+  76%{opacity:1;transform:scale(1.1)}
+  84%,100%{opacity:1;transform:scale(1)}
+}
+
+/* 5 букв: буквы переворачиваются и загораются зелёным */
+.ha-5b .t{top:38px;width:26px;height:34px;border-radius:7px;display:grid;place-items:center;
+  font:700 16px/1 -apple-system,system-ui,sans-serif;font-style:normal;color:#fff;
+  background:linear-gradient(180deg,#4CD671,#30B855);
+  animation:ha-tile 3.6s var(--ease) infinite}
+@keyframes ha-tile{
+  0%,14%{transform:rotateX(0);background:linear-gradient(180deg,#4CD671,#30B855)}
+  28%{transform:rotateX(90deg);background:linear-gradient(180deg,#4CD671,#30B855)}
+  29%{background:rgba(255,255,255,.16)}
+  42%,58%{transform:rotateX(0);background:rgba(255,255,255,.16)}
+  72%{transform:rotateX(90deg);background:rgba(255,255,255,.16)}
+  73%{background:linear-gradient(180deg,#4CD671,#30B855)}
+  86%,100%{transform:rotateX(0);background:linear-gradient(180deg,#4CD671,#30B855)}
+}
+
+/* Быстрая виселица: виселица покачивается, буквы встают в слова */
+.ha-vs .post{left:4px;top:8px;width:9px;height:88px;border-radius:5px;background:var(--red-b)}
+.ha-vs .beam{left:4px;top:8px;width:46px;height:9px;border-radius:5px;background:var(--red-b)}
+.ha-vs .hang{left:32px;top:14px;width:36px;height:52px;transform-origin:14px 0;
+  animation:ha-sway 3.6s ease-in-out infinite}
+.ha-vs .hang .rope{left:11px;top:0;width:6px;height:16px;border-radius:3px;background:var(--yel-b)}
+.ha-vs .hang .head{left:0;top:14px;width:28px;height:28px;border-radius:50%;border:6px solid var(--yel-b)}
+.ha-vs .sl{bottom:12px;width:26px;height:6px;border-radius:3px;background:rgba(255,255,255,.22)}
+.ha-vs .lt{bottom:24px;width:26px;text-align:center;font:700 19px/1 -apple-system,system-ui,sans-serif;
+  font-style:normal;color:#fff;animation:ha-letter 3.6s var(--ease) infinite}
+@keyframes ha-sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes ha-letter{
+  0%,26%{transform:translateY(0);opacity:1}
+  34%{transform:translateY(-9px);opacity:.25}
+  46%,100%{transform:translateY(0);opacity:1}
+}
+
+/* Захлопни ящик: кубик катится, цифры захлопываются */
+.hero-art .die{
+  left:50%;top:0;width:44px;height:44px;margin-left:-22px;border-radius:11px;
+  background:linear-gradient(160deg,#fff,#DDDDE3);box-shadow:0 6px 14px rgba(0,0,0,.35);
+  animation:roll 3.6s var(--spring) infinite;
+}
+.hero-art .die b{width:8px;height:8px;border-radius:50%;background:var(--red-b)}
+.hero-art .die b:nth-child(1){left:9px;top:9px}
+.hero-art .die b:nth-child(2){left:18px;top:18px}
+.hero-art .die b:nth-child(3){left:27px;top:27px}
+@keyframes roll{0%{transform:rotate(0) scale(1)}14%{transform:rotate(200deg) scale(.86)}28%,100%{transform:rotate(360deg) scale(1)}}
+.hero-art .tl{
+  bottom:0;left:var(--x);width:26px;height:26px;border-radius:7px;
+  display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700;color:var(--ink);
+  background-color:var(--yel-b);
+  animation:shut 3.6s var(--ease) var(--d) infinite;
+}
+@keyframes shut{
+  0%,30%{transform:rotateX(0);background-color:var(--yel-b);color:var(--ink)}
+  44%{transform:rotateX(90deg);background-color:var(--yel-b);color:var(--ink)}
+  45%{background-color:rgba(255,255,255,.14);color:transparent}
+  58%,86%{transform:rotateX(0);background-color:rgba(255,255,255,.14);color:transparent}
+  95%,100%{transform:rotateX(0);background-color:var(--yel-b);color:var(--ink)}
+}
+/* Доббль: две карты рядом, общий символ вспыхивает на обеих сразу */
+.ha-db .cd{width:72px;height:72px;border-radius:50%;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.34)}
+.ha-db .cd.a{left:0;top:6px;animation:dbfloat 5.4s ease-in-out infinite}
+.ha-db .cd.b{left:76px;top:30px;animation:dbfloat 5.4s ease-in-out .5s infinite}
+.ha-db b{border-radius:50%}
+.ha-db .p1{left:11px;top:13px;width:13px;height:13px;background:var(--yel-b)}
+.ha-db .p2{left:47px;top:47px;width:11px;height:11px;background:#1C1C1E;opacity:.22}
+.ha-db .hit{left:24px;top:38px;width:17px;height:17px;background:var(--red-b);
+  animation:dbhit 3.6s var(--spring) infinite}
+.ha-db .cd.b .p1{left:47px;top:45px}
+.ha-db .cd.b .p2{left:13px;top:15px}
+.ha-db .cd.b .hit{left:34px;top:16px}
+@keyframes dbfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes dbhit{0%,52%,100%{transform:scale(1)}66%{transform:scale(1.5)}80%{transform:scale(1.18)}}
+
+/* Взломщик кода: диски велозамка прокручиваются, код сходится — и трос
+   выскакивает из корпуса. В кадрах 0% и 100% замок заперт на том же коде. */
+.ha-vz .sh{left:14px;top:4px;width:122px;height:58px;border:10px solid #56565C;border-bottom:0;
+  border-radius:60px 60px 0 0;transform-origin:5px 100%;animation:ha-vz-open 3.6s var(--spring) infinite}
+.ha-vz .bd{left:0;top:58px;width:150px;height:42px;border-radius:21px;
+  background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,0) 45%,rgba(0,0,0,.22)),linear-gradient(180deg,var(--red-a),var(--red-b));
+  box-shadow:0 10px 18px -8px rgba(0,0,0,.6)}
+.ha-vz .wl{top:52px;width:24px;height:54px;border-radius:6px;overflow:hidden;background:#141416;
+  box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.ha-vz .wl b{left:0;right:0;top:-6px;display:block;white-space:pre;text-align:center;
+  font:700 15px/22px -apple-system,system-ui,sans-serif;color:#F4F4F6;
+  animation:ha-vz-roll 3.6s var(--ease) infinite}
+.ha-vz .wl u{position:absolute;inset:0;text-decoration:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,0) 40%,rgba(0,0,0,0) 60%,rgba(0,0,0,.85))}
+@keyframes ha-vz-roll{0%,10%{transform:translateY(0)}30%,42%{transform:translateY(-44px)}60%,100%{transform:translateY(0)}}
+/* трос поворачивается вокруг левого конца, правый выходит из втулки */
+.ha-vz .fr{top:50px;width:16px;height:9px;border-radius:1.5px;
+  background:linear-gradient(90deg,#77777D,#E4E4E8 45%,#8A8A90)}
+@keyframes ha-vz-open{0%,62%{transform:none}70%,86%{transform:rotate(-10deg)}96%,100%{transform:none}}
+
+/* Рисунок для игр без собственной анимации в плашке. Поле квадратное:
+   плиточная графика нарисована в квадрате, и в прямоугольнике она вылезала. */
+.hero-generic{position:absolute;right:20px;top:12px;width:112px;height:112px;display:grid;place-items:center}
+.hero-generic svg{width:100%;height:100%;animation:float 6.4s ease-in-out infinite}
+
+/* ---------- продолжить ---------- */
+.cont{display:flex;gap:9px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:none}
+.cont::-webkit-scrollbar{display:none}
+.chip{
+  flex:none;display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;
+  background:var(--surface);border-radius:14px;padding:8px 14px 8px 8px;box-shadow:var(--card-shadow);
+  transition:transform .16s var(--spring);
+}
+.chip:active{transform:scale(.95)}
+.chip svg{width:34px;height:34px;border-radius:9px;flex:none}
+.chip b{display:block;font-size:14px;font-weight:600;letter-spacing:-.2px}
+.chip i{display:block;font-style:normal;font-size:11.5px;color:var(--label3);margin-top:1px}
+
+/* ---------- бенто ---------- */
+.bento{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:620px){.bento{grid-template-columns:repeat(4,1fr)}}
+.t{
+  position:relative;display:block;overflow:hidden;text-decoration:none;
+  border-radius:20px;aspect-ratio:1;box-shadow:var(--card-shadow);
+  transition:transform .16s var(--spring);
+  animation:rise .4s var(--ease) both;
+}
+.t:nth-child(1){animation-delay:.03s}.t:nth-child(2){animation-delay:.07s}
+.t:nth-child(3){animation-delay:.11s}.t:nth-child(4){animation-delay:.15s}
+.t:nth-child(5){animation-delay:.19s}.t:nth-child(6){animation-delay:.23s}
+.t:nth-child(7){animation-delay:.27s}.t:nth-child(8){animation-delay:.31s}
+.t:nth-child(9){animation-delay:.35s}.t:nth-child(10){animation-delay:.39s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.t:active{transform:scale(.96)}
+.t.wide{grid-column:span 2;aspect-ratio:2.15/1}
+.t.red{background:linear-gradient(150deg,var(--red-a),var(--red-b))}
+.t.yel{background:linear-gradient(150deg,var(--yel-a),var(--yel-b))}
+.t.dark{background:radial-gradient(120% 130% at 78% 16%,#3A3A3F 0,#1C1C1E 64%)}
+.t::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:62%;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.42));
+}
+.t.yel::after{background:linear-gradient(180deg,transparent,rgba(255,255,255,.5))}
+.t .cap{position:absolute;left:14px;right:12px;bottom:12px;z-index:2}
+.t .cap b{display:block;font-size:15px;font-weight:700;letter-spacing:-.25px;line-height:1.15;color:#fff}
+.t .cap i{display:block;font-style:normal;font-size:11.5px;line-height:1.25;margin-top:3px;color:rgba(255,255,255,.72)}
+.t.yel .cap b{color:var(--ink)}
+.t.yel .cap i{color:rgba(28,28,30,.66)}
+.t .art{position:absolute;inset:0;z-index:1}
+.t .art svg{position:absolute;overflow:visible}
+
+/* мотивы в плитках */
+.art-connect svg{right:-6%;top:12%;width:74%;height:auto;animation:floatr 7s ease-in-out infinite}
+.art-magnet svg{left:50%;top:26%;width:62%;transform:translateX(-50%);animation:float 6s ease-in-out infinite}
+.art-memo svg{left:50%;top:18%;width:52%;transform:translateX(-50%);animation:swing 5.5s ease-in-out infinite}
+.art-gobble svg{left:50%;top:16%;width:60%;transform:translateX(-50%);animation:float 6.5s ease-in-out infinite}
+.art-dots svg{left:50%;top:11%;width:50%;transform:translateX(-50%);animation:swing 7s ease-in-out infinite}
+.art-word svg{left:50%;top:26%;width:74%;transform:translateX(-50%);animation:float 6.2s ease-in-out infinite}
+.art-hang svg{left:50%;top:15%;width:50%;transform:translateX(-50%);animation:float 7.4s ease-in-out infinite}
+.art-box svg{left:50%;top:16%;width:62%;transform:translateX(-50%);animation:float 6.8s ease-in-out infinite}
+.art-spot svg{left:50%;top:20%;width:72%;transform:translateX(-50%);animation:swing 6.6s ease-in-out infinite}
+.art-lock svg{left:50%;top:13%;width:72%;transform:translateX(-50%);animation:swing 6.6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,-7px)}}
+@keyframes swing{0%,100%{transform:translate(-50%,0) rotate(-4deg)}50%{transform:translate(-50%,-5px) rotate(4deg)}}
+@keyframes floatr{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-8px) rotate(-2deg)}}
+
+/* плитка «скоро» */
+.t.soon{
+  background:var(--fill2);border:2px dashed var(--label3);box-shadow:none;
+  display:grid;place-items:center;
+}
+.t.soon::after{display:none}
+.t.soon .lbl{text-align:center}
+.t.soon .lbl b{display:block;font-size:15px;font-weight:700;color:var(--label2);letter-spacing:-.25px}
+.t.soon .lbl i{display:block;font-style:normal;font-size:12px;color:var(--label3);margin-top:2px}
+.t.soon .dts{display:flex;gap:6px;justify-content:center;margin-bottom:9px}
+.t.soon .dts u{width:7px;height:7px;border-radius:50%;background:var(--label3);text-decoration:none;animation:blink 1.4s ease infinite}
+.t.soon .dts u:nth-child(2){animation-delay:.18s}
+.t.soon .dts u:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,70%,100%{opacity:.3;transform:scale(1)}35%{opacity:.9;transform:scale(1.3)}}
+
+/* ---------- кто кого ---------- */
+/* Общий счёт пары по всем играм. Имена классов с приставкой pr-: короткие
+   имена в этом файле уже заняты (.sl — у картинки «Виселицы» в плашке). */
+.pair{
+  display:block;width:100%;margin:0 0 14px;padding:12px 14px;border:0;border-radius:20px;
+  background:var(--surface);box-shadow:var(--card-shadow);color:inherit;font:inherit;text-align:left;
+  cursor:pointer;transition:transform .18s var(--spring);animation:rise .45s var(--ease) both;
+}
+.pair:active{transform:scale(.985)}
+.pr-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 2px 9px}
+.pr-head b{flex:none;font-size:15px;font-weight:700;letter-spacing:-.3px}
+.pr-head i{min-width:0;font-style:normal;font-size:12.5px;color:var(--label3);letter-spacing:-.05px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* табло — такое же, как в самих играх: две половины, подложка под тем,
+   кто ведёт; поровну — подложки нет */
+.pr-board{position:relative;display:flex;background:var(--fill);border-radius:14px;padding:3px}
+.pr-sl{position:absolute;top:3px;left:3px;bottom:3px;width:calc(50% - 3px);border-radius:11px;
+  background:var(--pill);box-shadow:0 2px 6px rgba(0,0,0,.1),0 1px 1px rgba(0,0,0,.04);
+  transition:transform .42s var(--spring),opacity .3s ease}
+.pr-sd{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 8px 7px}
+.pr-nm{display:flex;align-items:center;gap:5px;max-width:100%;font-size:13px;font-weight:500;color:var(--label2);letter-spacing:-.05px}
+.pr-nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-nm::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;background:linear-gradient(180deg,var(--red-a),var(--red-b))}
+.pr-sd.b .pr-nm::before{background:linear-gradient(180deg,var(--yel-a),var(--yel-b))}
+.pr-sc{font-size:26px;font-weight:700;letter-spacing:-.7px;line-height:1.1;font-variant-numeric:tabular-nums}
+.pr-board.big .pr-sd{padding:9px 8px 10px}
+.pr-board.big .pr-sc{font-size:34px;letter-spacing:-1px}
+/* последние партии точками: красная — моя победа, жёлтая — соперника, серая — ничья */
+.pr-foot{display:flex;align-items:center;gap:10px;margin:10px 2px 0}
+.pr-form{display:flex;gap:4px;flex:none}
+.pr-form u{width:8px;height:8px;border-radius:50%;background:var(--label3)}
+.pr-form u.a{background:var(--red-b)}
+.pr-form u.b{background:var(--yel-b)}
+.pr-lead{flex:1;min-width:0;text-align:right;font-style:normal;font-size:13px;font-weight:600;color:var(--label2);
+  letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr-big{margin:4px 0 16px}
+.pr-big .pr-lead{display:block;margin:9px 0 0;text-align:center;font-size:14px}
+.pr-sub{margin:2px 4px 8px;font-size:13px;font-weight:600;color:var(--label2);letter-spacing:-.05px}
+.srow.pr-btn{width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.srow.pr-btn:active{background:var(--fill)}
+
+/* ---------- мини-турнир ---------- */
+/* Имена классов с приставкой tz-: короткие в этом файле заняты (.t — плитки сетки). */
+.tz-card{
+  display:flex;align-items:center;gap:12px;width:100%;margin:14px 0 0;padding:12px 13px 12px 12px;border:0;border-radius:18px;
+  background:var(--surface);box-shadow:var(--card-shadow);color:inherit;font:inherit;text-align:left;cursor:pointer;
+  transition:transform .18s var(--spring);animation:rise .45s var(--ease) both;
+}
+.tz-card:active{transform:scale(.985)}
+.tz-cup{width:42px;height:42px;flex:none;border-radius:11px}
+.tz-txt{flex:1;min-width:0}
+.tz-txt b{display:block;font-size:16px;font-weight:700;letter-spacing:-.3px}
+.tz-txt i{display:block;font-style:normal;font-size:12.5px;line-height:1.3;color:var(--label2);margin-top:2px}
+.tz-cta{flex:none;padding:8px 13px;border-radius:999px;background:var(--tint);color:#fff;font-size:14px;font-weight:600;letter-spacing:-.2px}
+/* турнир идёт — карточка наверху экрана */
+.tz-now{margin:0 0 14px;padding:12px 14px 14px;border-radius:20px;background:var(--surface);box-shadow:var(--card-shadow);animation:rise .45s var(--ease) both}
+.tz-games{display:flex;justify-content:center;gap:8px;margin:12px 0 2px;flex-wrap:wrap}
+.tz-g{position:relative;width:34px;height:34px;border-radius:9px;opacity:.38}
+.tz-g svg{width:34px;height:34px;border-radius:9px;display:block}
+.tz-g.done{opacity:1}
+.tz-g.now{opacity:1;box-shadow:0 0 0 2.5px var(--tint)}
+.tz-g i{position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;
+  background:var(--label3);box-shadow:0 0 0 2px var(--surface)}
+.tz-g i.a{background:var(--red-b)}
+.tz-g i.b{background:var(--yel-b)}
+a.btn{text-decoration:none;text-align:center}
+.tz-go{margin-top:12px}
+.tz-stop{display:block;margin:8px auto 0;padding:6px 10px;border:0;background:none;color:var(--label3);
+  font:inherit;font-size:13px;cursor:pointer}
+.tz-stop.armed{color:var(--red-b);font-weight:600}
+.btn[disabled]{opacity:.42;pointer-events:none}
+/* шторка настройки */
+.tz-seg{display:flex;background:var(--fill);border-radius:11px;padding:2px;margin:0 0 10px}
+.tz-seg button{flex:1;border:0;background:none;padding:8px 6px;border-radius:9px;color:var(--label);cursor:pointer;
+  font:inherit;font-size:14px;font-weight:600;letter-spacing:-.2px;transition:background .2s ease}
+.tz-seg button.on{background:var(--pill);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tz-hint{margin:0 4px 10px;font-size:13px;line-height:1.4;color:var(--label2)}
+.tz-hint b{color:var(--label);font-weight:600}
+.srow.tz-pick{width:100%;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.srow.tz-pick:active{background:var(--fill)}
+.tz-num{width:24px;height:24px;flex:none;border-radius:50%;display:grid;place-items:center;
+  box-shadow:inset 0 0 0 1.5px var(--label3);font-size:13px;font-weight:700;color:transparent;font-variant-numeric:tabular-nums}
+.tz-pick.on .tz-num{background:var(--tint);box-shadow:none;color:#fff}
+.tz-who{display:flex;flex-direction:column;align-items:center;gap:2px;margin:4px 0 12px}
+.tz-who span{font-size:13px;color:var(--label2)}
+.tz-who b{display:flex;align-items:center;gap:8px;font-size:26px;font-weight:700;letter-spacing:-.6px}
+.tz-who b::before{content:"";width:13px;height:13px;border-radius:50%;background:linear-gradient(180deg,var(--red-a),var(--red-b))}
+.tz-who.b b::before{background:linear-gradient(180deg,var(--yel-a),var(--yel-b))}
+textarea.nin{height:96px;min-height:96px;resize:none;line-height:1.35;font-weight:500;overflow-y:auto}
+.tz-f{margin:0 0 10px}
+.tz-back{display:block;margin:10px auto 0;padding:6px 10px;border:0;background:none;color:var(--tint);font:inherit;font-size:15px;cursor:pointer}
+.tz-ok{display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 6px;font-size:17px;font-weight:700;letter-spacing:-.3px}
+.tz-ok svg{width:22px;height:22px}
+/* итог турнира */
+.tz-medal{width:58px;height:58px;margin:2px auto 12px;border-radius:50%;
+  background:radial-gradient(circle at 33% 27%,rgba(255,255,255,.62),rgba(255,255,255,0) 48%),linear-gradient(180deg,var(--red-a),var(--red-b));
+  box-shadow:0 2px 6px rgba(0,0,0,.2),inset 0 -3px 6px rgba(0,0,0,.2)}
+.tz-medal.b{background:radial-gradient(circle at 33% 27%,rgba(255,255,255,.62),rgba(255,255,255,0) 48%),linear-gradient(180deg,var(--yel-a),var(--yel-b))}
+.sheet.on .tz-medal{animation:rise .5s var(--spring) both}
+.tz-res{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--label2);white-space:nowrap}
+.tz-res::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--label3)}
+.tz-res.a::before{background:var(--red-b)}
+.tz-res.b::before{background:var(--yel-b)}
+.tz-reveal{display:block;width:100%;margin:0 0 10px;padding:16px;border:0;border-radius:18px;cursor:pointer;
+  background:linear-gradient(135deg,var(--red-a),var(--red-b) 55%,#C42A20);color:#fff;font:inherit;text-align:center;
+  box-shadow:0 10px 24px -12px rgba(231,54,43,.7);transition:transform .18s var(--spring)}
+.tz-reveal.b{background:linear-gradient(135deg,var(--yel-a),var(--yel-b) 60%,#E0A800);color:#1C1C1E;box-shadow:0 10px 24px -12px rgba(245,190,10,.8)}
+.tz-reveal:active{transform:scale(.98)}
+.tz-reveal .tz-cover{display:block;font-size:16px;font-weight:700;letter-spacing:-.2px}
+.tz-reveal .tz-cover em{display:block;font-style:normal;font-size:13px;font-weight:500;opacity:.8;margin-top:3px}
+.tz-reveal .tz-open{display:none}
+.tz-reveal.shown .tz-cover{display:none}
+.tz-reveal.shown .tz-open{display:block;animation:rise .4s var(--spring) both}
+.tz-open i{display:block;font-style:normal;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;opacity:.85}
+.tz-open b{display:block;margin:7px 0 6px;font-size:21px;font-weight:700;letter-spacing:-.4px;line-height:1.25;overflow-wrap:anywhere}
+.tz-open em{display:block;font-style:normal;font-size:12.5px;opacity:.8}
+.tz-second{display:block;width:100%;margin:0 0 14px;padding:8px;border:0;background:none;color:var(--label2);
+  font:inherit;font-size:13.5px;text-align:center;cursor:pointer;line-height:1.4}
+.tz-second b{color:var(--label);font-weight:600}
+
+/* ---------- шторка статистики ---------- */
+.backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);opacity:0;pointer-events:none;
+  transition:opacity .3s ease;z-index:9;
+}
+.backdrop.on{opacity:1;pointer-events:auto}
+/* закрытая шторка уезжает за край вместе со своей тенью: сдвинутая только
+   на свою высоту, она оставляла тень на виду — серую полосу по низу экрана */
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:10;
+  max-width:min(520px,100%);margin:0 auto;
+  background:var(--bg);border-radius:22px 22px 0 0;
+  padding:8px 18px calc(env(safe-area-inset-bottom) + 16px);
+  transform:translateY(calc(100% + 60px));transition:transform .42s var(--ease);
+  max-height:86vh;overflow-y:auto;overflow-x:hidden;
+  box-shadow:0 -10px 40px rgba(0,0,0,.22);
+}
+.sheet.on{transform:none}
+/* В шторке набирают текст (фант, имена). Клавиатура телефона ложится поверх
+   низа экрана, а шторка прижата к низу — поле уходило под клавиатуру. Высоту
+   клавиатуры честно не узнать: iPhone, Telegram и Android сообщают её
+   по-разному. Поэтому, пока в шторке открыто поле ввода, она стоит у ВЕРХНЕГО
+   края экрана: туда клавиатура не достаёт, и телефону не нужно ничего
+   сдвигать. Заголовок и пояснение на это время убираются — место нужнее полю. */
+.sheet.on.typing{top:calc(env(safe-area-inset-top) + 8px);bottom:auto;left:8px;right:8px;border-radius:22px;
+  max-height:calc(100% - env(safe-area-inset-top) - 16px);padding-top:14px;padding-bottom:14px;animation:typing .2s ease}
+.sheet.on.typing .grab,.sheet.on.typing h2,.sheet.on.typing .sub{display:none}
+@keyframes typing{from{opacity:.35}}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:0 auto 12px}
+.sheet h2{margin:0 0 3px;text-align:center;font-size:21px;font-weight:700;letter-spacing:-.4px}
+.sheet .sub{margin:0 0 16px;text-align:center;font-size:13.5px;color:var(--label2)}
+.slist{background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:var(--card-shadow);margin-bottom:14px}
+.srow{position:relative;display:flex;align-items:center;gap:11px;padding:11px 14px}
+.srow+.srow::before{content:"";position:absolute;left:14px;right:0;top:0;height:1px;background:var(--sep);transform:scaleY(.5)}
+.srow svg{width:30px;height:30px;border-radius:8px;flex:none}
+.srow .n{flex:1;min-width:0}
+.srow .n b{display:block;font-size:15px;font-weight:600;letter-spacing:-.2px}
+.srow .n i{display:block;font-style:normal;font-size:12px;color:var(--label2);margin-top:1px}
+.srow .v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--label2);letter-spacing:-.2px}
+.empty{padding:26px 16px;text-align:center;color:var(--label2);font-size:14.5px;line-height:1.45}
+.btn{
+  display:block;width:100%;border:0;border-radius:14px;padding:14px;cursor:pointer;
+  font:inherit;font-size:17px;font-weight:600;letter-spacing:-.3px;
+  background:var(--fill);color:var(--label);transition:transform .14s var(--spring),opacity .14s;
+}
+.btn+.btn{margin-top:9px}
+.nlab{display:block;margin:0 4px 6px;font-size:13px;color:var(--label2);letter-spacing:-.05px}
+.nin{
+  display:block;width:100%;margin:0 0 14px;padding:13px 15px;border:0;border-radius:14px;
+  -webkit-appearance:none;appearance:none;
+  background:var(--surface);color:var(--label);box-shadow:var(--card-shadow);
+  font:500 17px/1 -apple-system,system-ui,sans-serif;letter-spacing:-.2px;outline:none;
+  -webkit-user-select:text;user-select:text;
+}
+.nin::placeholder{color:var(--label3);font-weight:400}
+.nin:focus{box-shadow:var(--card-shadow),0 0 0 3px color-mix(in srgb,var(--tint) 40%,transparent)}
+.btn.primary{background:var(--tint);color:#fff}
+.btn.warn{color:var(--red-b)}
+.btn:active{transform:scale(.97);opacity:.9}
+
+.legal{margin:24px 0 2px;text-align:center;font-size:12px;font-weight:600;letter-spacing:.1px;color:var(--label3)}
+.legal sup{font-size:.7em;vertical-align:.5em;font-weight:500;letter-spacing:0;margin-left:.05em}
+:focus-visible{outline:2.5px solid var(--tint);outline-offset:2px;border-radius:20px}
+
+/* планшет и шире — герой крупнее */
+@media (min-width:620px){
+  .hero{height:284px;padding:22px}
+  .hero-art{transform:scale(1.32);right:26px;top:20px}
+  .hero-generic{transform:scale(1.12);transform-origin:top right;right:26px}
+  .hero-foot{left:22px;right:22px;bottom:20px}
+  .hero h3{font-size:28px}
+  .hero p{font-size:15px}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.06s!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <h1 class="wordmark"><svg viewBox="0 0 392 92.6" role="img" aria-label="dvoeplay"><path d="M11.3 .8c-3.9 .6-6.8 3.4-7.8 7.4-.4 1.9-.4 2.6 .4 5.7 .4 1.5 1.1 4.3 1.6 6.3 1.7 6.4 5.6 22.5 5.9 23.6 .6 3 .5 4.4-.8 14.7-.7 5.4-.8 6.8-.7 8.8 .7 15.8 18.3 25.3 31.9 17.3 1.9-1.1 2.9-2 11.8-10.2 6.4-5.8 7.2-7.8 7.2-17.4 0-7.2-.4-9.1-2.3-11.2-.4-.5-.7-.9-.7-.9 .1 0 1.3-.4 2.8-.9 1.5-.4 2.9-.8 3.1-.9 .4-.1 .4-.1 .4 .8 0 1.9 1 4.1 2.6 5.8 .7 .8 1 1.3 1.3 2.3 1 3.7 3.4 6.2 6.9 6.9 1 .2 3.1 .3 8.5 .3 13.7 0 14.1-.1 24.1-9.7 8.1-7.7 8.3-7.9 9.9-11.1 2.7-5.3 2.3-13-1-17.8-2.4-3.6-5.7-6-9.8-7.2l-1.8-.5-13.5-.1-13.5-.1-3.8-.9c-2.1-.5-4.2-1-4.6-1.1-1.9-.5-19.9-4.8-20-4.8-.1 0-.2-.3-.4-.6-1.5-2.8-5.9-4.8-9.4-4.3-4.2 .7-6.3 3-8.2 8.9-.5 1.5-1.4 4.4-2 6.4-.6 2-1.5 4.8-1.9 6.1-.4 1.3-.8 2.3-.9 2.2-.1-.1-.6-1.7-1.1-3.5-3.3-12-4-14.4-4.5-15.4-1.2-2.4-4.1-4.4-7-4.8-1.6-.2-1.6-.2-3 0zm3.7 5.8c1.2 .7 1.6 1.5 2.5 4.8 .4 1.5 1.5 5.5 2.5 9 1 3.5 2.3 8.1 2.9 10.4 1.6 5.7 1.6 5.9 2.3 6.5 1.1 .9 3 .5 3.5-.8 .1-.3 2.1-6.7 4.4-14.2 4.5-14.7 4.6-14.7 5.8-15.6 2.6-1.9 6.8 .6 6.1 3.7-.1 .5-5.1 16.9-8.4 27.5-1.2 3.9-1.1 5 .4 5.7 .9 .4 1.2 .4 2.3-.1 2.2-1 4.9-.3 6 1.7 1.2 2.2 1.3 2.3 4.4 1.8 2.1-.3 4.3 1 5.2 3 .5 1 .5 1.2 .5 6.7 0 8.5-.2 9-6.1 14.4-8.8 8.1-9.8 9-12.1 9.9-6.2 2.6-13.9 .7-18.4-4.5-3.3-3.8-4.3-7.7-3.5-13.9 1.8-15.1 1.8-16.1 1.3-19.3-.3-1.9-3.2-13.6-6.2-25.2-1-4-1.9-7.7-1.9-8.1 0-3.3 3.5-5.3 6.4-3.5zm41.9 6.4c3.7 .9 9.9 2.3 13.6 3.2l6.8 1.6 13.5 .1 13.5 .1 1.3 .5c7.9 3.1 10.8 12.1 6.1 19.3-.7 1-11.3 11.4-13.6 13.3-1.4 1.2-3.6 2.2-5.4 2.5-2.3 .4-16.2 .4-17.2 0-1.5-.7-2.2-1.8-2.3-3.9 0-1.6-.3-2.3-1.7-3-2.4-1.4-2.8-4.2-.9-6.1 1.7-1.7 .9-4.4-1.3-4.4-.4 0-2 .4-3.7 .9-1.7 .5-5.5 1.6-8.6 2.4-3 .8-5.9 1.7-6.5 1.8l-1 .3-1.1-1.1c-1.3-1.3-3-2.2-4.9-2.5-2.6-.5-2-.7 9.8-4.1 17.3-4.9 17-4.9 17.6-5.5 .9-1.1 .9-2.5-.1-3.6-.5-.6-1-.8-3.3-1.5-8.2-2.6-19.1-6.1-19.2-6.2-.2-.1 1.5-5.8 1.7-5.8 0 0 3.1 .7 6.9 1.6zm-2.5 11.6c6 2 5.9 1.9 5.8 2.1-.1 .1-13.9 4-15.2 4.4-.3 .1-.6 .1-.6 0 0-.3 .8-3.1 1.7-6l.9-2.8 .8 .3c.5 .1 3.4 1.1 6.5 2.1zM155.7 18c-1.1 .3-2.1 .8-2.7 1.6-1.3 1.4-1.3 1.5-1.3 9.1 0 3.8-.1 7-.2 7-.1 0-.5-.4-1-.8-3.2-2.8-9.1-3.8-13.7-2.2-6.8 2.2-10.6 7.8-11 15.9-.5 10.6 6 18.1 15.7 18.1 4 0 6.5-.8 8.9-2.8l1.2-1 .3 .6c1.8 3.8 7.4 4 9.5 .3l.5-.9 .1-5.5c.1-3 .1-12.3 .1-20.6 0-14.9 0-15.1-.4-15.9-1-2.2-3.6-3.3-6.1-2.7zm-8.8 22.2c3.8 1.4 5.7 6.7 4.4 12.2-1.4 5.8-7.3 8.1-12 4.5-3.2-2.4-4-9.7-1.4-13.7 1.9-3 5.7-4.3 9-3zM312.7 18.5c-1 .4-2.1 1.4-2.7 2.5l-.4 .8 0 20.4 0 20.4 .6 1c2.1 3.4 7.2 3.2 9-.3l.5-1.1 0-20.3c0-22.5 .1-20.9-1.3-22.4-1.1-1.2-3.9-1.8-5.6-1.1zM214.5 31.6c-7.7 .8-13.7 5.7-15.8 12.7-.7 2.3-.8 8.1-.2 10.6 2.1 8.5 10.9 13.5 21 12 10.5-1.6 16.9-10.1 15.5-20.6-1.3-9.8-9.8-15.9-20.5-14.7zm5.5 8.8c3.1 1.4 4.6 4.3 4.6 8.8 0 7.7-5.2 12.3-11.3 9.9-6.5-2.4-6.7-15.2-.3-18.5 2.1-1.1 5-1.2 7-.3zM333.3 31.7c-7.4 1.3-11.1 5.7-8 9.4 1.7 2 4.6 2 6.9 0 2.2-1.8 5.7-2.5 8.8-1.5 2.6 .8 4.2 2.8 4.2 5.3l0 1-5.5 .1c-7 .1-9.7 .6-12.6 2.4-6.5 3.9-6.1 13.4 .6 16.7 5.1 2.5 11.8 1.8 16.4-1.7 1.5-1.2 1.4-1.1 1.6-.5 .2 .9 1.3 2.1 2.3 2.6 2.5 1.2 5.5 .3 6.8-2.2 .7-1.3 .7-19.4 0-21.8-1.4-4.9-4.8-8-10.4-9.4-2.4-.6-8.4-.8-11.1-.4zm11.9 22c-.2 4.5-4.4 7.2-9.6 6.2-4.3-.9-4.6-6.1-.4-7.5 1.5-.5 1.5-.5 5.9-.5l4.2 0-.1 1.9zM288.6 32.1c-1.7 .4-4.7 1.9-6 3-1.1 1-1.3 1.1-1.3 .6 0-.6-.8-1.9-1.5-2.5-2.1-1.7-5.4-1.5-7.3 .4-1.4 1.5-1.4 .4-1.4 22.7l-.1 20 .6 1.1c1.6 3.4 6.8 3.5 8.8 .3 .7-1.2 .9-2.9 .9-10.5l0-4.5 1.3 1c2.7 2.1 4.6 2.7 8.4 2.7 9.8 0 16.1-7 16.2-17.9 0-8.3-3.7-14.1-10.6-16.2-1.8-.6-6.2-.7-8.1-.3zm3.7 8.4c5.9 3 5.6 14.3-.5 17.3-3.6 1.8-8.2 .1-9.6-3.5-1.3-3.4-.9-8.5 .7-11.1 2-3.1 6.2-4.3 9.4-2.6zM251.1 32.3c-8.9 1.4-14.7 8.3-14.7 17.3 0 8.2 4.6 14.4 12.4 16.7 2 .6 8.3 .6 10.5 .1 3.6-.9 6.8-2.6 7.8-4.2 2.6-4.1-2.3-8.3-6.4-5.5-3.9 2.8-7.1 3.2-10.5 1.5-1.7-.9-3.3-3.2-3.7-5.3l-.1-.7 9.5 0c10.9 0 11.1 0 12.4-1.3 1.6-1.5 1.8-3.6 .9-7.4-1.3-5.3-5.6-9.4-11.2-10.8-1.3-.3-5.7-.6-6.9-.4zm4.7 7.8c2 .6 4 3.1 4.2 5.1l.1 .7-6.7 .1c-3.7 0-6.8 0-6.8-.1-.5-.5 1.3-3.6 2.7-4.7 1.6-1.3 4.4-1.7 6.6-1zM384.7 32.5c-2.3 .8-2.4 1-9.3 15.6-1.1 2.3-2.1 4.3-2.1 4.3-.1 0-.6-1.2-1.3-2.8-3.9-9.3-6.4-15.2-6.9-15.7-1.5-1.6-4.7-2-6.6-.9-1.6 1-2.2 2-2.3 3.9l-.1 1.5 2.2 4.5c1.2 2.5 2.9 5.9 3.8 7.7 .9 1.8 2.6 5.2 3.8 7.7l2.2 4.5-2.8 5.5c-3 6-3.3 6.8-3.1 8.1 .7 4.1 5.7 5.4 8.6 2.3 .5-.5 2.2-3.7 5-9.4 2.3-4.7 6.7-13.7 9.8-19.8 3-6.2 5.6-11.5 5.6-11.9 .6-3.4-3.2-6.3-6.6-5zM167.6 32.7c-1.2 .2-2.6 1.3-3.3 2.6-.9 1.7-.8 2.8 .3 5.4 .5 1.1 1 2.4 1.2 3 .4 1 2.5 6 5.6 13.2 3 7 3.4 7.6 5.9 8.8 1.7 .8 5.2 .9 6.8 .3 2.6-1.1 3.4-2.1 6.6-9.1 6.9-15.1 8.2-18 8.2-19.3 0-5.1-7.2-6.7-9.6-2.1-.4 .7-5.2 12.8-7 17.4-.4 1.1-.9 2.3-1.1 2.7l-.3 .7-.2-.6c-.1-.3-.9-2.6-1.8-5-5.1-14.4-5.3-14.9-6-15.9-1-1.5-3.3-2.4-5.4-2.1z"/></svg></h1>
+    <div class="tools">
+      <button class="iconbtn" id="themeBtn" type="button" aria-label="Тема"></button>
+      <button class="iconbtn" id="sndBtn" type="button" aria-label="Звук"></button>
+      <button class="iconbtn" id="whoBtn" type="button" aria-label="Имена игроков">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20c.6-3.8 3.6-6 7.2-6s6.6 2.2 7.2 6"/></svg>
+      </button>
+      <button class="iconbtn" id="statBtn" type="button" aria-label="Статистика">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="tourNow" hidden></div>
+
+  <div id="pair" hidden></div>
+
+  <div id="hero"></div>
+
+  <div id="tourInvite" hidden></div>
+
+  <div class="section" id="contHead" hidden><h2 id="contTitle">Продолжить</h2><span id="contNote"></span></div>
+  <div class="cont" id="cont" hidden></div>
+
+  <div class="section"><h2>Все игры</h2><span id="count"></span></div>
+  <p class="netnote">Все десять — вдвоём на одном телефоне, против ИИ или по сети, на двух телефонах</p>
+  <div class="bento" id="bento"></div>
+
+  <p class="legal">dvoeplay<sup>&reg;</sup></p>
+
+  <noscript>
+    <p style="text-align:center;margin-top:18px">
+      <a href="dvoeplay.html">4 в ряд</a> · <a href="magnitniy-boy.html">Магнитный бой</a> ·
+      <a href="memo-duel.html">Мемо-дуэль</a> · <a href="matreshka.html">Матрёшка</a> ·
+      <a href="dots-boxes.html">Точки и квадраты</a> · <a href="5-bukv.html">5 букв</a> ·
+      <a href="viselica.html">Быстрая виселица</a> · <a href="zahlopni-yaschik.html">Захлопни ящик</a> ·
+      <a href="dobble.html">Доббль</a> · <a href="vzlomshik.html">Взломщик кода</a>
+    </p>
+  </noscript>
+
+</div>
+
+<div class="sr" aria-live="polite" id="live"></div>
+<div class="backdrop" id="backdrop"></div>
+<aside class="sheet" id="whoSheet" role="dialog" aria-modal="true" aria-labelledby="whoTitle">
+  <div class="grab"></div>
+  <h2 id="whoTitle">Имена игроков</h2>
+  <p class="sub">Подставятся в табло, итоги и фанты — во всех играх</p>
+  <label class="nlab" for="nameMe">Вы</label>
+  <input class="nin" id="nameMe" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="Например, Карл">
+  <label class="nlab" for="nameFriend">Друг — когда играете на одном телефоне</label>
+  <input class="nin" id="nameFriend" type="text" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="Например, Аня">
+  <p class="sub" style="margin:14px 0 0">По сети имя соперника придёт из его телефона</p>
+  <button class="btn primary" id="whoClose" type="button">Готово</button>
+</aside>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="statTitle">
+  <div class="grab"></div>
+  <h2 id="statTitle">Статистика</h2>
+  <p class="sub" id="statSub"></p>
+  <div id="statBody"></div>
+  <button class="btn warn" id="statReset" type="button">Сбросить статистику</button>
+  <button class="btn primary" id="statClose" type="button">Готово</button>
+</aside>
+<aside class="sheet" id="pairSheet" role="dialog" aria-modal="true" aria-labelledby="pairTitle">
+  <div class="grab"></div>
+  <h2 id="pairTitle">Кто кого</h2>
+  <p class="sub" id="pairSub"></p>
+  <div id="pairBody"></div>
+  <button class="btn" id="pairNames" type="button" hidden>Подписать имена</button>
+  <button class="btn warn" id="pairReset" type="button">Обнулить счёт</button>
+  <button class="btn primary" id="pairClose" type="button">Готово</button>
+</aside>
+<aside class="sheet" id="tourSheet" role="dialog" aria-modal="true" aria-labelledby="tzTitle">
+  <div class="grab"></div>
+  <h2 id="tzTitle">Мини-турнир</h2>
+  <p class="sub" id="tzSub"></p>
+  <div id="tzBody"></div>
+</aside>
+<aside class="sheet" id="tourEnd" role="dialog" aria-modal="true" aria-labelledby="teTitle">
+  <div class="grab"></div>
+  <div class="tz-medal" id="teMedal"></div>
+  <h2 id="teTitle">Победа</h2>
+  <p class="sub" id="teSub"></p>
+  <div id="teBody"></div>
+  <button class="btn primary" id="teAgain" type="button">Новый турнир</button>
+  <button class="btn" id="teDone" type="button">Готово</button>
+</aside>
+
+<script src="tour.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- общая память приложения dvoeplay ---------- */
+/* Тот же блок стоит во всех играх серии. Всё в try/catch: если хранилище
+   недоступно, приложение работает как раньше, просто без истории. */
+var DP=(function(){
+  var KEY='dvoeplay:v1';
+  function read(){
+    try{ var d=JSON.parse(localStorage.getItem(KEY)); if(d&&d.games) return d; }catch(e){}
+    return {v:1,games:{}};
+  }
+  function write(d){ try{ localStorage.setItem(KEY,JSON.stringify(d)); }catch(e){} }
+  function save(id,r){
+    r=r||{};
+    var d=read(), g=d.games[id]||{plays:0,w1:0,w2:0,draws:0,solved:0,solo:0};
+    g.plays=(g.plays||0)+1;
+    if(r.win===1) g.w1=(g.w1||0)+1;
+    else if(r.win===2) g.w2=(g.w2||0)+1;
+    else if(r.mode===2) g.draws=(g.draws||0)+1;   /* ничья бывает только вдвоём */
+    if(r.mode!==2) g.solo=(g.solo||0)+1;
+    if(r.solved) g.solved=(g.solved||0)+1;
+    g.last=Date.now(); g.note=r.note||''; g.mode=r.mode;
+    d.games[id]=g;
+    try{ duel(d,id,r); }catch(e){}
+    write(d);
+    /* итог партии — тем, кто слушает: мини-турнир (tour.js) ведёт по нему счёт.
+       Бросаем после записи, чтобы слушатель читал уже обновлённую память. */
+    try{ document.dispatchEvent(new CustomEvent('dp:save',{detail:{id:id,win:r.win,mode:r.mode}})); }catch(e){}
+  }
+  /* Сброс статистики стирает только историю партий. Имена, тема и звук —
+     настройки, а не статистика: раньше сброс стирал весь ключ, и вместе
+     со счётом пропадали имена, выбранная тема и выключенный звук. */
+  function clear(){ var d=read(); d.games={}; delete d.duel; write(d); }
+
+  /* ---------- кто кого ----------
+     Партия на двоих — на одном телефоне или по сети — пишется ещё и по
+     людям: кто выиграл, я или соперник. Счёт по цветам для этого не
+     годится: по сети моё место в каждой комнате своё.
+     На одном телефоне я — всегда первая сторона (так устроены имена), по
+     сети — своё место NET.seat. Соперник на одном телефоне — роль «друг»,
+     а не имя: переименуют — счёт останется за ним. По сети соперника узнаём
+     по имени, и если оно совпало с именем друга — это он и есть. */
+  var PAIRS=12, LOG=40;
+  /* день начинается в четыре утра: партия после полуночи — тот же вечер */
+  function day(t){ var x=new Date(t-4*36e5); return x.getFullYear()+'-'+(x.getMonth()+1)+'-'+x.getDate(); }
+  function duel(d,id,r){
+    if(r.mode!==2) return;                          /* против ИИ и в одиночку — не пара */
+    var N=window.NET, net=!!(N&&N.on), mine=net?N.seat:1;
+    if(mine!==1 && mine!==2) return;
+    var opp=net?clip(N.oppName):'', key=net?'net:'+opp.toLowerCase():'duo';
+    var res = r.win===mine ? 1 : (r.win===1||r.win===2) ? 2 : 0;   /* 1 — я, 2 — соперник, 0 — ничья */
+    var now=Date.now(), P=d.duel||(d.duel={p:{}});
+    var p=P.p[key]||(P.p[key]={me:0,them:0,draw:0,g:{},log:[],run:null,since:now});
+    if(net) p.name=opp;
+    if(res===1) p.me++; else if(res===2) p.them++; else p.draw++;
+    var t=p.g[id]||(p.g[id]=[0,0,0]);
+    t[res===1?0:res===2?1:2]++;
+    p.log.push([now,res,id]);
+    if(p.log.length>LOG) p.log.splice(0,p.log.length-LOG);
+    var today=day(now);
+    if(!p.run || p.run.d!==today)
+      p.run={d:today, n:(p.run && p.run.d===day(now-864e5)) ? p.run.n+1 : 1};
+    p.last=now;
+    fold(d);
+    /* соперников по сети может набраться много — держим дюжину последних */
+    var keys=Object.keys(P.p);
+    if(keys.length>PAIRS){
+      keys.sort(function(a,b){ return (P.p[a].last||0)-(P.p[b].last||0); });
+      delete P.p[keys[0]];
+    }
+  }
+  /* Друг с одного телефона и тот же человек по сети — одна пара. Имя друга
+     могли вписать и после сетевых партий, поэтому сводим при каждом чтении. */
+  function fold(d){
+    var P=d.duel, f=names().friend, k='net:'+f.toLowerCase();
+    if(!P || !P.p || !f || !P.p[k]) return false;
+    var a=P.p.duo, b=P.p[k], id, i;
+    if(!a){ P.p.duo=b; delete b.name; delete P.p[k]; return true; }
+    a.me+=b.me; a.them+=b.them; a.draw+=b.draw;
+    for(id in b.g) if(Object.prototype.hasOwnProperty.call(b.g,id)){
+      var x=a.g[id]||(a.g[id]=[0,0,0]);
+      for(i=0;i<3;i++) x[i]+=b.g[id][i];
+    }
+    a.log=a.log.concat(b.log).sort(function(u,v){ return u[0]-v[0]; }).slice(-LOG);
+    /* серия вечеров — та, что свежее; в один и тот же день — та, что длиннее */
+    if(b.run && (!a.run || (b.run.d===a.run.d ? b.run.n>a.run.n : (b.last||0)>(a.last||0)))) a.run=b.run;
+    a.since=Math.min(a.since||b.since, b.since||a.since);
+    a.last=Math.max(a.last||0, b.last||0);
+    delete P.p[k];
+    return true;
+  }
+  function pair(){
+    var d=read();
+    if(fold(d)) write(d);
+    return d.duel||null;
+  }
+  function pairReset(key){
+    var d=read();
+    if(d.duel && d.duel.p && d.duel.p[key]){ delete d.duel.p[key]; write(d); }
+  }
+
+  /* Имена игроков. «me» — тот, кто держит телефон, «friend» — с кем
+     играют вдвоём на одном телефоне. По сети имя соперника приходит из
+     комнаты, здесь оно не хранится. Пусто — значит показываем как раньше. */
+  var nmCache=null, nmAt=0;
+  function clip(s){ return String(s==null?'':s).replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,12); }
+  function names(v){
+    if(v!==undefined){
+      var d=read();
+      d.names={me:clip(v.me),friend:clip(v.friend)};
+      write(d); nmCache=null;
+    }
+    var n=Date.now();
+    if(nmCache===null || n-nmAt>800){
+      var q=read().names||{};
+      nmCache={me:clip(q.me),friend:clip(q.friend)};
+      nmAt=n;
+    }
+    return nmCache;
+  }
+  function sound(v){
+    if(v===undefined){ try{ return read().sound!==false; }catch(e){ return true; } }
+    var d=read(); d.sound=!!v; write(d); return d.sound;
+  }
+  /* Тема приложения: '' — как в телефоне, 'light'/'dark' — выбор игрока.
+     К первой отрисовке её уже применил коротенький скрипт в шапке страницы; здесь
+     только хранение и переключение на лету. */
+  var LIGHT_BG='#F2F2F7', DARK_BG='#1C1C1E';
+  /* Какой повод для большой плашки показали в прошлый раз — чтобы при
+     следующем открытии главного экрана показать следующий по кругу.
+     Пользуется этим только главный экран, но блок памяти у всех общий. */
+  function hero(v){
+    if(v!==undefined){ var d=read(); d.hero=String(v||''); write(d); return d.hero; }
+    try{ return read().hero||''; }catch(e){ return ''; }
+  }
+  function theme(v){
+    if(v!==undefined){
+      var d=read();
+      d.theme=(v==='light'||v==='dark')?v:'';
+      write(d); wear(d.theme);
+      return d.theme;
+    }
+    try{ var t=read().theme; return (t==='light'||t==='dark')?t:''; }catch(e){ return ''; }
+  }
+  /* какая тема на экране прямо сейчас — с оглядкой на настройки телефона */
+  function dark(){
+    var t=theme();
+    if(t) return t==='dark';
+    /* своей темы нет, но её мог поставить Telegram — тогда главнее он */
+    try{ var a=document.documentElement.getAttribute('data-theme'); if(a) return a==='dark'; }catch(e){}
+    try{ return matchMedia('(prefers-color-scheme: dark)').matches; }catch(e){ return false; }
+  }
+  function wear(t){
+    try{
+      var r=document.documentElement, m, i;
+      if(t==='light'||t==='dark') r.setAttribute('data-theme',t); else r.removeAttribute('data-theme');
+      m=document.querySelectorAll('meta[name="theme-color"]');
+      for(i=0;i<m.length;i++) m[i].setAttribute('content', dark()?DARK_BG:LIGHT_BG);
+      /* внутри Telegram его шапка тоже должна перекраситься */
+      var W=window.Telegram&&window.Telegram.WebApp;
+      if(W){ W.setHeaderColor(dark()?DARK_BG:LIGHT_BG); W.setBackgroundColor(dark()?DARK_BG:LIGHT_BG); }
+    }catch(e){}
+  }
+  return {read:read,save:save,clear:clear,sound:sound,names:names,theme:theme,dark:dark,hero:hero,
+          pair:pair,pairReset:pairReset,day:day};
+})();
+/* ---------- звук и тактильная отдача dvoeplay ---------- */
+/* Тот же блок стоит в index.html и во всех играх серии.
+   Синтез на лету, файлов нет.
+
+   Главное про характер: это ПЕРКУССИЯ, а не ноты. Ориентир —
+   щелчок клавиатуры айфона: очень короткий сухой удар без звона,
+   без обертонов и без реверберации, вся энергия в нижней середине.
+   Две предыдущие попытки звучали звонко именно потому, что были
+   построены как ноты с высокими обертонами и хвостом — не повторять.
+
+   Щелчок = короткий шум через ФНЧ + короткий низкий «толчок».
+   Вся шина дополнительно режется фильтром на 2.6кГц, поэтому
+   в звуке физически нет частот, которые режут слух. */
+var FX=(function(){
+  var ctx=null, bus=null, lpf=null, noise=null;
+  var lastKind='', lastAt=0, sndCache=null, sndAt=0;
+  var CUT=4500;     /* «мягкость» — срез общего ФНЧ, Гц; выбрано на прослушивании */
+  var VOL=0.95;     /* общая громкость */
+
+  function allowed(){
+    var n=Date.now();
+    if(sndCache===null || n-sndAt>800){
+      try{ sndCache=DP.read().sound!==false; }catch(e){ sndCache=true; }
+      sndAt=n;
+    }
+    return sndCache;
+  }
+  function forget(){ sndCache=null; }
+  function tune(cut,vol){
+    if(cut){ CUT=cut; if(lpf) lpf.frequency.value=cut; }
+    if(vol!==undefined){ VOL=vol; if(bus) bus.gain.value=vol; }
+    return {cut:CUT,vol:VOL};
+  }
+
+  function boot(){
+    if(ctx) return ctx;
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return null;
+    try{
+      ctx=new AC();
+      bus=ctx.createGain(); bus.gain.value=VOL;
+      var hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=70;
+      lpf=ctx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=CUT; lpf.Q.value=.7;
+      var comp=ctx.createDynamicsCompressor();
+      comp.threshold.value=-10; comp.knee.value=20; comp.ratio.value=2.2;
+      comp.attack.value=.003; comp.release.value=.15;
+      bus.connect(hp); hp.connect(lpf); lpf.connect(comp); comp.connect(ctx.destination);
+      var n=Math.floor(ctx.sampleRate*.06), nb=ctx.createBuffer(1,n,ctx.sampleRate), d=nb.getChannelData(0), i;
+      for(i=0;i<n;i++) d[i]=Math.random()*2-1;
+      noise=nb;
+    }catch(e){ ctx=null; }
+    return ctx;
+  }
+
+  /* сухой щелчок: шум через ФНЧ, затухание за единицы миллисекунд */
+  function click(gain,cut,dur,at){
+    if(!ctx||!noise) return;
+    try{
+      var t=ctx.currentTime+(at||0);
+      var s=ctx.createBufferSource(); s.buffer=noise;
+      s.playbackRate.value=.9+Math.random()*.2;          /* лёгкий разброс, чтобы не повторялось */
+      var f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=cut; f.Q.value=.6;
+      var g=ctx.createGain();
+      g.gain.setValueAtTime(gain,t);
+      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      s.connect(f); f.connect(g); g.connect(bus);
+      s.start(t); s.stop(t+dur+.02);
+    }catch(e){}
+  }
+  /* низкий толчок — тело щелчка, одна синусоида без обертонов */
+  function thump(freq,dur,gain,at,bend){
+    if(!ctx) return;
+    try{
+      var t=ctx.currentTime+(at||0);
+      var o=ctx.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(freq,t);
+      if(bend) o.frequency.exponentialRampToValueAtTime(Math.max(40,freq*bend),t+dur);
+      var g=ctx.createGain();
+      g.gain.setValueAtTime(.0001,t);
+      g.gain.linearRampToValueAtTime(gain,t+.002);
+      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      o.connect(g); g.connect(bus);
+      o.start(t); o.stop(t+dur+.02);
+    }catch(e){}
+  }
+  /* мягкая нота — только для итогов, с чуть более долгим затуханием */
+  function note(freq,dur,gain,at){
+    if(!ctx) return;
+    try{
+      var t=ctx.currentTime+(at||0);
+      var o=ctx.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(freq,t);
+      var o2=ctx.createOscillator(); o2.type='sine';
+      o2.frequency.setValueAtTime(freq*2,t);
+      var g=ctx.createGain(), g2=ctx.createGain();
+      g.gain.setValueAtTime(.0001,t);
+      g.gain.linearRampToValueAtTime(gain,t+.010);
+      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      g2.gain.setValueAtTime(.0001,t);
+      g2.gain.linearRampToValueAtTime(gain*.07,t+.010);
+      g2.gain.exponentialRampToValueAtTime(.0001,t+dur*.5);
+      o.connect(g); g.connect(bus);
+      o2.connect(g2); g2.connect(bus);
+      o.start(t); o.stop(t+dur+.02);
+      o2.start(t); o2.stop(t+dur*.5+.02);
+    }catch(e){}
+  }
+
+  function play(kind){
+    if(!boot()) return;
+    if(ctx.state==='suspended'){ try{ var pr=ctx.resume(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){} }
+    switch(kind){
+      case 'tick':                                     /* таймер */
+        click(1.54,1000,.008);
+        break;
+      case 'light':                                    /* нажатие — как клавиша */
+        click(1.85,1500,.012);
+        thump(420,.026,.88,0,.86);
+        break;
+      case 'medium':                                   /* ход */
+        click(1.61,1250,.016);
+        thump(330,.045,.98,0,.80);
+        break;
+      case 'good':                                     /* удачно */
+        click(.51,1500,.008);
+        note(466.16,.16,.64);
+        break;
+      case 'heavy':                                    /* тяжёлый ход */
+        click(1.66,850,.022);
+        thump(200,.090,1.22,0,.72);
+        break;
+      case 'success':                                  /* победа */
+        click(.17,1400,.008);
+        note(392.00,.20,.29,0);
+        note(523.25,.30,.26,.105);
+        break;
+      case 'error':                                    /* ошибка */
+        click(.21,800,.014);
+        thump(220.00,.14,.31,0,.85);
+        thump(174.61,.20,.27,.105,.85);
+        break;
+      default:
+        click(1.85,1500,.012);
+        thump(420,.026,.88,0,.86);
+    }
+  }
+  function buzz(pattern,kind){
+    var tg=window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.HapticFeedback;
+    if(tg){
+      try{
+        if(kind==='success'||kind==='error'||kind==='warning') tg.notificationOccurred(kind);
+        else if(kind==='heavy') tg.impactOccurred('heavy');
+        else if(kind==='medium'||kind==='good') tg.impactOccurred('medium');
+        else tg.impactOccurred('light');
+        return;
+      }catch(e){}
+    }
+    if(navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} }
+  }
+  function kindOf(v,kind){
+    if(kind) return kind;
+    if(Object.prototype.toString.call(v)==='[object Array]') return v.length>=5?'error':'success';
+    if(v<=6)  return 'light';
+    if(v<=11) return 'medium';
+    return 'heavy';
+  }
+  function fire(pattern,kind){
+    var k=kindOf(pattern,kind), now=Date.now();
+    if(k===lastKind && now-lastAt<35) return;     /* без дублей от одного нажатия */
+    lastKind=k; lastAt=now;
+    if(allowed()) play(k);
+    buzz(pattern,k);
+  }
+
+  /* мягкий щелчок по элементам управления */
+  var UI=['row','btn','primary','back','icon','iconbtn','pill','forfeit','tohub','chip','hero','t'];
+  document.addEventListener('pointerdown',function(e){
+    var el=e.target, i;
+    while(el && el.nodeType===1){
+      if(el.classList) for(i=0;i<UI.length;i++) if(el.classList.contains(UI[i])){ fire(5,'light'); return; }
+      el=el.parentNode;
+    }
+  },true);
+
+  return {fire:fire,play:play,boot:boot,forget:forget,tune:tune};
+})();
+
+
+/* ============================================================
+   КАТАЛОГ ИГР — единственный источник правды для этого экрана.
+   Девятая игра появится добавлением одной записи сюда:
+   ready:false рисует плитку «скоро», ready:true — обычную.
+   ============================================================ */
+var GAMES=[
+  {id:'dvoeplay',        title:'4 в ряд',           desc:'Соберите четыре фишки в ряд',       full:'Соберите четыре фишки в ряд раньше соперника',        href:'dvoeplay.html',         tone:'dark', wide:true, art:'connect', ready:true},
+  {id:'magnitniy-boy',   title:'Магнитный бой',     desc:'Шарики слипаются',                  full:'Шарики-магниты слипаются, когда лежат рядом',         href:'magnitniy-boy.html',    tone:'red',  art:'magnet',  ready:true},
+  {id:'memo-duel',       title:'Мемо-дуэль',        desc:'Пары по памяти',                    full:'Находите пары по памяти и ходите снова',              href:'memo-duel.html',        tone:'yel',  art:'memo',    ready:true},
+  {id:'matreshka',       title:'Матрёшка',          desc:'Большая кроет меньшую',             full:'Большая фишка накрывает меньшую',                     href:'matreshka.html',        tone:'dark', art:'gobble',  ready:true},
+  {id:'dots-boxes',      title:'Точки и квадраты',  desc:'Замкните квадрат',                  full:'Замкнули квадрат — ходите ещё раз',                   href:'dots-boxes.html',       tone:'yel',  art:'dots',    ready:true},
+  {id:'5-bukv',          title:'5 букв',            desc:'Угадайте слово',                    full:'Угадайте слово из пяти букв за шесть попыток',        href:'5-bukv.html',           tone:'red',  art:'word',    ready:true},
+  {id:'viselica',        title:'Быстрая виселица',  desc:'Слово на время',                    full:'Загадайте слово за 30 секунд и отгадывайте',          href:'viselica.html',         tone:'dark', art:'hang',    ready:true},
+  {id:'zahlopni-yaschik',title:'Захлопни ящик',     desc:'Закрывайте числа',                  full:'Закрывайте числа суммой броска — ящик один на двоих', href:'zahlopni-yaschik.html', tone:'yel',  art:'box',     ready:true},
+  {id:'dobble',          title:'Доббль',            desc:'Кто первый найдёт',                 full:'У двух карт всегда один общий символ — найдите первым', href:'dobble.html',         tone:'red',  art:'spot',    ready:true},
+  {id:'vzlomshik',       title:'Взломщик кода',     desc:'Подберите код замка',               full:'Подберите код велозамка соперника — 4 попытки за ход', href:'vzlomshik.html', tone:'dark', art:'lock', ready:true}
+];
+
+var FEATURED='vzlomshik';
+var FEATURED_LABEL='Новое';
+var SUGGEST=['dvoeplay','matreshka','5-bukv'];   /* что предложить, пока истории нет */
+
+/* ---------- графика ---------- */
+var ICON={
+  'dvoeplay':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><clipPath id='i-4r'><circle cx='32' cy='32' r='22'/></clipPath><g clip-path='url(#i-4r)'><rect x='10' y='10' width='22' height='44' fill='#E7362B'/><rect x='32' y='10' width='22' height='44' fill='#F5BE0A'/></g>",
+  'magnitniy-boy':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><circle cx='24' cy='32' r='16' fill='#E7362B'/><circle cx='40' cy='32' r='16' fill='#F5BE0A'/>",
+  'memo-duel':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><rect x='13' y='16' width='17' height='32' rx='5' fill='#E7362B'/><rect x='34' y='16' width='17' height='32' rx='5' fill='#F5BE0A'/>",
+  'matreshka':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><circle cx='32' cy='32' r='22' fill='#E7362B'/><circle cx='32' cy='32' r='11' fill='#F5BE0A'/>",
+  'dots-boxes':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><rect x='21' y='21' width='22' height='22' rx='5' fill='#F5BE0A'/><circle cx='20' cy='20' r='5.5' fill='#E7362B'/><circle cx='44' cy='20' r='5.5' fill='#E7362B'/><circle cx='20' cy='44' r='5.5' fill='#E7362B'/><circle cx='44' cy='44' r='5.5' fill='#E7362B'/>",
+  '5-bukv':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><rect x='8' y='23' width='14' height='18' rx='4' fill='#E7362B'/><rect x='25' y='23' width='14' height='18' rx='4' fill='#F5BE0A'/><rect x='42' y='23' width='14' height='18' rx='4' fill='#E7362B'/>",
+  'viselica':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><path d='M16 52V14h22' fill='none' stroke='#E7362B' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><path d='M38 17v8' stroke='#F5BE0A' stroke-width='5' stroke-linecap='round'/><circle cx='38' cy='34' r='9' fill='none' stroke='#F5BE0A' stroke-width='6'/>",
+  'zahlopni-yaschik':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><rect x='14' y='14' width='36' height='36' rx='9' fill='#F5BE0A'/><circle cx='23' cy='23' r='4' fill='#E7362B'/><circle cx='32' cy='32' r='4' fill='#E7362B'/><circle cx='41' cy='41' r='4' fill='#E7362B'/>",
+  'dobble':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><circle cx='24' cy='32' r='15' fill='#FFFFFF'/><circle cx='42' cy='32' r='15' fill='#FFFFFF' fill-opacity='.88'/><circle cx='19' cy='26' r='4.2' fill='#F5BE0A'/><circle cx='47' cy='38' r='4.2' fill='#F5BE0A'/><circle cx='26' cy='38' r='5' fill='#E7362B'/><circle cx='40' cy='26' r='5' fill='#E7362B'/>",
+  'vzlomshik':"<rect width='64' height='64' rx='14' fill='#1C1C1E'/><path d='M17 36V26a15 15 0 0 1 30 0v10' fill='none' stroke='#F5BE0A' stroke-width='6'/><rect x='8' y='32' width='48' height='18' rx='9' fill='#E7362B'/><rect x='17' y='29' width='8' height='24' rx='2.5' fill='#1C1C1E'/><rect x='28' y='29' width='8' height='24' rx='2.5' fill='#1C1C1E'/><rect x='39' y='29' width='8' height='24' rx='2.5' fill='#1C1C1E'/>"
+};
+var TILE_ART={
+  connect:"<svg viewBox='0 0 120 70'><circle cx='20' cy='46' r='17' fill='#E7362B'/><circle cx='56' cy='46' r='17' fill='#F5BE0A'/><circle cx='92' cy='46' r='17' fill='#E7362B'/><circle cx='56' cy='10' r='15.5' fill='none' stroke='#fff' stroke-opacity='.28' stroke-width='3'/></svg>",
+  magnet:"<svg viewBox='0 0 80 50'><circle cx='27' cy='25' r='22' fill='#fff' opacity='.92'/><circle cx='55' cy='25' r='22' fill='#1C1C1E' opacity='.82'/></svg>",
+  memo:"<svg viewBox='0 0 70 60'><rect x='2' y='6' width='28' height='48' rx='7' fill='#1C1C1E'/><rect x='38' y='2' width='28' height='48' rx='7' fill='#E7362B'/><circle cx='52' cy='26' r='8' fill='#fff'/></svg>",
+  gobble:"<svg viewBox='0 0 70 70'><circle cx='35' cy='35' r='33' fill='#F5BE0A'/><circle cx='35' cy='35' r='21' fill='#E7362B'/><circle cx='35' cy='35' r='10' fill='#F5BE0A'/></svg>",
+  dots:"<svg viewBox='0 0 70 70'><rect x='14' y='14' width='42' height='42' rx='8' fill='#E7362B'/><circle cx='12' cy='12' r='8' fill='#1C1C1E'/><circle cx='58' cy='12' r='8' fill='#1C1C1E'/><circle cx='12' cy='58' r='8' fill='#1C1C1E'/><circle cx='58' cy='58' r='8' fill='#1C1C1E'/></svg>",
+  word:"<svg viewBox='0 0 110 40'><rect x='2' y='2' width='32' height='36' rx='7' fill='#fff'/><rect x='39' y='2' width='32' height='36' rx='7' fill='#1C1C1E'/><rect x='76' y='2' width='32' height='36' rx='7' fill='#F5BE0A'/></svg>",
+  hang:"<svg viewBox='0 0 70 80' fill='none' stroke-linecap='round' stroke-linejoin='round'><path d='M12 76V8h30' stroke='#E7362B' stroke-width='9'/><path d='M42 8v11' stroke='#F5BE0A' stroke-width='7'/><circle cx='42' cy='34' r='14' stroke='#F5BE0A' stroke-width='8'/></svg>",
+  box:"<svg viewBox='0 0 80 70'><rect x='6' y='16' width='68' height='48' rx='10' fill='#1C1C1E'/><rect x='14' y='2' width='30' height='30' rx='8' fill='#fff'/><circle cx='22' cy='10' r='3.6' fill='#E7362B'/><circle cx='29' cy='17' r='3.6' fill='#E7362B'/><circle cx='36' cy='24' r='3.6' fill='#E7362B'/></svg>",
+  spot:"<svg viewBox='0 0 92 62'><circle cx='27' cy='31' r='28' fill='#fff'/><circle cx='65' cy='31' r='28' fill='#fff' fill-opacity='.9'/><circle cx='20' cy='21' r='7' fill='#F5BE0A'/><circle cx='30' cy='42' r='8' fill='#1C1C1E'/><circle cx='72' cy='41' r='7' fill='#F5BE0A'/><circle cx='60' cy='20' r='8' fill='#1C1C1E'/></svg>",
+  lock:"<svg viewBox='0 0 100 76'><path d='M20 44V30a30 30 0 0 1 60 0v14' fill='none' stroke='#F5BE0A' stroke-width='9'/><rect x='2' y='40' width='96' height='30' rx='15' fill='#E7362B'/><g font-family='-apple-system,system-ui,sans-serif' font-size='15' font-weight='700' fill='#fff' text-anchor='middle'><rect x='17' y='35' width='14' height='40' rx='4' fill='#111'/><rect x='35' y='35' width='14' height='40' rx='4' fill='#111'/><rect x='53' y='35' width='14' height='40' rx='4' fill='#111'/><rect x='71' y='35' width='14' height='40' rx='4' fill='#111'/><text x='24' y='60'>2</text><text x='42' y='60'>6</text><text x='60' y='60'>0</text><text x='78' y='60'>4</text></g></svg>"
+};
+var HERO_ART={
+  /* 4 в ряд: три фишки уже в ряду, четвёртая падает и достраивает его */
+  'dvoeplay':'<div class="hero-art ha-4r" aria-hidden="true">'+
+    cols(4,function(x,i){ return '<i class="hole r1" style="left:'+x+'px"></i>'+
+                                 '<i class="hole r2" style="left:'+x+'px"></i>'; })+
+    '<i class="disc yel" style="left:40px"></i><i class="disc yel" style="left:116px"></i>'+
+    '<i class="disc" style="left:2px"></i><i class="disc" style="left:40px"></i>'+
+    '<i class="disc" style="left:78px"></i><i class="disc fall" style="left:116px"></i>'+
+  '</div>',
+
+  /* Матрёшка: большая приподнимается, показывая меньшую, и накрывает снова */
+  'matreshka':'<div class="hero-art ha-mt" aria-hidden="true">'+
+    '<i class="s"></i><i class="m"></i><i class="l"></i>'+
+  '</div>',
+
+  /* Магнитный бой: шарики притягиваются и слипаются */
+  'magnitniy-boy':'<div class="hero-art ha-mg" aria-hidden="true">'+
+    '<i class="ring"></i><i class="ball a"></i><i class="ball b"></i>'+
+  '</div>',
+
+  /* Мемо-дуэль: две карточки переворачиваются и показывают пару */
+  'memo-duel':'<div class="hero-art ha-mm" aria-hidden="true">'+
+    '<i class="card c1"><b></b></i><i class="card c2"><b></b></i>'+
+  '</div>',
+
+  /* Точки и квадраты: линии обводят клетку, клетка закрашивается */
+  'dots-boxes':'<div class="hero-art ha-dt" aria-hidden="true">'+
+    '<i class="sq" style="left:23px;top:13px"></i>'+
+    '<i class="ln h" style="left:20px;top:7px"></i>'+
+    '<i class="ln h" style="left:20px;top:51px;animation-delay:.28s"></i>'+
+    '<i class="ln v" style="left:17px;top:10px;animation-delay:.14s"></i>'+
+    '<i class="ln v" style="left:61px;top:10px;animation-delay:.42s"></i>'+
+    cols(3,function(x){ return '<i class="dot" style="left:'+(15+x)+'px;top:5px"></i>'+
+                               '<i class="dot" style="left:'+(15+x)+'px;top:49px"></i>'+
+                               '<i class="dot" style="left:'+(15+x)+'px;top:93px"></i>'; },44)+
+  '</div>',
+
+  /* 5 букв: слово переворачивается и загорается */
+  '5-bukv':'<div class="hero-art ha-5b" aria-hidden="true">'+
+    cols(5,function(x,i){ return '<i class="t" style="left:'+x+'px;animation-delay:'+(i*0.11)+'s">'+
+                                 'СЛОВО'.charAt(i)+'</i>'; },30)+
+  '</div>',
+
+  /* Доббль: две карты, и один и тот же символ вспыхивает на обеих */
+  'dobble':'<div class="hero-art ha-db" aria-hidden="true">'+
+    '<i class="cd a"><b class="p1"></b><b class="p2"></b><b class="hit"></b></i>'+
+    '<i class="cd b"><b class="p1"></b><b class="p2"></b><b class="hit"></b></i>'+
+  '</div>',
+
+  /* Взломщик кода: диски прокручиваются, код сходится, трос выскакивает.
+     В каждом диске столбик из пяти цифр: в покое видна вторая, в середине
+     петли — четвёртая, а потом диск возвращается. */
+  'vzlomshik':'<div class="hero-art ha-vz" aria-hidden="true">'+
+    '<i class="sh"></i><i class="bd"></i><i class="fr" style="left:11px"></i><i class="fr" style="left:123px"></i>'+
+    cols(4,function(x,i){
+      var col=['9\n2\n7\n0\n1','5\n6\n1\n8\n3','3\n0\n4\n5\n9','8\n4\n2\n9\n6'][i];
+      return '<i class="wl" style="left:'+(21+x)+'px"><b style="animation-delay:'+(i*0.12)+'s">'+col+'</b><u></u></i>';
+    },28)+
+  '</div>',
+
+  /* Быстрая виселица: виселица покачивается, буквы встают на места */
+  'viselica':'<div class="hero-art ha-vs" aria-hidden="true">'+
+    '<i class="post"></i><i class="beam"></i>'+
+    '<i class="hang"><i class="rope"></i><i class="head"></i></i>'+
+    cols(3,function(x,i){ return '<i class="sl" style="left:'+(70+x)+'px"></i>'+
+                                 '<i class="lt" style="left:'+(70+x)+'px;animation-delay:'+(i*0.13)+'s">'+
+                                 'КОТ'.charAt(i)+'</i>'; },28)+
+  '</div>',
+
+  /* Захлопни ящик: кубик катится, цифры захлопываются */
+  'zahlopni-yaschik':'<div class="hero-art" aria-hidden="true">'+
+    '<i class="die"><b></b><b></b><b></b></i>'+
+    '<i class="tl" style="--x:0px;--d:0s">1</i>'+
+    '<i class="tl" style="--x:31px;--d:.2s">2</i>'+
+    '<i class="tl" style="--x:62px;--d:.4s">3</i>'+
+    '<i class="tl" style="--x:93px;--d:.6s">4</i>'+
+    '<i class="tl" style="--x:124px;--d:.8s">5</i>'+
+  '</div>'
+};
+
+/* повторяющиеся элементы картинки: столбцы, клетки, буквы */
+function cols(n, tpl, step){
+  var out='', i;
+  for(i=0;i<n;i++) out+=tpl(i*(step||38), i);
+  return out;
+}
+function byId(id){ for(var i=0;i<GAMES.length;i++) if(GAMES[i].id===id) return GAMES[i]; return null; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ago(ts){
+  if(!ts) return '';
+  var d=Math.floor((Date.now()-ts)/86400000);
+  if(d<=0) return 'сегодня';
+  if(d===1) return 'вчера';
+  if(d<7)  return d+' дн. назад';
+  if(d<30) return Math.floor(d/7)+' нед. назад';
+  return 'давно';
+}
+
+/* ---------- герой ---------- */
+/* Большая плашка не закреплена за одной игрой: поводов показать её три.
+   «Новое» — игра, которую мы выделяем сами; «Продолжить» — та, в которую
+   играли последней; «Любимая» — та, в которую сыграли больше всего партий.
+   При каждом открытии показывается СЛЕДУЮЩИЙ по кругу повод из тех, что
+   сейчас есть. У нового игрока истории нет, и остаётся одно «Новое» —
+   экран от этого не становится пустее, просто не меняется. */
+var HERO_ID='';                     /* какая игра сейчас в плашке */
+
+function heroPicks(){
+  var hist=recentList(99), cont=hist[0]||null, fav=null, picks=[], i, s;
+  /* любимая — где партий больше всего, но не меньше трёх: на одной-двух
+     партиях называть игру любимой ещё рано */
+  for(i=0;i<hist.length;i++){
+    if((hist[i].s.plays||0)<3) continue;
+    if(!fav || (hist[i].s.plays||0)>(fav.s.plays||0)) fav=hist[i];
+  }
+  if(fav && cont && fav.g.id===cont.g.id) fav=null;      /* это одна и та же игра */
+
+  var fresh=byId(FEATURED);
+  if(fresh && (!fresh.ready || (cont && cont.g.id===fresh.id))) fresh=null;
+
+  /* Описание игры показываем всегда — плашка прежде всего рассказывает,
+     что это за игра. Повод (счёт, сколько партий) идёт отдельной строкой
+     над названием и не съедает описание. */
+  if(fresh) picks.push({key:'new', label:FEATURED_LABEL, g:fresh, cta:'Играть', meta:''});
+  if(cont){
+    s=cont.s;
+    picks.push({key:'cont', label:'Продолжить', g:cont.g, cta:'Продолжить',
+                meta:(s.note||'')+(s.note?' · ':'')+ago(s.last)});
+  }
+  if(fav){
+    s=fav.s;
+    picks.push({key:'fav', label:'Любимая', g:fav.g, cta:'Играть',
+                meta:'Сыграно '+s.plays+' '+plural(s.plays,'партия','партии','партий')});
+  }
+  /* Пока идёт турнир, продолжать надо турнир — его карточка наверху. Плашка
+     «Продолжить» с прошлой игрой звала бы туда же, но мимо турнира. */
+  var t=TOUR.read();
+  if(t && !TOUR.over(t) && picks.length>1) picks=picks.filter(function(p){ return p.key!=='cont'; });
+  return picks;
+}
+
+/* чем длиннее название, тем мельче кегль — чтобы влезало в одну строку */
+function heroSize(t){
+  if(t.length>14) return ' class="long"';
+  if(t.length>11) return ' class="mid"';
+  return '';
+}
+function renderHero(){
+  var picks=heroPicks(), was=DP.hero(), at=0, i;
+  if(!picks.length) return;
+  for(i=0;i<picks.length;i++) if(picks[i].key===was) at=i+1;   /* следующий по кругу */
+  var p=picks[at%picks.length];
+  DP.hero(p.key);
+  HERO_ID=p.g.id;
+  var art=HERO_ART[p.g.id] || '<div class="hero-generic" aria-hidden="true">'+(TILE_ART[p.g.art]||'')+'</div>';
+  document.getElementById('hero').innerHTML=
+    '<a class="hero" href="'+esc(p.g.href)+'">'+
+      '<span class="badge b-'+p.key+'">'+esc(p.label)+'</span>'+
+      art+
+      '<span class="hero-foot">'+
+        '<span class="hero-txt">'+
+          '<i class="hero-meta">'+esc(p.meta||'')+'</i>'+
+          '<h3'+heroSize(p.g.title)+'>'+esc(p.g.title)+'</h3>'+
+          '<p>'+esc(p.g.full)+'</p>'+
+        '</span>'+
+        '<span class="play">'+esc(p.cta)+'</span>'+
+      '</span>'+
+    '</a>';
+}
+
+/* ---------- продолжить / с чего начать ---------- */
+function recentList(n){
+  var games=DP.read().games, out=[], id;
+  for(id in games){
+    if(!Object.prototype.hasOwnProperty.call(games,id)) continue;
+    var g=byId(id); if(!g||!g.ready) continue;
+    out.push({g:g,s:games[id]});
+  }
+  out.sort(function(a,b){ return (b.s.last||0)-(a.s.last||0); });
+  return out.slice(0, n || 4);
+}
+function chip(g,note){
+  return '<a class="chip" href="'+esc(g.href)+'">'+
+           '<svg viewBox="0 0 64 64" aria-hidden="true">'+ICON[g.id]+'</svg>'+
+           '<span><b>'+esc(g.title)+'</b><i>'+esc(note)+'</i></span>'+
+         '</a>';
+}
+function renderRecent(){
+  var head=document.getElementById('contHead'), box=document.getElementById('cont');
+  /* игру из большой плашки в строке не повторяем — она уже на экране */
+  var list=recentList(5).filter(function(it){ return it.g.id!==HERO_ID; }).slice(0,4);
+  var html='', i;
+  if(list.length){
+    document.getElementById('contTitle').textContent='Продолжить';
+    document.getElementById('contNote').textContent=ago(list[0].s.last);
+    for(i=0;i<list.length;i++) html+=chip(list[i].g, list[i].s.note || (list[i].s.plays+' парт.'));
+  }else{
+    /* истории ещё нет — предлагаем, с чего начать */
+    document.getElementById('contTitle').textContent='С чего начать';
+    document.getElementById('contNote').textContent='';
+    for(i=0;i<SUGGEST.length;i++){
+      var g=byId(SUGGEST[i]); if(g&&g.ready) html+=chip(g,g.desc);
+    }
+  }
+  if(!html) return;
+  box.innerHTML=html; head.hidden=false; box.hidden=false;
+}
+
+/* ---------- сетка ---------- */
+function renderBento(){
+  var html='', ready=0, total=GAMES.length, i, g;
+  for(i=0;i<GAMES.length;i++) if(GAMES[i].ready) ready++;
+  for(i=0;i<GAMES.length;i++){
+    g=GAMES[i];
+    if(g.id===HERO_ID) continue;              /* эта игра уже показана в плашке */
+    if(!g.ready){
+      html+='<div class="t soon" aria-disabled="true">'+
+              '<span class="lbl">'+
+                '<span class="dts" aria-hidden="true"><u></u><u></u><u></u></span>'+
+                '<b>'+esc(g.title)+'</b><i>'+esc(g.desc)+'</i>'+
+              '</span>'+
+            '</div>';
+      continue;
+    }
+    html+='<a class="t '+g.tone+(g.wide?' wide':'')+'" href="'+esc(g.href)+'">'+
+            '<span class="art art-'+g.art+'" aria-hidden="true">'+(TILE_ART[g.art]||'')+'</span>'+
+            '<span class="cap"><b>'+esc(g.title)+'</b><i>'+esc(g.desc)+'</i></span>'+
+          '</a>';
+  }
+  document.getElementById('bento').innerHTML=html;
+  document.getElementById('count').textContent = ready===total ? 'Все десять' : ready+' из '+total;
+}
+
+/* ---------- кто кого ---------- */
+/* Общий счёт пары по всем играм. Появляется после первой партии на двоих —
+   на одном телефоне или по сети, — а до того главный экран не меняется.
+   В карточке тот, с кем больше всего играли за последний месяц: разовая
+   партия с кем-то ещё пару не вытесняет. Остальные — в шторке. */
+var MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+var pairEl=document.getElementById('pair');
+var pairSheet=document.getElementById('pairSheet');
+var pairResetBtn=document.getElementById('pairReset');
+var pairArmed=false, pairShown='';
+
+function partners(){
+  var P=DP.pair(), out=[], k, month=Date.now()-30*864e5;
+  if(!P||!P.p) return out;
+  for(k in P.p){
+    if(!Object.prototype.hasOwnProperty.call(P.p,k)) continue;
+    var p=P.p[k];
+    if(!((p.me||0)+(p.them||0)+(p.draw||0))) continue;
+    var fresh=(p.log||[]).filter(function(x){ return x[0]>=month; }).length;
+    out.push({key:k,p:p,fresh:fresh});
+  }
+  out.sort(function(a,b){ return (b.fresh-a.fresh) || ((b.p.last||0)-(a.p.last||0)); });
+  return out;
+}
+/* подписи сторон — как в самих играх: на одном телефоне без имён это цвета */
+function sides(key,p){
+  var n=DP.names();
+  if(key==='duo') return [n.me||'Красные', n.friend||'Жёлтые'];
+  return [n.me||'Вы', (p&&p.name)||'Соперник'];
+}
+function leadText(s,p){
+  var d=(p.me||0)-(p.them||0), w;
+  if(!d) return 'Поровну';
+  w=d>0?s[0]:s[1];
+  return w+' '+(w==='Вы'?'ведёте':(w==='Красные'||w==='Жёлтые')?'ведут':'ведёт')+' на '+Math.abs(d);
+}
+/* «сегодня» и «вчера» — по вечерам, как и серия: день начинается в четыре утра */
+function when(ts){
+  if(!ts) return '';
+  var now=Date.now();
+  if(DP.day(ts)===DP.day(now)) return 'сегодня';
+  if(DP.day(ts)===DP.day(now-864e5)) return 'вчера';
+  return ago(ts);
+}
+/* серия вечеров — без упрёков: оборвалась — просто не показываем */
+function streak(p){
+  var r=p.run, now=Date.now();
+  if(!r || r.n<2) return '';
+  if(r.d===DP.day(now)) return r.n+'-й вечер подряд';
+  if(r.d===DP.day(now-864e5)) return r.n+' '+plural(r.n,'вечер','вечера','вечеров')+' подряд';
+  return '';
+}
+/* строка справа от заголовка: сегодняшний счёт и серия вечеров; на узком
+   экране вместе они не влезают — тогда серия уступает, см. renderPair() */
+function headParts(p){
+  var t=DP.day(Date.now()), a=0, b=0, n=0, s=streak(p);
+  (p.log||[]).forEach(function(x){ if(DP.day(x[0])!==t) return; n++; if(x[1]===1) a++; else if(x[1]===2) b++; });
+  if(n) return s ? ['сегодня '+a+' : '+b, s] : ['сегодня '+a+' : '+b];
+  return [s || when(p.last)];
+}
+function formHtml(p){
+  return (p.log||[]).slice(-10).map(function(x){
+    return '<u'+(x[1]===1?' class="a"':x[1]===2?' class="b"':'')+'></u>';
+  }).join('');
+}
+function board(s,p,big){
+  var d=(p.me||0)-(p.them||0);
+  return '<span class="pr-board'+(big?' big':'')+'">'+
+    '<i class="pr-sl" style="transform:translateX('+(d<0?'100%':'0')+');opacity:'+(d?1:0)+'"></i>'+
+    '<span class="pr-sd a"><span class="pr-nm"><span>'+esc(s[0])+'</span></span><b class="pr-sc">'+(p.me||0)+'</b></span>'+
+    '<span class="pr-sd b"><span class="pr-nm"><span>'+esc(s[1])+'</span></span><b class="pr-sc">'+(p.them||0)+'</b></span>'+
+  '</span>';
+}
+function renderPair(){
+  var list=partners();
+  if(!list.length){ pairEl.innerHTML=''; pairEl.hidden=true; return; }
+  var top=list[0], p=top.p, s=sides(top.key,p), head=headParts(p);
+  var label='Кто кого: '+s[0]+' '+(p.me||0)+', '+s[1]+' '+(p.them||0)+'. '+leadText(s,p)+'. Подробнее';
+  pairEl.innerHTML=
+    '<button class="pair" type="button" aria-label="'+esc(label)+'">'+
+      '<span class="pr-head"><b>Кто кого</b><i>'+esc(head.join(' · '))+'</i></span>'+
+      board(s,p,false)+
+      '<span class="pr-foot"><span class="pr-form" aria-hidden="true">'+formHtml(p)+'</span>'+
+        '<em class="pr-lead">'+esc(leadText(s,p))+'</em></span>'+
+    '</button>';
+  pairEl.hidden=false;
+  /* не влезло — оставляем сегодняшний счёт целиком, а не обрывок серии */
+  var hi=pairEl.querySelector('.pr-head i');
+  if(head.length>1 && hi.scrollWidth>hi.clientWidth+1) hi.textContent=head[0];
+  pairEl.firstChild.addEventListener('click',function(){ openPair(top.key); });
+}
+
+function dateText(ts){
+  var d=new Date(ts);
+  return d.getDate()+' '+MONTHS[d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?' '+d.getFullYear():'');
+}
+function renderPairSheet(key){
+  var list=partners(), it=null, i;
+  for(i=0;i<list.length;i++) if(list[i].key===key) it=list[i];
+  if(!it){ closePair(); renderPair(); return; }
+  pairShown=key;
+  var p=it.p, s=sides(key,p), total=(p.me||0)+(p.them||0)+(p.draw||0), games=[], id, rows='', others='';
+  document.getElementById('pairTitle').textContent=s[0]+' и '+s[1];
+  document.getElementById('pairSub').textContent='Счёт с '+dateText(p.since||p.last)+' · '+
+    total+' '+plural(total,'партия','партии','партий');
+  for(id in p.g){
+    if(!Object.prototype.hasOwnProperty.call(p.g,id)) continue;
+    var g=byId(id), t=p.g[id];
+    if(g) games.push({g:g,t:t,n:t[0]+t[1]+t[2]});
+  }
+  games.sort(function(a,b){ return b.n-a.n; });
+  games.forEach(function(x){
+    var sub=x.n+' '+plural(x.n,'партия','партии','партий')+(x.t[2]?' · '+(x.t[2]===1?'ничья':'ничьих '+x.t[2]):'');
+    rows+='<div class="srow"><svg viewBox="0 0 64 64" aria-hidden="true">'+ICON[x.g.id]+'</svg>'+
+          '<span class="n"><b>'+esc(x.g.title)+'</b><i>'+esc(sub)+'</i></span>'+
+          '<span class="v">'+x.t[0]+' : '+x.t[1]+'</span></div>';
+  });
+  list.forEach(function(o){
+    if(o.key===key) return;
+    var os=sides(o.key,o.p), n=(o.p.me||0)+(o.p.them||0)+(o.p.draw||0);
+    others+='<button class="srow pr-btn" type="button" data-k="'+esc(o.key)+'">'+
+      '<span class="n"><b>'+esc(os[1])+'</b><i>'+n+' '+plural(n,'партия','партии','партий')+' · '+esc(when(o.p.last))+'</i></span>'+
+      '<span class="v">'+(o.p.me||0)+' : '+(o.p.them||0)+'</span></button>';
+  });
+  document.getElementById('pairBody').innerHTML=
+    '<div class="pr-big">'+board(s,p,true)+'<em class="pr-lead">'+esc(leadText(s,p))+'</em></div>'+
+    (rows?'<div class="slist">'+rows+'</div>':'')+
+    (others?'<p class="pr-sub">Другие соперники</p><div class="slist" id="pairOthers">'+others+'</div>':'');
+  [].forEach.call(document.querySelectorAll('#pairOthers .srow'),function(b){
+    b.addEventListener('click',function(){ renderPairSheet(b.getAttribute('data-k')); });
+  });
+  var nm=DP.names();
+  document.getElementById('pairNames').hidden = !(key==='duo' && (!nm.me||!nm.friend));
+  pairResetBtn.textContent='Обнулить счёт';
+  pairArmed=false;
+  try{ pairSheet.scrollTop=0; }catch(e){}
+}
+function openPair(key){ renderPairSheet(key); backdrop.classList.add('on'); pairSheet.classList.add('on'); }
+function closePair(){ pairSheet.classList.remove('on'); backdrop.classList.remove('on'); }
+pairResetBtn.addEventListener('click',function(){
+  if(!pairArmed){ pairArmed=true; pairResetBtn.textContent='Точно обнулить?'; return; }
+  DP.pairReset(pairShown);
+  closePair(); renderPair();
+  announce('Счёт обнулён');
+});
+document.getElementById('pairClose').addEventListener('click',closePair);
+/* имён нет — в шторке предлагаем их вписать; шторка имён встаёт на её место */
+document.getElementById('pairNames').addEventListener('click',function(){
+  pairSheet.classList.remove('on');
+  openWho();
+});
+
+/* список фантов серии — тот же, что в играх; здесь он подсказывает, что вписать */
+/* [для «Красные/Жёлтые …», для «Вы …», для имени] */
+var FORFEIT=[
+  ['моют посуду','моете посуду','моет посуду'],
+  ['выносят мусор','выносите мусор','выносит мусор'],
+  ['заваривают чай','завариваете чай','заваривает чай'],
+  ['готовят завтрак','готовите завтрак','готовит завтрак'],
+  ['пылесосят в комнате','пылесосите в комнате','пылесосит в комнате'],
+  ['собирают со стола','собираете со стола','собирает со стола'],
+  ['поливают цветы','поливаете цветы','поливает цветы'],
+  ['загружают посудомойку','загружаете посудомойку','загружает посудомойку'],
+  ['идут за мороженым','идёте за мороженым','идёт за мороженым'],
+  ['моют пол на кухне','моете пол на кухне','моет пол на кухне'],
+  ['выгуливают собаку','выгуливаете собаку','выгуливает собаку'],
+  ['застилают постель три дня','застилаете постель три дня','застилает постель три дня'],
+  ['уступают пульт на вечер','уступаете пульт на вечер','уступает пульт на вечер'],
+  ['отжимаются десять раз','отжимаетесь десять раз','отжимается десять раз'],
+  ['рассказывают анекдот','рассказываете анекдот','рассказывает анекдот'],
+  ['поют куплет по выбору победителя','поёте куплет по выбору победителя','поёт куплет по выбору победителя'],
+  ['придумывают ужин на завтра','придумываете ужин на завтра','придумывает ужин на завтра'],
+  ['молчат целую минуту','молчите целую минуту','молчит целую минуту'],
+  ['три раза говорят «ты сегодня сильнее»','три раза говорите «ты сегодня сильнее»','три раза говорит «ты сегодня сильнее»'],
+  ['делают победителю комплимент','делаете победителю комплимент','делает победителю комплимент']
+];
+
+/* ---------- мини-турнир ---------- */
+/* Несколько игр подряд вдвоём на одном телефоне. Здесь турнир собирают
+   (игры — случайно или самим, фанты — по очереди и втайне) и здесь же
+   открывают итог. Сами игры ведёт общий модуль tour.js. */
+var tzNow=document.getElementById('tourNow');
+var tzInvite=document.getElementById('tourInvite');
+var tzSheet=document.getElementById('tourSheet');
+var tzEnd=document.getElementById('tourEnd');
+var CUP="<svg class='tz-cup' viewBox='0 0 40 40' aria-hidden='true'><rect width='40' height='40' rx='11' fill='#1C1C1E'/>"+
+  "<path d='M12.6 9.6h14.8v6.3a7.4 7.4 0 0 1-14.8 0z' fill='#F5BE0A'/>"+
+  "<path d='M12.8 11.8H9.6a3.6 3.6 0 0 0 3.9 5.4M27.2 11.8h3.2a3.6 3.6 0 0 1-3.9 5.4' fill='none' stroke='#F5BE0A' stroke-width='2.2' stroke-linecap='round'/>"+
+  "<rect x='18.4' y='22.4' width='3.2' height='4.8' fill='#F5BE0A'/><rect x='13.6' y='27' width='12.8' height='4.4' rx='1.6' fill='#E7362B'/></svg>";
+var CHECK="<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='11' fill='#30B855'/>"+
+  "<path d='M7 12.4l3.3 3.3L17.2 8.8' fill='none' stroke='#fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>";
+/* настройка живёт, пока открыта шторка: закрыли посреди — откроется там же */
+var tz={step:1, mode:'rnd', count:3, draw:[], pick:[], f:['','']};
+var tzStopArmed=false;
+
+function tzPool(){ return GAMES.filter(function(g){ return g.ready; }).map(function(g){ return g.id; }); }
+function tzTitles(){ var o={}; GAMES.forEach(function(g){ if(g.ready) o[g.id]=g.title; }); return o; }
+function tzShuffle(){
+  var p=tzPool(), i, j, x;
+  for(i=p.length-1;i>0;i--){ j=(Math.random()*(i+1))|0; x=p[i]; p[i]=p[j]; p[j]=x; }
+  tz.draw=p.slice(0,tz.count);
+}
+function tzGames(){ return tz.mode==='rnd' ? tz.draw : tz.pick; }
+/* Кто играет, в турнире не спрашиваем: имена те же, что в играх (шторка
+   «Имена игроков»), первый — красные, второй — жёлтые. Без имени сторону
+   зовём по цвету, и глагол тогда во множественном: «пишет Аня», но «пишут
+   жёлтые». Читаются всякий раз заново — переименовали посреди турнира,
+   и всё покажет новое имя. */
+function tzNm(i){ return sides('duo')[i]; }
+function tzNamed(i){ var n=DP.names(); return !!(i ? n.friend : n.me); }
+function tzV(i,one,many){ return tzNamed(i) ? one : many; }
+function tzLow(i){ return tzNamed(i) ? tzNm(i) : tzNm(i).toLowerCase(); }
+function tzIcon(id){ return '<svg viewBox="0 0 64 64" aria-hidden="true">'+(ICON[id]||'')+'</svg>'; }
+
+/* ---------- карточки на главном ---------- */
+function renderTour(){
+  var t=TOUR.read();
+  tzInvite.innerHTML = t ? '' :
+    '<button class="tz-card" id="tzInv" type="button">'+CUP+
+      '<span class="tz-txt"><b>Мини-турнир</b><i>Несколько игр подряд, а проигравшему — фант от соперника</i></span>'+
+      '<span class="tz-cta">Собрать</span></button>';
+  tzInvite.hidden=!!t;
+  if(!t){
+    document.getElementById('tzInv').addEventListener('click',function(){ openSetup(false); });
+    tzNow.innerHTML=''; tzNow.hidden=true;
+    return;
+  }
+  var s=TOUR.score(t), n=TOUR.played(t), plan=TOUR.planned(t), done=TOUR.over(t), cur=TOUR.current(t);
+  var head = done ? 'окончен' : (n>=plan ? 'решающая игра' : 'игра '+(n+1)+' из '+plan);
+  var icons=t.games.map(function(g,i){
+    var r=t.res[i];
+    return '<span class="tz-g'+(i<n?' done':'')+(i===n&&!done?' now':'')+'" title="'+esc(TOUR.title(t,g))+'">'+tzIcon(g)+
+      (i<n ? '<i'+(r===1?' class="a"':r===2?' class="b"':'')+'></i>' : '')+'</span>';
+  }).join('');
+  tzNow.innerHTML=
+    '<div class="tz-now">'+
+      '<span class="pr-head"><b>Турнир</b><i>'+esc(head)+'</i></span>'+
+      board(sides('duo'),{me:s[0],them:s[1]},false)+
+      '<div class="tz-games">'+icons+'</div>'+
+      (done ? '<button class="btn primary tz-go" id="tzOpen" type="button">Итоги и фант</button>'
+            : '<a class="btn primary tz-go" id="tzGo" href="'+esc(TOUR.link(t))+'">'+(n?'Продолжить: ':'Начать: ')+esc(TOUR.title(t,cur))+'</a>')+
+      '<button class="tz-stop" id="tzStop" type="button">Прервать турнир</button>'+
+    '</div>';
+  tzNow.hidden=false;
+  tzStopArmed=false;
+  if(done) document.getElementById('tzOpen').addEventListener('click',openEnd);
+  document.getElementById('tzStop').addEventListener('click',function(){
+    var b=document.getElementById('tzStop');
+    if(!tzStopArmed){ tzStopArmed=true; b.classList.add('armed'); b.textContent='Точно прервать? Фанты пропадут'; return; }
+    TOUR.write(null); renderTour(); announce('Турнир прерван');
+  });
+}
+
+/* ---------- настройка ---------- */
+function openSetup(fresh){
+  if(fresh){ tz.step=1; tz.f=['','']; }
+  if(tz.step===1 && !tz.draw.length) tzShuffle();
+  renderSetup();
+  backdrop.classList.add('on'); tzSheet.classList.add('on');
+}
+function closeSetup(){ unType(tzSheet); tzSheet.classList.remove('on'); backdrop.classList.remove('on'); }
+function tzReady(){ return tzGames().length>=2; }
+/* keep — перерисовка того же шага (перемешали, сменили число игр): шторка
+   остаётся там, где её пролистали; новый шаг начинается сверху */
+function renderSetup(keep){
+  var body=document.getElementById('tzBody'), sub=document.getElementById('tzSub'), h='', g=tzGames(), y=tzSheet.scrollTop;
+  if(tz.step===1){
+    sub.textContent='Несколько игр подряд на одном телефоне. Проигравший выполняет фант, который втайне придумал соперник';
+    h+='<p class="pr-sub">Игры</p>'+
+       '<div class="tz-seg" id="tzMode"><button type="button" data-m="rnd"'+(tz.mode==='rnd'?' class="on"':'')+'>Случайно</button>'+
+         '<button type="button" data-m="pick"'+(tz.mode==='pick'?' class="on"':'')+'>Выбрать самим</button></div>';
+    if(tz.mode==='rnd'){
+      h+='<div class="tz-seg" id="tzCount"><button type="button" data-n="3"'+(tz.count===3?' class="on"':'')+'>3 игры</button>'+
+           '<button type="button" data-n="5"'+(tz.count===5?' class="on"':'')+'>5 игр</button></div>'+
+         '<div class="slist" id="tzDraw">'+tz.draw.map(function(id,k){
+           return '<div class="srow">'+tzIcon(id)+'<span class="n"><b>'+esc(byId(id).title)+'</b><i>'+esc(byId(id).desc)+'</i></span>'+
+                  '<span class="v">'+(k+1)+'</span></div>';
+         }).join('')+'</div>'+
+         '<button class="btn" id="tzShuffle" type="button">Перемешать</button>';
+    }else{
+      h+='<p class="tz-hint">Нажимайте игры в том порядке, в каком будете играть. Нужно хотя бы две</p>'+
+         '<div class="slist" id="tzPick">'+tzPool().map(function(id){
+           var k=tz.pick.indexOf(id);
+           return '<button class="srow tz-pick'+(k>-1?' on':'')+'" type="button" data-g="'+id+'" aria-pressed="'+(k>-1)+'">'+tzIcon(id)+
+                  '<span class="n"><b>'+esc(byId(id).title)+'</b><i>'+esc(byId(id).desc)+'</i></span>'+
+                  '<span class="tz-num">'+(k>-1?k+1:'')+'</span></button>';
+         }).join('')+'</div>';
+    }
+    h+='<p class="tz-hint" id="tzWhy" style="text-align:center;margin-top:12px"></p>'+
+       '<button class="btn primary" id="tzToF" type="button">Дальше — фанты</button>';
+  }else if(tz.step===2 || tz.step===3){
+    /* пишет первый — фант второму; потом наоборот */
+    var w=tz.step===2?0:1, o=1-w;
+    sub.textContent='Фанты пишутся по очереди и прячутся: их откроют только в конце';
+    h+='<div class="tz-who '+(w?'b':'a')+'"><span>'+tzV(w,'Пишет','Пишут')+'</span><b>'+esc(tzNm(w))+'</b></div>'+
+       '<p class="tz-hint" style="text-align:center">Фант, который '+tzV(o,'выполнит','выполнят')+' <b>'+esc(tzLow(o))+'</b>, '+
+         'если '+tzV(o,'проиграет','проиграют')+' турнир. '+esc(tzNm(o))+', не '+tzV(o,'подглядывай','подглядывайте')+'!</p>'+
+       '<textarea class="nin tz-f" id="tzF" maxlength="120" enterkeyhint="done" placeholder="Например: моет посуду всю неделю"></textarea>'+
+       '<button class="btn" id="tzIdea" type="button">Подсказать</button>'+
+       '<button class="btn primary" id="tzHide" type="button" disabled>'+(w?'Спрятать':'Спрятать и передать телефон')+'</button>'+
+       (w===0?'<button class="tz-back" id="tzBack" type="button">Назад к играм</button>':'');
+  }else{
+    sub.textContent='';
+    h+='<div class="tz-ok">'+CHECK+'Оба фанта спрятаны</div>'+
+       '<p class="tz-hint" style="text-align:center">Их откроют только в конце — проигравшему</p>'+
+       '<div class="slist">'+g.map(function(id,k){
+         return '<div class="srow">'+tzIcon(id)+'<span class="n"><b>'+esc(byId(id).title)+'</b></span><span class="v">'+(k+1)+'</span></div>';
+       }).join('')+'</div>'+
+       '<button class="btn primary" id="tzStart" type="button">Начать турнир</button>';
+  }
+  body.innerHTML=h;
+  try{ tzSheet.scrollTop=keep ? y : 0; }catch(e){}
+  wireSetup();
+}
+function tzCheck(){
+  var b=document.getElementById('tzToF'), why=document.getElementById('tzWhy');
+  if(!b) return;
+  var ok=tzReady();
+  b.disabled=!ok;
+  why.textContent = ok ? '' : 'Выберите хотя бы две игры';
+}
+function wireSetup(){
+  var el=function(id){ return document.getElementById(id); };
+  if(tz.step===1){
+    [].forEach.call(document.querySelectorAll('#tzMode button'),function(b){
+      b.addEventListener('click',function(){ tz.mode=b.getAttribute('data-m'); renderSetup(true); });
+    });
+    [].forEach.call(document.querySelectorAll('#tzCount button'),function(b){
+      b.addEventListener('click',function(){ tz.count=+b.getAttribute('data-n'); tzShuffle(); renderSetup(true); });
+    });
+    if(el('tzShuffle')) el('tzShuffle').addEventListener('click',function(){ tzShuffle(); renderSetup(true); });
+    /* выбор игры меняет только номера на кнопках — список не перерисовывается,
+       и шторка не прыгает, сколько бы игр ни выбирали */
+    [].forEach.call(document.querySelectorAll('#tzPick .tz-pick'),function(b){
+      b.addEventListener('click',function(){
+        var id=b.getAttribute('data-g'), k=tz.pick.indexOf(id);
+        if(k>-1) tz.pick.splice(k,1); else tz.pick.push(id);
+        paintPick();
+        tzCheck();
+      });
+    });
+    el('tzToF').addEventListener('click',function(){ if(!tzReady()) return; tz.step=2; renderSetup(); });
+    tzCheck();
+  }else if(tz.step===2 || tz.step===3){
+    var f=el('tzF'), hide=el('tzHide'), w=tz.step===2?0:1;
+    /* поле растёт вместе с текстом, а не прокручивает его внутри себя */
+    var grow=function(){ f.style.height='auto'; f.style.height=Math.min(Math.max(f.scrollHeight,96),168)+'px'; };
+    f.addEventListener('input',function(){ hide.disabled=!f.value.trim(); grow(); });
+    /* фант — одна фраза: «Готово» на клавиатуре заканчивает набор, а не переносит строку */
+    f.addEventListener('keydown',function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); try{ f.blur(); }catch(err){} } });
+    el('tzIdea').addEventListener('click',function(){
+      f.value=FORFEIT[(Math.random()*FORFEIT.length)|0][2];
+      hide.disabled=false; grow();
+    });
+    hide.addEventListener('click',function(){
+      var v=f.value.replace(/\s+/g,' ').trim();
+      if(!v) return;
+      tz.f[1-w]=v;                       /* пишет w — выполнит соперник */
+      f.value='';
+      try{ f.blur(); }catch(e){}
+      tz.step++;
+      renderSetup();
+      announce(tz.step===3 ? 'Фант спрятан. Передайте телефон' : 'Оба фанта спрятаны');
+    });
+    if(el('tzBack')) el('tzBack').addEventListener('click',function(){ tz.step=1; renderSetup(); });
+  }else{
+    el('tzStart').addEventListener('click',function(){
+      var t=TOUR.start({games:tzGames(), titles:tzTitles(), pool:tzPool(), f:tz.f});
+      tz={step:1, mode:tz.mode, count:tz.count, draw:[], pick:[], f:['','']};
+      location.href=TOUR.link(t);
+    });
+  }
+}
+
+function paintPick(){
+  [].forEach.call(document.querySelectorAll('#tzPick .tz-pick'),function(b){
+    var k=tz.pick.indexOf(b.getAttribute('data-g'));
+    b.classList.toggle('on',k>-1);
+    b.setAttribute('aria-pressed',String(k>-1));
+    b.querySelector('.tz-num').textContent=k>-1 ? k+1 : '';
+  });
+}
+
+/* ---------- итог ---------- */
+function openEnd(){
+  var t=TOUR.read();
+  if(!t || !TOUR.over(t)) return;
+  var w=TOUR.winner(t), l=3-w, s=TOUR.score(t), plan=TOUR.planned(t), rows='';
+  document.getElementById('teMedal').className='tz-medal'+(w===2?' b':'');
+  /* как в играх: «Победа: Аня», а без имени — «Победили жёлтые» */
+  document.getElementById('teTitle').textContent=tzNamed(w-1) ? 'Победа: '+tzNm(w-1) : 'Победили '+tzLow(w-1);
+  document.getElementById('teSub').textContent='Турнир '+s[0]+' : '+s[1]+' · '+t.games.length+' '+plural(t.games.length,'игра','игры','игр')+
+    (t.tb ? ' · с решающей' : '');
+  t.games.forEach(function(g,i){
+    var r=t.res[i];
+    rows+='<div class="srow">'+tzIcon(g)+'<span class="n"><b>'+esc(TOUR.title(t,g))+'</b>'+
+      (i>=plan?'<i>решающая</i>':'')+'</span>'+
+      '<span class="tz-res'+(r===1?' a':r===2?' b':'')+'">'+esc(r ? tzNm(r-1) : 'ничья')+'</span></div>';
+  });
+  document.getElementById('teBody').innerHTML=
+    '<div class="slist">'+rows+'</div>'+
+    '<button class="tz-reveal'+(l===2?' b':'')+'" id="teReveal" type="button">'+
+      '<span class="tz-cover">Открыть фант<em>'+esc(tzNm(l-1))+', '+tzV(l-1,'готовься','готовьтесь')+'</em></span>'+
+      '<span class="tz-open"></span>'+
+    '</button>'+
+    '<button class="tz-second" id="teSecond" type="button" hidden>Показать второй фант — он не пригодился</button>';
+  var rv=document.getElementById('teReveal'), sc=document.getElementById('teSecond');
+  rv.addEventListener('click',function(){
+    if(rv.classList.contains('shown')) return;
+    /* текст фанта попадает на страницу только сейчас — до нажатия его нет нигде, даже в разметке */
+    var who=tzNm(l-1)+' '+tzV(l-1,'выполняет','выполняют')+' фант';
+    rv.querySelector('.tz-open').innerHTML='<i>'+esc(who)+'</i><b>«'+esc(t.f[l-1])+'»</b><em>придумано соперником</em>';
+    rv.classList.add('shown'); sc.hidden=false;
+    FX.fire([14,60,26],'success');
+    announce(who+': '+t.f[l-1]);
+  });
+  sc.addEventListener('click',function(){
+    sc.innerHTML='А это ждало бы: <b>'+esc(tzNm(w-1))+'</b> — «'+esc(t.f[w-1])+'»';
+  });
+  backdrop.classList.add('on'); tzEnd.classList.add('on');
+}
+function closeEnd(){ tzEnd.classList.remove('on'); backdrop.classList.remove('on'); }
+document.getElementById('teDone').addEventListener('click',function(){ TOUR.write(null); closeEnd(); renderTour(); });
+document.getElementById('teAgain').addEventListener('click',function(){
+  TOUR.write(null); tzEnd.classList.remove('on'); renderTour();
+  openSetup(true);
+});
+
+/* ---------- статистика ---------- */
+var sheetEl=document.getElementById('sheet');
+var backdrop=document.getElementById('backdrop');
+var resetBtn=document.getElementById('statReset');
+var resetArmed=false;
+
+function renderStats(){
+  var games=DP.read().games, html='', total=0, i, g, s;
+  for(i=0;i<GAMES.length;i++){
+    g=GAMES[i]; if(!g.ready) continue;
+    s=games[g.id];
+    if(!s) continue;
+    total+=s.plays||0;
+    /* вдвоём показываем счёт красные : жёлтые, в одиночной игре — сколько отгадано */
+    var duel=(s.w1||0)+(s.w2||0)+(s.draws||0);
+    var score=duel ? ((s.w1||0)+' : '+(s.w2||0))
+                   : (s.solved ? (s.solved+' / '+(s.plays||0)) : '—');
+    var sub=(s.plays||0)+' '+plural(s.plays||0,'партия','партии','партий');
+    if(duel&&s.draws) sub+=' · ничьих '+s.draws;
+    if(s.solved) sub+=' · угадано '+s.solved;
+    sub+=' · '+ago(s.last);
+    html+='<div class="srow">'+
+            '<svg viewBox="0 0 64 64" aria-hidden="true">'+ICON[g.id]+'</svg>'+
+            '<span class="n"><b>'+esc(g.title)+'</b><i>'+esc(sub)+'</i></span>'+
+            '<span class="v">'+score+'</span>'+
+          '</div>';
+  }
+  document.getElementById('statBody').innerHTML = html
+    ? '<div class="slist">'+html+'</div>'
+    : '<div class="slist"><p class="empty">Пока пусто.<br>Сыграйте партию — здесь появится счёт по каждой игре.</p></div>';
+  document.getElementById('statSub').textContent = total
+    ? ('Всего партий: '+total+' · красные : жёлтые')
+    : 'История партий хранится только на этом устройстве';
+  resetBtn.hidden=!total;
+  resetBtn.textContent='Сбросить статистику';
+  resetArmed=false;
+}
+function plural(n,a,b,c){
+  var n10=n%10, n100=n%100;
+  if(n10===1&&n100!==11) return a;
+  if(n10>=2&&n10<=4&&(n100<10||n100>=20)) return b;
+  return c;
+}
+function openStats(){ renderStats(); backdrop.classList.add('on'); sheetEl.classList.add('on'); }
+function closeStats(){ backdrop.classList.remove('on'); sheetEl.classList.remove('on'); }
+
+/* ---------- имена игроков ---------- */
+/* Одно место на всё приложение: игры читают имена из общей памяти. */
+var whoSheet=document.getElementById('whoSheet');
+var meEl=document.getElementById('nameMe'), friendEl=document.getElementById('nameFriend');
+function saveWho(){ DP.names({me:meEl.value, friend:friendEl.value}); }
+function openWho(){
+  var p=DP.names();
+  meEl.value=p.me; friendEl.value=p.friend;
+  backdrop.classList.add('on'); whoSheet.classList.add('on');
+}
+function closeWho(){
+  saveWho();
+  unType(whoSheet);
+  try{ meEl.blur(); friendEl.blur(); }catch(e){}
+  backdrop.classList.remove('on'); whoSheet.classList.remove('on');
+  renderRecent(); renderPair(); renderTour();
+}
+meEl.addEventListener('input',saveWho);
+friendEl.addEventListener('input',saveWho);
+[meEl,friendEl].forEach(function(el){
+  el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } });
+});
+document.getElementById('whoBtn').addEventListener('click',openWho);
+document.getElementById('whoClose').addEventListener('click',closeWho);
+
+/* строка для скринридера — та же, что во всех играх */
+function announce(t){
+  var el=document.getElementById('live');
+  if(el) el.textContent=t;
+}
+
+/* ---------- переключатель звука ---------- */
+var sndBtn=document.getElementById('sndBtn');
+var SND_ON="<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M11 5L6.5 9H3v6h3.5L11 19z'/><path d='M15.5 8.8a4.5 4.5 0 0 1 0 6.4'/><path d='M18.5 6a8 8 0 0 1 0 12'/></svg>";
+var SND_OFF="<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M11 5L6.5 9H3v6h3.5L11 19z'/><path d='M16 10l5 5M21 10l-5 5'/></svg>";
+function paintSound(){
+  var on=DP.sound();
+  sndBtn.innerHTML = on ? SND_ON : SND_OFF;
+  sndBtn.classList.toggle('off',!on);
+  sndBtn.setAttribute('aria-pressed',on?'true':'false');
+  sndBtn.setAttribute('aria-label',on?'Звук включён':'Звук выключен');
+}
+sndBtn.addEventListener('click',function(){
+  var on=DP.sound(!DP.sound());
+  FX.forget(); paintSound();
+  announce(on?'Звук включён':'Звук выключен');
+  if(on) FX.play('good');           /* включили — коротко подтверждаем на слух */
+});
+paintSound();
+
+/* ---------- переключатель темы ---------- */
+/* Кнопка показывает тему, которая сейчас на экране: солнце — светлая,
+   месяц — тёмная. Пока игрок её не трогал, тема берётся из настроек
+   телефона и меняется вместе с ними; первое же нажатие фиксирует выбор. */
+var themeBtn=document.getElementById('themeBtn');
+var T_SUN="<svg viewBox='0 0 24 24' aria-hidden='true'><circle cx='12' cy='12' r='4.1'/>"+
+  "<path d='M12 2.6V5M12 19v2.4M21.4 12H19M5 12H2.6M18.6 5.4 17 7M7 17l-1.6 1.6M18.6 18.6 17 17M7 7 5.4 5.4'/></svg>";
+var T_MOON="<svg viewBox='0 0 24 24' aria-hidden='true'>"+
+  "<path d='M20.3 14.6A8.6 8.6 0 0 1 9.4 3.7 8.6 8.6 0 1 0 20.3 14.6z'/></svg>";
+function paintTheme(){
+  var night=DP.dark();
+  themeBtn.innerHTML = night ? T_MOON : T_SUN;
+  themeBtn.setAttribute('aria-label', night ? 'Тёмная тема, включить светлую'
+                                            : 'Светлая тема, включить тёмную');
+}
+themeBtn.addEventListener('click',function(){
+  var night=DP.dark();
+  DP.theme(night?'light':'dark');
+  paintTheme();
+  announce(night?'Светлая тема':'Тёмная тема');
+});
+paintTheme();
+/* внутри Telegram тему может поставить он сам — кнопка должна это отразить */
+document.addEventListener('dp:telegram', paintTheme);
+/* своего выбора ещё нет — идём за настройками телефона, если их поменяли */
+try{
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){
+    if(!DP.theme()) paintTheme();
+  });
+}catch(e){}
+
+document.getElementById('statBtn').addEventListener('click',openStats);
+document.getElementById('statClose').addEventListener('click',closeStats);
+/* одна подложка на все шторки: закрывает ту, что открыта */
+function closeTop(){
+  if(whoSheet.classList.contains('on')) closeWho();
+  else if(pairSheet.classList.contains('on')) closePair();
+  else if(tzSheet.classList.contains('on')) closeSetup();
+  else if(tzEnd.classList.contains('on')) closeEnd();
+  else closeStats();
+}
+backdrop.addEventListener('click',closeTop);
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeTop(); });
+
+/* ---------- поле ввода в шторке ---------- */
+/* Пока в шторке набирают текст, у неё класс typing — она стоит у верхнего
+   края экрана (см. стили). Первая попытка (27.09) поднимала шторку ровно на
+   высоту клавиатуры по visualViewport — на телефоне пользователя это уносило
+   всё за край экрана: высоту клавиатуры iPhone, Telegram и Android считают
+   по-разному. Верхний край от клавиатуры не зависит вовсе. */
+var FIELD='input,textarea';
+function sheetOf(t){ return t && t.closest ? t.closest('.sheet') : null; }
+document.addEventListener('focusin',function(e){
+  var sh=sheetOf(e.target);
+  if(sh && e.target.matches(FIELD)) sh.classList.add('typing');
+});
+document.addEventListener('focusout',function(e){
+  var sh=sheetOf(e.target);
+  if(!sh) return;
+  /* Не сразу: нажатие на кнопку шторки должно попасть туда, куда целились, а
+     переход к соседнему полю — не дёргать шторку вниз и обратно. */
+  setTimeout(function(){
+    var a=document.activeElement;
+    if(a && sh.contains(a) && a.matches(FIELD)) return;
+    sh.classList.remove('typing');
+    if(window.scrollY) window.scrollTo(0,0);      /* iPhone мог сдвинуть страницу, пока была клавиатура */
+  },200);
+});
+/* шторку закрыли посреди набора — поле отпускаем, клавиатура уходит */
+function unType(sh){
+  var a=document.activeElement;
+  if(a && sh.contains(a)) try{ a.blur(); }catch(e){}
+  sh.classList.remove('typing');
+}
+resetBtn.addEventListener('click',function(){
+  if(!resetArmed){ resetArmed=true; resetBtn.textContent='Точно сбросить?'; return; }
+  DP.clear(); renderStats(); renderRecent(); renderPair();
+});
+
+renderHero();
+renderPair();
+renderTour();
+renderRecent();
+renderBento();
+/* вернулись из последней игры турнира — сразу итог */
+(function(){
+  var m=/[?&]tour=(\d+)/.exec(location.search), t=TOUR.read();
+  if(m && t && t.id===+m[1] && TOUR.over(t)) setTimeout(openEnd,350);
+})();
+})();
+</script>
+</body>
+</html>

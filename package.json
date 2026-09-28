@@ -1,0 +1,9 @@
+{
+  "name": "dvoeplay",
+  "private": true,
+  "type": "module",
+  "description": "dvoeplay — игры для двоих",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  }
+}
