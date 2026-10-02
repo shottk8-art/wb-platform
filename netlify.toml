@@ -1,9 +1,17 @@
-# Сайт — статические файлы из public, плюс одна серверная функция для игры по сети.
-# Сборка не нужна: Netlify только поставит зависимости и опубликует.
-
 [build]
-  publish = "public"
-  functions = "netlify/functions"
+  publish = "."
+  command = "echo 'Статический сайт, сборка не требуется'"
 
-[functions]
-  node_bundler = "esbuild"
+# Красивые ссылки на витрину магазина: /s/my-shop отдаёт index.html,
+# который сам разбирает slug из location.pathname (см. index.html).
+[[redirects]]
+  from = "/s/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
