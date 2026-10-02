@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель продавца WB</title>
+<meta name="description" content="Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.">
+
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/assets/icons/icon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1f2a44">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Панель продавца WB">
+<meta property="og:title" content="Панель продавца Wildberries">
+<meta property="og:description" content="Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.">
+<meta property="og:image" content="https://wb-platform.netlify.app/assets/icons/og-banner.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://wb-platform.netlify.app/">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Панель продавца Wildberries">
+<meta name="twitter:description" content="Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.">
+<meta name="twitter:image" content="https://wb-platform.netlify.app/assets/icons/og-banner.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-external" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M9 5H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-trend-up" viewBox="0 0 24 24"><path d="M4 16 14 6M14 6H8M14 6v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-trend-down" viewBox="0 0 24 24"><path d="M4 8l10 10M14 18H8M14 18v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<!-- ===================== ЭКРАН ВХОДА (без ?shop=) ===================== -->
+<div id="authScreen" class="auth-shell" hidden>
+  <div class="card auth-card">
+    <div class="brandmark" style="margin:0 auto;">WB</div>
+    <h1>Панель продавца Wildberries</h1>
+    <p>Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке.</p>
+    <div id="telegramLoginBox" style="display:flex; justify-content:center; margin:16px 0;">
+      <script async src="https://telegram.org/js/telegram-widget.js?22"
+        data-telegram-login="wb_platformbot"
+        data-size="large"
+        data-radius="8"
+        data-onauth="onTelegramAuth(user)"></script>
+    </div>
+    <div id="authMsg" class="auth-msg"></div>
+
+    <div class="divider-or">или</div>
+    <label for="shopSlugInput">Открыть витрину магазина по ссылке</label>
+    <div class="shop-lookup">
+      <input type="text" id="shopSlugInput" placeholder="slug-магазина">
+      <button class="ghost" id="openShopBtn">Открыть <svg class="icon"><use href="#icon-arrow-right"/></svg></button>
+    </div>
+  </div>
+  <div class="dev-credit">Разработано · <a href="https://t.me/karlshott" target="_blank" rel="noopener">@karlshott</a></div>
+</div>
+
+<!-- ===================== ПУБЛИЧНАЯ ВИТРИНА (?shop=slug) ===================== -->
+<div id="publicScreen" hidden>
+  <header class="topnav">
+    <div class="wrap">
+      <div class="brandline">
+        <div class="brandmark">WB</div>
+        <div>
+          <div class="brand-title" id="shopTitle">Магазин</div>
+          <span class="badge">Публичная витрина · только просмотр</span>
+        </div>
+      </div>
+      <div class="nav-right"><a href="/index.html" style="display:inline-flex; align-items:center; gap:4px;">Свой кабинет <svg class="icon icon-sm"><use href="#icon-arrow-right"/></svg></a></div>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
+    <div class="section">
+      <div class="period-bar">
+        <select id="periodSelect"></select>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="kpi-row" id="kpiRow"></div>
+    </section>
+
+    <section class="section">
+      <div class="grid-2">
+        <div>
+          <div class="section-head"><h2>Структура расходов</h2><span class="hint">руб. за период</span></div>
+          <div class="card">
+            <div class="exp-body">
+              <div class="exp-chart"><canvas id="expChart"></canvas></div>
+              <div id="expList"></div>
+            </div>
+            <div class="exp-total-row"><span>Итого расходов</span><span class="mono" id="expTotal">—</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
+          <div class="card">
+            <div class="skubar"><canvas id="skuChart"></canvas></div>
+            <div class="tablewrap">
+              <table class="sku">
+                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num">Прибыль, ₽</th></tr></thead>
+                <tbody id="skuBody"></tbody>
+                <tfoot id="skuFoot"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="note">
+      Данные предоставлены владельцем магазина в режиме «только чтение».<br>
+      Разработано · <a href="https://t.me/karlshott" target="_blank" rel="noopener">@karlshott</a>
+    </footer>
+  </main>
+</div>
+
+<div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script src="/assets/config.js"></script>
+<script src="/assets/supabaseClient.js"></script>
+<script src="/assets/auth.js"></script>
+<script src="/assets/dashboard.js"></script>
+<script>
+(function () {
+  // /s/<slug> доходит до браузера как есть (Netlify рерайтит на сервере,
+  // адресная строка и location.search этого не видят) — слаг берём из
+  // пути; ?shop=<slug> (кнопка "Открыть витрину") остаётся как запасной вариант.
+  const params = new URLSearchParams(location.search);
+  const pathMatch = location.pathname.match(/^\/s\/([^/]+)/);
+  const slug = (pathMatch && decodeURIComponent(pathMatch[1])) || params.get("shop");
+
+  const loading = document.getElementById("loadingScreen");
+  const authScreen = document.getElementById("authScreen");
+  const publicScreen = document.getElementById("publicScreen");
+
+  document.getElementById("openShopBtn").addEventListener("click", () => {
+    const v = document.getElementById("shopSlugInput").value.trim();
+    if (v) location.href = "/index.html?shop=" + encodeURIComponent(v);
+  });
+
+  window.onTelegramAuth = async (tgUser) => {
+    const msg = document.getElementById("authMsg");
+    msg.textContent = "Входим через Telegram…"; msg.className = "auth-msg";
+    try {
+      await window.WBAuth.signInWithTelegram(tgUser);
+      location.href = "/app.html";
+    } catch (err) {
+      msg.textContent = "Не получилось войти: " + err.message;
+      msg.className = "auth-msg err";
+    }
+  };
+
+  async function initPublic(slug) {
+    const { data: shop, error } = await window.supabaseClient
+      .from("shops").select("*").eq("slug", slug).eq("share_enabled", true).maybeSingle();
+    loading.hidden = true;
+    if (error || !shop) {
+      authScreen.hidden = false;
+      document.getElementById("authMsg").textContent = "Магазин не найден или ссылка отключена владельцем.";
+      document.getElementById("authMsg").className = "auth-msg err";
+      return;
+    }
+    publicScreen.hidden = false;
+    document.getElementById("shopTitle").textContent = shop.name;
+
+    const periods = await window.WBDashboard.loadPeriods(shop.id);
+    const select = document.getElementById("periodSelect");
+    if (!periods.length) {
+      select.innerHTML = `<option>Нет данных</option>`;
+      return;
+    }
+    select.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
+
+    async function renderPeriod() {
+      const [year, month] = select.value.split("-").map(Number);
+      const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
+      const derived = window.WBDashboard.computeDerived(report, skus, costMap, shop.tax_rate);
+
+      const prevDate = new Date(year, month - 2, 1);
+      let prevDerived = null;
+      try {
+        const prevData = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1);
+        if (prevData.report) prevDerived = window.WBDashboard.computeDerived(prevData.report, prevData.skus, costMap, shop.tax_rate);
+      } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
+
+      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived);
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
+      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
+    }
+    select.addEventListener("change", renderPeriod);
+    renderPeriod();
+  }
+
+  async function initAuthGate() {
+    const session = await window.WBAuth.getSession();
+    loading.hidden = true;
+    if (session) { location.href = "/app.html"; return; }
+    authScreen.hidden = false;
+  }
+
+  if (slug) initPublic(slug);
+  else initAuthGate();
+})();
+</script>
+</body>
+</html>

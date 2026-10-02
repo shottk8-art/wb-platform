@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="bg" cx="8%" cy="0%" r="120%">
+      <stop offset="0%" stop-color="#33436e"/>
+      <stop offset="46%" stop-color="#1f2a44"/>
+      <stop offset="100%" stop-color="#141b2e"/>
+    </radialGradient>
+    <radialGradient id="glow1" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5a8cdc" stop-opacity=".30"/>
+      <stop offset="100%" stop-color="#5a8cdc" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5ac896" stop-opacity=".14"/>
+      <stop offset="100%" stop-color="#5ac896" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a4c78"/>
+      <stop offset="1" stop-color="#1c2743"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1040" cy="0" r="420" fill="url(#glow1)"/>
+  <circle cx="360" cy="700" r="360" fill="url(#glow2)"/>
+
+  <rect x="90" y="225" width="180" height="180" rx="40" fill="url(#mark)"/>
+  <text x="180" y="325" text-anchor="middle" dominant-baseline="central" font-family="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace" font-weight="700" font-size="76" fill="#ffffff" letter-spacing="-2">WB</text>
+
+  <text x="326" y="290" font-family="-apple-system,'SF Pro Display','Segoe UI',Roboto,ui-sans-serif,sans-serif" font-weight="800" font-size="56" fill="#ffffff" letter-spacing="-1">
+    <tspan x="326" dy="0">Панель продавца</tspan>
+    <tspan x="326" dy="64">Wildberries</tspan>
+  </text>
+
+  <text x="326" y="412" font-family="-apple-system,'SF Pro Text','Segoe UI',Roboto,ui-sans-serif,sans-serif" font-weight="500" font-size="26" fill="#b9c3dc">
+    <tspan x="326" dy="0">Загружайте отчёты WB, считайте прибыль по</tspan>
+    <tspan x="326" dy="38">артикулам и делитесь витриной магазина по</tspan>
+    <tspan x="326" dy="38">ссылке</tspan>
+  </text>
+</svg>
