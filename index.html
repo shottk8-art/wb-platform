@@ -142,7 +142,7 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
-<script src="/assets/dashboard.js?v=20261007-ozon-names1"></script>
+<script src="/assets/dashboard.js?v=20261007-complete-periods1"></script>
 <script>
 (function () {
   // /s/<slug> доходит до браузера как есть (Netlify рерайтит на сервере,
@@ -194,7 +194,7 @@
     const periods = [...periodMap.values()].sort((a, b) => b.year - a.year || b.month - a.month);
     const select = document.getElementById("periodSelect");
     if (!periods.length) {
-      select.innerHTML = `<option>Нет данных</option>`;
+      select.innerHTML = `<option>Нет полного комплекта отчётов</option>`;
       return;
     }
     select.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");

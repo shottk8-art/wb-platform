@@ -32,13 +32,7 @@
   }
 
   async function loadPeriods(shopId, marketplace) {
-    const query = sb()
-      .from("monthly_reports")
-      .select("year,month")
-      .eq("shop_id", shopId)
-      .order("year", { ascending: false })
-      .order("month", { ascending: false });
-    const { data, error } = await withMarketplace(query, marketplace);
+    const { data, error } = await sb().rpc("get_complete_periods", { p_shop_id: shopId, p_marketplace: marketplace });
     if (error) throw error;
     return data || [];
   }

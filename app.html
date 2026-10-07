@@ -384,7 +384,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon-fix1"></script>
 <script src="/assets/upload.js?v=20261007-shared-costs1"></script>
-<script src="/assets/dashboard.js?v=20261007-ozon-names1"></script>
+<script src="/assets/dashboard.js?v=20261007-complete-periods1"></script>
 <script>
 (function () {
   let shop = null;
@@ -593,7 +593,7 @@
     periods = [...unique.values()].sort((a, b) => b.year - a.year || b.month - a.month);
     const sel = document.getElementById("periodSelect");
     if (!periods.length) {
-      sel.innerHTML = `<option value="">Загрузите отчёт, чтобы увидеть периоды</option>`;
+      sel.innerHTML = `<option value="">Загрузите все обязательные отчёты</option>`;
       return;
     }
     sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
