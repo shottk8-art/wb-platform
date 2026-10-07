@@ -23,17 +23,18 @@
   <circle cx="1040" cy="0" r="420" fill="url(#glow1)"/>
   <circle cx="360" cy="700" r="360" fill="url(#glow2)"/>
 
-  <rect x="90" y="225" width="180" height="180" rx="40" fill="url(#mark)"/>
-  <text x="180" y="325" text-anchor="middle" dominant-baseline="central" font-family="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace" font-weight="700" font-size="76" fill="#ffffff" letter-spacing="-2">WB</text>
+  <rect x="90" y="225" width="180" height="180" rx="42" fill="#1d1d1f"/>
+  <rect x="128" y="318" width="25" height="50" rx="12.5" fill="#ffffff"/>
+  <rect x="168" y="290" width="25" height="78" rx="12.5" fill="#ffffff"/>
+  <rect x="208" y="262" width="25" height="106" rx="12.5" fill="#0a84ff"/>
 
   <text x="326" y="290" font-family="-apple-system,'SF Pro Display','Segoe UI',Roboto,ui-sans-serif,sans-serif" font-weight="800" font-size="56" fill="#ffffff" letter-spacing="-1">
     <tspan x="326" dy="0">Панель продавца</tspan>
-    <tspan x="326" dy="64">Wildberries</tspan>
+    <tspan x="326" dy="64">WB и Ozon</tspan>
   </text>
 
   <text x="326" y="412" font-family="-apple-system,'SF Pro Text','Segoe UI',Roboto,ui-sans-serif,sans-serif" font-weight="500" font-size="26" fill="#b9c3dc">
-    <tspan x="326" dy="0">Загружайте отчёты WB, считайте прибыль по</tspan>
-    <tspan x="326" dy="38">артикулам и делитесь витриной магазина по</tspan>
-    <tspan x="326" dy="38">ссылке</tspan>
+    <tspan x="326" dy="0">Экономика маркетплейсов в одном</tspan>
+    <tspan x="326" dy="38">понятном дашборде</tspan>
   </text>
 </svg>

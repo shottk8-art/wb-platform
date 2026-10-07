@@ -77,6 +77,8 @@ header.topnav .wrap{position:relative; display:flex; align-items:center; justify
   display:flex; align-items:center; justify-content:center; color:var(--surface);
   font-family:ui-monospace, "SF Mono", "IBM Plex Mono", Menlo, Consolas, monospace; font-weight:700; font-size:12px; flex-shrink:0;
 }
+.brandmark--logo{overflow:hidden; padding:0; background:transparent;}
+.brandmark--logo img{display:block; width:100%; height:100%;}
 .brand-title{font-size:15px; font-weight:600; letter-spacing:-.005em;}
 .nav-right{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--ink-soft); flex-wrap:wrap; justify-content:flex-end;}
 

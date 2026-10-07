@@ -1,7 +1,7 @@
 {
-  "name": "Панель продавца Wildberries",
-  "short_name": "WB Панель",
-  "description": "Загружайте отчёты WB, считайте прибыль по артикулам и делитесь витриной магазина по ссылке",
+  "name": "Панель продавца — WB и Ozon",
+  "short_name": "Панель продавца",
+  "description": "Экономика Wildberries и Ozon в одном понятном дашборде",
   "start_url": "/app.html",
   "display": "standalone",
   "background_color": "#f3f2ee",
