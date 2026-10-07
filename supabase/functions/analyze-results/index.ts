@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST", headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: Deno.env.get("OPENAI_MODEL") || "gpt-6-astra", store: false,
+        model: Deno.env.get("OPENAI_MODEL") || "gpt-5.6-terra", store: false,
         instructions: "Ты финансовый аналитик продавца на маркетплейсах. Отвечай по-русски, кратко и конкретно. Используй только переданные цифры, не выдумывай причины и данные. Сравнивай с прошлым месяцем только когда previous не null. net_profit уже включает себестоимость, налог, рекламу и ручные расходы. Предлагай действия, которые можно проверить по данным.",
         input: JSON.stringify({ period: { year, month }, marketplace: scope, current, previous, top_products: topProducts }),
         text: { format: { type: "json_schema", name: "seller_analysis", strict: true, schema: {
@@ -90,7 +90,15 @@ Deno.serve(async (req) => {
         } } },
       }),
     });
-    if (!aiResponse.ok) { console.error("OpenAI error", aiResponse.status, await aiResponse.text()); return json({ error: "Не удалось выполнить AI-анализ. Попробуйте позже" }, 502); }
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("OpenAI error", aiResponse.status, errorText);
+      let message = "Не удалось выполнить AI-анализ. Попробуйте позже";
+      if (aiResponse.status === 401) message = "Ключ OpenAI недействителен. Проверьте OPENAI_API_KEY";
+      if (aiResponse.status === 429 && /quota|billing|credits/i.test(errorText)) message = "Для OpenAI API нужно пополнить баланс в разделе Billing";
+      if (aiResponse.status === 404 || /model.*(not found|does not exist)/i.test(errorText)) message = "Модель AI недоступна для этого проекта OpenAI";
+      return json({ error: message }, 502);
+    }
     const responseData = await aiResponse.json();
     const outputText = responseData.output?.flatMap((item: { content?: { type?: string; text?: string }[] }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text;
     if (!outputText) return json({ error: "AI не вернул результат анализа" }, 502);
