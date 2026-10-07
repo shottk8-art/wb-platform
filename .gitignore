@@ -5,3 +5,4 @@ supabase/.temp/
 
 # Local Netlify folder
 .netlify
+.impeccable/review/
