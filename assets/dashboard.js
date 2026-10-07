@@ -6,9 +6,11 @@
   const fmtMoney = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
   const fmtQty = new Intl.NumberFormat("ru-RU");
   const fmtCompact = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+  const fmtShort = new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 });
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
   let charts = { pie: null, bar: null, trend: null };
+  let skuView = { abc: "all", query: "", sort: "qty" };
 
   function withMarketplace(query, marketplace) {
     return marketplace ? query.eq("marketplace", marketplace) : query;
@@ -219,6 +221,7 @@
   }
 
   function renderExpenses(listEl, totalEl, canvas, d, marketplace) {
+    const palette = ["#1d1d1f", "#0071e3", "#34a853", "#7c66dc", "#f59e0b", "#e85d4a", "#64748b", "#0891b2", "#d97706", "#4f46e5", "#be3b69", "#16a085", "#8b5cf6"];
     const items = [
       [marketplace === "all" ? "Комиссии маркетплейсов" : marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
@@ -234,39 +237,54 @@
       ["Налог", d.tax],
       ["Себестоимость товара", d.cogs],
     ];
-    const total = items.reduce((s, it) => s + it[1], 0);
-    const maxVal = Math.max(...items.map((it) => Math.abs(it[1])), 1);
+    const total = items.reduce((s, it) => s + Math.abs(it[1]), 0);
+    const visibleItems = items.map(([label, value], index) => ({ label, value, color: palette[index % palette.length] }))
+      .filter((item) => Math.abs(item.value) > 0.005)
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+    const salesShare = (d.rep.sales_amount || 0) > 0 ? (total / d.rep.sales_amount) * 100 : null;
+    const totalText = `${fmtMoney.format(Math.round(total))} ₽`;
 
-    listEl.innerHTML = items.map(([label, val]) => {
-      const pct = Math.max(2, Math.round((Math.abs(val) / maxVal) * 100));
+    const heroTotal = document.getElementById("expHeroTotal");
+    const shareEl = document.getElementById("expSalesShare");
+    const centerValue = document.getElementById("expCenterValue");
+    if (heroTotal) heroTotal.textContent = totalText;
+    if (shareEl) shareEl.textContent = salesShare == null ? "—" : `${salesShare.toFixed(1)}%`;
+    if (centerValue) centerValue.textContent = fmtShort.format(Math.round(total));
+
+    listEl.innerHTML = visibleItems.length ? visibleItems.map(({ label, value, color }) => {
+      const pct = total > 0 ? Math.abs(value / total) * 100 : 0;
       return `
         <div class="exp-row">
-          <div class="exp-name">${escapeHtml(label)}</div>
-          <div class="exp-track"><div class="exp-fill" style="width:${pct}%"></div></div>
-          <div class="exp-val">${fmtMoney.format(Math.round(val))}</div>
+          <div class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></div>
+          <div class="exp-track"><div class="exp-fill" style="--expense-color:${color};--expense-width:${Math.max(2, pct).toFixed(1)}%"></div></div>
+          <div class="exp-meta"><strong>${fmtMoney.format(Math.round(value))} ₽</strong><span>${pct.toFixed(1)}%</span></div>
         </div>`;
-    }).join("");
-    totalEl.textContent = fmtMoney.format(Math.round(total)) + " ₽";
+    }).join("") : `<div class="analytics-empty">Расходов за этот период пока нет</div>`;
+    totalEl.textContent = totalText;
 
     if (charts.pie) charts.pie.destroy();
-    const nonZero = items.filter((it) => it[1] > 0);
     charts.pie = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels: nonZero.map((i) => i[0]),
+        labels: visibleItems.map((i) => i.label),
         datasets: [{
-          data: nonZero.map((i) => i[1]),
-          backgroundColor: ["#1f2a44","#2a78d6","#2e7d6b","#7a6fd1","#d98c3d","#c2554a","#8b8fa3","#4f6d3a","#b08a2e","#5b9be5"],
+          data: visibleItems.map((i) => Math.abs(i.value)),
+          backgroundColor: visibleItems.map((i) => i.color),
           borderColor: "var(--surface)",
-          borderWidth: 2,
+          borderWidth: 3,
+          hoverOffset: 5,
+          borderRadius: 4,
         }],
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 760, easing: "easeOutQuart" },
         plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 }, color: getComputedStyle(document.body).getPropertyValue("--ink-soft") } },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽` } },
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0}%` } },
         },
-        cutout: "62%",
+        cutout: "72%",
       },
     });
   }
@@ -346,17 +364,49 @@
   function renderSkuTable(tbody, tfoot, hint, canvas, d) {
     const counts = { A: 0, B: 0, C: 0 };
     d.skuRows.forEach((s) => { counts[s.abc] = (counts[s.abc] || 0) + 1; });
+    const search = document.getElementById("skuSearch");
+    const sort = document.getElementById("skuSort");
+    const filters = document.getElementById("skuAbcFilters");
+    if (search) {
+      search.value = skuView.query;
+      search.oninput = () => { skuView.query = search.value; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+    }
+    if (sort) {
+      sort.value = skuView.sort;
+      sort.onchange = () => { skuView.sort = sort.value; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+    }
+    if (filters) {
+      filters.querySelectorAll("[data-abc]").forEach((button) => {
+        const active = button.dataset.abc === skuView.abc;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+        button.onclick = () => { skuView.abc = button.dataset.abc; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+      });
+    }
+
+    const query = skuView.query.trim().toLowerCase();
+    const rows = d.skuRows.filter((row) => {
+      const matchesAbc = skuView.abc === "all" || row.abc === skuView.abc;
+      const matchesQuery = !query || `${row.article} ${row.name || ""}`.toLowerCase().includes(query);
+      return matchesAbc && matchesQuery;
+    }).sort((a, b) => {
+      if (skuView.sort === "revenue") return b.revenue - a.revenue;
+      if (skuView.sort === "profit") return b.profit - a.profit;
+      return b.bought_qty - a.bought_qty;
+    });
+
     hint.textContent = d.skuRows.length
-      ? `${d.skuRows.length} ${pluralArt(d.skuRows.length)} · A ${counts.A} · B ${counts.B} · C ${counts.C}`
+      ? `${rows.length === d.skuRows.length ? d.skuRows.length : `${rows.length} из ${d.skuRows.length}`} ${pluralArt(d.skuRows.length)} · A ${counts.A} · B ${counts.B} · C ${counts.C}`
       : "";
     const hasCost = d.skuRows.some((s) => s.cost_price > 0);
 
-    if (!d.skuRows.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">Нет данных по артикулам за выбранный период</td></tr>`;
+    if (!rows.length) {
+      const message = d.skuRows.length ? "По выбранному фильтру товары не найдены" : "Нет данных по артикулам за выбранный период";
+      tbody.innerHTML = `<tr><td colspan="5" class="empty">${message}</td></tr>`;
       tfoot.innerHTML = "";
     } else {
-      const maxQty = Math.max(...d.skuRows.map((s) => s.bought_qty), 1);
-      tbody.innerHTML = d.skuRows.map((s) => {
+      const maxQty = Math.max(...rows.map((s) => s.bought_qty), 1);
+      tbody.innerHTML = rows.map((s, index) => {
         const qtyPct = Math.max(3, Math.round((s.bought_qty / maxQty) * 100));
         const profitClass = s.profit >= 0 ? "profit-pos" : "profit-neg";
         const costCell = hasCost || s.cost_price > 0
@@ -364,7 +414,7 @@
           : `<span class="cost-warn">не заполнено</span>`;
         const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
         return `
-          <tr>
+          <tr style="--row-index:${Math.min(index, 12)}">
             <td>${abcBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
             <td class="num"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div></td>
             <td class="num mono">${fmtMoney.format(Math.round(s.revenue))}</td>
@@ -373,7 +423,7 @@
           </tr>`;
       }).join("");
 
-      const tot = d.skuRows.reduce((a, s) => ({
+      const tot = rows.reduce((a, s) => ({
         qty: a.qty + s.bought_qty, rev: a.rev + s.revenue, cost: a.cost + s.total_cost, profit: a.profit + s.profit,
       }), { qty: 0, rev: 0, cost: 0, profit: 0 });
       tfoot.innerHTML = `
@@ -387,7 +437,7 @@
     }
 
     if (charts.bar) charts.bar.destroy();
-    const top = d.skuRows.slice(0, 10);
+    const top = rows.slice(0, 10);
     const abcColors = {
       A: getComputedStyle(document.body).getPropertyValue("--good").trim(),
       B: getComputedStyle(document.body).getPropertyValue("--accent").trim(),
@@ -405,6 +455,9 @@
       },
       options: {
         indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 680, easing: "easeOutQuart" },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => ` ${fmtQty.format(ctx.parsed.x)} шт. · группа ${top[ctx.dataIndex].abc}` } },
