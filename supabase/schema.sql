@@ -35,6 +35,7 @@ create index if not exists shops_marketplace_idx on shops(owner_id, marketplace)
 create table if not exists monthly_reports (
   id              uuid primary key default gen_random_uuid(),
   shop_id         uuid not null references shops(id) on delete cascade,
+  marketplace     text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
   year            int not null,
   month           int not null check (month between 1 and 12),
   sales_amount    numeric not null default 0,   -- Сумма продаж по розничным ценам
@@ -52,7 +53,7 @@ create table if not exists monthly_reports (
   ads_spend       numeric not null default 0,   -- Расход на рекламу с баланса — уменьшает прибыль
   ads_promo_spend numeric not null default 0,   -- Расход промобонусами — справочно, прибыль не уменьшает
   updated_at      timestamptz not null default now(),
-  unique (shop_id, year, month)
+  unique (shop_id, marketplace, year, month)
 );
 
 create index if not exists monthly_reports_shop_idx on monthly_reports(shop_id, year, month);
@@ -63,6 +64,7 @@ create index if not exists monthly_reports_shop_idx on monthly_reports(shop_id, 
 create table if not exists sku_sales (
   id          uuid primary key default gen_random_uuid(),
   shop_id     uuid not null references shops(id) on delete cascade,
+  marketplace text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
   year        int not null,
   month       int not null check (month between 1 and 12),
   article     text not null,   -- Артикул продавца
@@ -70,7 +72,7 @@ create table if not exists sku_sales (
   bought_qty  int  not null default 0,
   revenue     numeric not null default 0,  -- К перечислению за товар (по артикулу)
   updated_at  timestamptz not null default now(),
-  unique (shop_id, year, month, article)
+  unique (shop_id, marketplace, year, month, article)
 );
 
 create index if not exists sku_sales_shop_idx on sku_sales(shop_id, year, month);
@@ -81,11 +83,12 @@ create index if not exists sku_sales_shop_idx on sku_sales(shop_id, year, month)
 create table if not exists sku_costs (
   id          uuid primary key default gen_random_uuid(),
   shop_id     uuid not null references shops(id) on delete cascade,
+  marketplace text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
   article     text not null,
   name        text not null default '',
   cost_price  numeric not null default 0,
   updated_at  timestamptz not null default now(),
-  unique (shop_id, article)
+  unique (shop_id, marketplace, article)
 );
 
 create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
@@ -99,7 +102,8 @@ create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
 create table if not exists uploads (
   id         uuid primary key default gen_random_uuid(),
   shop_id    uuid not null references shops(id) on delete cascade,
-  kind       text not null check (kind in ('summary','sales','costs','ads')),
+  marketplace text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
+  kind       text not null check (kind in ('summary','sales','costs','ads','ozon_accruals')),
   filename   text not null,
   periods    jsonb,
   year       int,

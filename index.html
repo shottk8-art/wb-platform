@@ -30,7 +30,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/styles.css?v=20261007-shop-markets1">
 </head>
 <body>
 
@@ -135,7 +135,7 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
-<script src="/assets/dashboard.js?v=20261007-ozon1"></script>
+<script src="/assets/dashboard.js?v=20261007-shop-markets1"></script>
 <script>
 (function () {
   // /s/<slug> доходит до браузера как есть (Netlify рерайтит на сервере,
@@ -181,7 +181,10 @@
     publicScreen.hidden = false;
     document.getElementById("shopTitle").textContent = shop.name;
 
-    const periods = await window.WBDashboard.loadPeriods(shop.id);
+    const periodLists = await Promise.all(["wildberries", "ozon"].map((marketplace) => window.WBDashboard.loadPeriods(shop.id, marketplace)));
+    const periodMap = new Map();
+    periodLists.flat().forEach((period) => periodMap.set(`${period.year}-${period.month}`, period));
+    const periods = [...periodMap.values()].sort((a, b) => b.year - a.year || b.month - a.month);
     const select = document.getElementById("periodSelect");
     if (!periods.length) {
       select.innerHTML = `<option>Нет данных</option>`;
@@ -191,18 +194,25 @@
 
     async function renderPeriod() {
       const [year, month] = select.value.split("-").map(Number);
-      const { report, skus, costMap } = await window.WBDashboard.loadPeriodData(shop.id, year, month);
-      const derived = window.WBDashboard.computeDerived(report, skus, costMap, shop.tax_rate);
+      const entries = await Promise.all(["wildberries", "ozon"].map(async (marketplace) => {
+        const data = await window.WBDashboard.loadPeriodData(shop.id, year, month, marketplace);
+        return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } };
+      }));
+      const derived = window.WBDashboard.combineDerived(entries);
 
       const prevDate = new Date(year, month - 2, 1);
       let prevDerived = null;
       try {
-        const prevData = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1);
-        if (prevData.report) prevDerived = window.WBDashboard.computeDerived(prevData.report, prevData.skus, costMap, shop.tax_rate);
+        const previous = await Promise.all(["wildberries", "ozon"].map(async (marketplace) => {
+          const data = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
+          return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } } : null;
+        }));
+        const available = previous.filter(Boolean);
+        if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
       } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
-      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, shop.marketplace);
-      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, shop.marketplace);
+      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, "all");
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, "all");
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
     }
     select.addEventListener("change", renderPeriod);

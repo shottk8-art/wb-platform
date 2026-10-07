@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261007-market-filter2">
+<link rel="stylesheet" href="/assets/styles.css?v=20261007-shop-markets1">
 </head>
 <body>
 
@@ -98,14 +98,9 @@
   <div class="modal-backdrop" id="newShopModal" hidden>
     <div class="modal-card compact-modal">
       <h3>Новый магазин</h3>
-      <p class="hint">Выберите площадку — отчёты и показатели разных маркетплейсов не будут смешиваться.</p>
+      <p class="hint">Магазин объединяет Wildberries и Ozon. Площадки подключаются загрузкой соответствующих отчётов.</p>
       <label for="newShopName">Название магазина</label>
       <input id="newShopName" type="text" placeholder="Например, Основной магазин">
-      <label for="newShopMarketplace">Маркетплейс</label>
-      <select id="newShopMarketplace">
-        <option value="wildberries">Wildberries</option>
-        <option value="ozon">Ozon</option>
-      </select>
       <div class="modal-actions">
         <button class="ghost small" id="newShopCancelBtn">Отмена</button>
         <button class="primary" id="newShopCreateBtn">Создать магазин</button>
@@ -186,7 +181,7 @@
       <div class="report-market-switch">
         <div>
           <strong>Выберите маркетплейс</strong>
-          <span>Отчёт загрузится в магазин, выбранный слева</span>
+          <span>Обе площадки подключаются к магазину, выбранному слева</span>
         </div>
         <div class="segmented-control" id="reportMarketplace" aria-label="Маркетплейс для загрузки отчётов">
           <button type="button" data-marketplace="wildberries">Wildberries</button>
@@ -250,7 +245,7 @@
       <div class="card">
         <div class="tablewrap">
           <table class="costs">
-            <thead><tr><th>Файл</th><th>Тип</th><th>Период</th><th>Когда</th><th></th></tr></thead>
+            <thead><tr><th>Файл</th><th>Площадка</th><th>Тип</th><th>Период</th><th>Когда</th><th></th></tr></thead>
             <tbody id="uploadsBody"></tbody>
           </table>
         </div>
@@ -341,8 +336,8 @@
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon1"></script>
-<script src="/assets/upload.js?v=20261007-ozon1"></script>
-<script src="/assets/dashboard.js?v=20261007-market-filter1"></script>
+<script src="/assets/upload.js?v=20261007-shop-markets1"></script>
+<script src="/assets/dashboard.js?v=20261007-shop-markets1"></script>
 <script>
 (function () {
   let shop = null;
@@ -350,6 +345,8 @@
   let session = null;
   let activeView = "overview";
   let overviewScope = "wildberries";
+  let reportMarketplace = "wildberries";
+  let dashboardRequest = 0;
 
   const VIEW_META = {
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
@@ -379,7 +376,11 @@
       link.setAttribute("aria-current", selected ? "page" : "false");
     });
     document.getElementById("pageTitle").textContent = meta.title;
-    const market = view === "overview" ? scopeLabel() : shop?.marketplace === "ozon" ? "Ozon" : "Wildberries";
+    const market = view === "overview"
+      ? scopeLabel()
+      : (view === "reports" || view === "costs")
+        ? (reportMarketplace === "ozon" ? "Ozon" : "Wildberries")
+        : "Wildberries и Ozon";
     document.getElementById("pageSubtitle").textContent = `${meta.subtitle} · ${market}`;
     document.getElementById("overviewControls").hidden = !meta.period;
     if (updateHash) history.replaceState(null, "", `#${view}`);
@@ -413,8 +414,7 @@
     const shops = await window.WBAuth.listMyShops();
     const sel = document.getElementById("shopSwitch");
     sel.innerHTML = shops.map((s) => {
-      const market = s.marketplace === "ozon" ? "Ozon" : "WB";
-      return `<option value="${s.id}">${market} · ${escapeHtml(s.name)}</option>`;
+      return `<option value="${s.id}">${escapeHtml(s.name)}</option>`;
     }).join("");
     sel.value = shop.id;
   }
@@ -434,9 +434,8 @@
     }
   }
 
-  async function getOverviewShops() {
-    const shops = await window.WBAuth.listMyShops();
-    return overviewScope === "all" ? shops : shops.filter((item) => item.marketplace === overviewScope);
+  function overviewMarketplaces() {
+    return overviewScope === "all" ? ["wildberries", "ozon"] : [overviewScope];
   }
 
   function escapeHtml(s) {
@@ -444,11 +443,11 @@
   }
 
   function updateShareBox() {
-    const marketplace = shop.marketplace === "ozon" ? "ozon" : "wildberries";
+    const marketplace = reportMarketplace;
     const marketplaceName = marketplace === "ozon" ? "Ozon" : "Wildberries";
     const badge = document.getElementById("marketplaceBadge");
-    badge.textContent = marketplaceName;
-    badge.dataset.marketplace = marketplace;
+    badge.textContent = "WB · Ozon";
+    badge.dataset.marketplace = "all";
     setActiveView(activeView, false);
     document.getElementById("uploadSectionTitle").textContent = `Загрузить отчёты ${marketplaceName}`;
     document.getElementById("wbUploadGrid").hidden = marketplace === "ozon";
@@ -522,8 +521,9 @@
   }
 
   async function refreshPeriods(selectYear, selectMonth) {
-    const targetShops = await getOverviewShops();
-    const lists = await Promise.all(targetShops.map((item) => window.WBDashboard.loadPeriods(item.id)));
+    const request = dashboardRequest;
+    const lists = await Promise.all(overviewMarketplaces().map((marketplace) => window.WBDashboard.loadPeriods(shop.id, marketplace)));
+    if (request !== dashboardRequest) return;
     const unique = new Map();
     lists.flat().forEach((period) => unique.set(`${period.year}-${period.month}`, period));
     periods = [...unique.values()].sort((a, b) => b.year - a.year || b.month - a.month);
@@ -537,8 +537,9 @@
   }
 
   async function renderCurrentPeriod() {
+    const request = ++dashboardRequest;
     const sel = document.getElementById("periodSelect");
-    const targetShops = await getOverviewShops();
+    const marketplaces = overviewMarketplaces();
     const displayMarketplace = overviewScope;
     if (!sel.value) {
       // магазин без единого загруженного периода — явно сбрасываем панель,
@@ -551,10 +552,11 @@
       return;
     }
     const [year, month] = sel.value.split("-").map(Number);
-    const currentEntries = await Promise.all(targetShops.map(async (item) => {
-      const data = await window.WBDashboard.loadPeriodData(item.id, year, month);
-      return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, item.tax_rate), shop: item };
+    const currentEntries = await Promise.all(marketplaces.map(async (marketplace) => {
+      const data = await window.WBDashboard.loadPeriodData(shop.id, year, month, marketplace);
+      return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } };
     }));
+    if (request !== dashboardRequest) return;
     const derived = window.WBDashboard.combineDerived(currentEntries);
 
     // сравнение с предыдущим календарным месяцем (себестоимость и ставку
@@ -562,16 +564,17 @@
     const prevDate = new Date(year, month - 2, 1);
     let prevDerived = null;
     try {
-      const previousEntries = await Promise.all(targetShops.map(async (item) => {
-        const data = await window.WBDashboard.loadPeriodData(item.id, prevDate.getFullYear(), prevDate.getMonth() + 1);
-        return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, item.tax_rate), shop: item } : null;
+      const previousEntries = await Promise.all(marketplaces.map(async (marketplace) => {
+        const data = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
+        return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } } : null;
       }));
       const available = previousEntries.filter(Boolean);
       if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
     } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
     window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, displayMarketplace);
-    const trends = await Promise.all(targetShops.map((item) => window.WBDashboard.loadTrendData(item.id, item.tax_rate)));
+    const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(shop.id, shop.tax_rate, marketplace)));
+    if (request !== dashboardRequest) return;
     const trend = window.WBDashboard.combineTrend(trends);
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), trend);
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace);
@@ -582,7 +585,7 @@
     const uploads = await window.WBUpload.listUploads(shop.id);
     const tbody = document.getElementById("uploadsBody");
     if (!uploads.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">Загрузок пока нет</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Загрузок пока нет</td></tr>`;
       return;
     }
     const kindLabel = { summary: "Сводный отчёт", sales: "Продажи", costs: "Себестоимость", ads: "Реклама", ozon_accruals: "Начисления Ozon" };
@@ -608,6 +611,7 @@
       return `
         <tr data-id="${u.id}">
           <td>${escapeHtml(u.filename)}</td>
+          <td>${u.marketplace === "ozon" ? "Ozon" : "Wildberries"}</td>
           <td>${kindLabel[u.kind] || u.kind}</td>
           <td>${escapeHtml(period)}</td>
           <td class="mono">${when}</td>
@@ -642,7 +646,7 @@
   }
 
   async function refreshCostsTable() {
-    const costs = await window.WBUpload.listCosts(shop.id);
+    const costs = await window.WBUpload.listCosts(shop.id, reportMarketplace);
     const tbody = document.getElementById("costsBody");
     if (!costs.length) {
       tbody.innerHTML = `<tr><td colspan="4" class="empty">Загрузите отчёт «Продажи», чтобы здесь появились артикулы</td></tr>`;
@@ -664,7 +668,7 @@
         const cost = parseFloat(input.value) || 0;
         const name = costs.find((c) => c.article === article)?.name || "";
         try {
-          await window.WBUpload.saveCostPrice(shop.id, article, name, cost);
+          await window.WBUpload.saveCostPrice(shop.id, reportMarketplace, article, name, cost);
           btn.disabled = true;
           toast("Себестоимость сохранена");
           renderCurrentPeriod();
@@ -711,7 +715,8 @@
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
     shop = await window.WBAuth.ensureShop();
-    overviewScope = shop.marketplace === "ozon" ? "ozon" : "wildberries";
+    overviewScope = "wildberries";
+    reportMarketplace = "wildberries";
     await refreshShopSwitch();
     updateShareBox();
     updateScopeButtons();
@@ -757,6 +762,7 @@
     document.querySelectorAll("#overviewScope [data-scope]").forEach((button) => {
       button.addEventListener("click", async () => {
         overviewScope = button.dataset.scope;
+        dashboardRequest++;
         updateScopeButtons();
         await refreshPeriods();
         await renderCurrentPeriod();
@@ -766,19 +772,11 @@
     document.querySelectorAll("#reportMarketplace [data-marketplace]").forEach((button) => {
       button.addEventListener("click", async () => {
         const marketplace = button.dataset.marketplace;
-        const shops = await window.WBAuth.listMyShops();
-        const target = shops.find((item) => item.marketplace === marketplace);
-        if (!target) {
-          toast(`Сначала создайте магазин ${marketplace === "ozon" ? "Ozon" : "Wildberries"}`, true);
-          return;
-        }
-        if (target.id === shop.id) return;
-        shop = target;
+        reportMarketplace = marketplace;
         overviewScope = marketplace;
-        await refreshShopSwitch();
+        dashboardRequest++;
         updateShareBox();
         updateScopeButtons();
-        await refreshMembers();
         await refreshPeriods();
         await renderCurrentPeriod();
         await refreshCostsTable();
@@ -852,7 +850,6 @@
     const closeNewShopModal = () => { newShopModal.hidden = true; };
     document.getElementById("newShopBtn").addEventListener("click", () => {
       newShopName.value = "";
-      document.getElementById("newShopMarketplace").value = "wildberries";
       newShopModal.hidden = false;
       newShopName.focus();
     });
@@ -860,13 +857,13 @@
     newShopModal.addEventListener("click", (e) => { if (e.target === newShopModal) closeNewShopModal(); });
     document.getElementById("newShopCreateBtn").addEventListener("click", async () => {
       const name = newShopName.value.trim();
-      const marketplace = document.getElementById("newShopMarketplace").value;
       if (!name) { newShopName.focus(); return; }
       const btn = document.getElementById("newShopCreateBtn");
       btn.disabled = true;
       try {
-        shop = await window.WBAuth.createShop(name, marketplace);
-        overviewScope = marketplace;
+        shop = await window.WBAuth.createShop(name, "wildberries");
+        overviewScope = "wildberries";
+        reportMarketplace = "wildberries";
         closeNewShopModal();
         await refreshShopSwitch();
         updateShareBox();
@@ -876,7 +873,7 @@
         await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
-        toast(`Магазин ${marketplace === "ozon" ? "Ozon" : "Wildberries"} создан`);
+        toast("Магазин создан");
       } catch (e) {
         toast("Ошибка: " + e.message, true);
       } finally {
@@ -893,7 +890,8 @@
         await window.WBAuth.deleteShop(shop.id);
         const remaining = await window.WBAuth.listMyShops();
         shop = remaining[0];
-        overviewScope = shop.marketplace === "ozon" ? "ozon" : "wildberries";
+        overviewScope = "wildberries";
+        reportMarketplace = "wildberries";
         await refreshShopSwitch();
         updateShareBox();
         updateScopeButtons();
@@ -911,7 +909,8 @@
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {
       const shops = await window.WBAuth.listMyShops();
       shop = shops.find((s) => s.id === e.target.value);
-      overviewScope = shop.marketplace === "ozon" ? "ozon" : "wildberries";
+      overviewScope = "wildberries";
+      reportMarketplace = "wildberries";
       updateShareBox();
       updateScopeButtons();
       await refreshMembers();
@@ -1028,7 +1027,7 @@
       if (!file) return;
       try {
         const rows = await window.WBParse.parseCostsFile(file);
-        const n = await window.WBUpload.importCosts(shop.id, rows, file.name);
+        const n = await window.WBUpload.importCosts(shop.id, reportMarketplace, rows, file.name);
         await refreshCostsTable();
         await renderCurrentPeriod();
         await refreshUploadsLog();

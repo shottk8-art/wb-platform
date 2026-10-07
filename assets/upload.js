@@ -4,9 +4,9 @@
 
   // Записывает загрузку в журнал (assets: не должно ронять основной
   // сценарий загрузки, если по какой-то причине не удалось залогировать).
-  async function logUpload(shopId, kind, filename, extra) {
+  async function logUpload(shopId, marketplace, kind, filename, extra) {
     try {
-      const { error } = await sb().from("uploads").insert({ shop_id: shopId, kind, filename, ...extra });
+      const { error } = await sb().from("uploads").insert({ shop_id: shopId, marketplace, kind, filename, ...extra });
       if (error) console.warn("Не удалось записать в журнал загрузок:", error.message);
     } catch (e) {
       console.warn("Не удалось записать в журнал загрузок:", e.message);
@@ -16,10 +16,10 @@
   async function uploadSummaryReport(shopId, file) {
     const rows = await window.WBParse.parseSummaryReport(file);
     if (!rows.length) throw new Error("В файле не найдено ни одной строки-итога по месяцу.");
-    const payload = rows.map((r) => ({ shop_id: shopId, ...r }));
-    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,year,month" });
+    const payload = rows.map((r) => ({ shop_id: shopId, marketplace: "wildberries", ...r }));
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
     if (error) throw error;
-    await logUpload(shopId, "summary", file.name, {
+    await logUpload(shopId, "wildberries", "summary", file.name, {
       periods: rows.map((r) => ({ year: r.year, month: r.month })),
       row_count: rows.length,
     });
@@ -31,20 +31,20 @@
     if (!skus.length) throw new Error("В файле не найдено ни одной строки по артикулам.");
 
     const salesPayload = skus.map((s) => ({
-      shop_id: shopId, year, month, article: s.article, name: s.name,
+      shop_id: shopId, marketplace: "wildberries", year, month, article: s.article, name: s.name,
       bought_qty: s.bought_qty, revenue: s.revenue,
     }));
-    const { error: e1 } = await sb().from("sku_sales").upsert(salesPayload, { onConflict: "shop_id,year,month,article" });
+    const { error: e1 } = await sb().from("sku_sales").upsert(salesPayload, { onConflict: "shop_id,marketplace,year,month,article" });
     if (e1) throw e1;
 
     // заводим карточку себестоимости для новых артикулов, не трогая уже заполненные
-    const costsPayload = skus.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
+    const costsPayload = skus.map((s) => ({ shop_id: shopId, marketplace: "wildberries", article: s.article, name: s.name, cost_price: 0 }));
     const { error: e2 } = await sb()
       .from("sku_costs")
-      .upsert(costsPayload, { onConflict: "shop_id,article", ignoreDuplicates: true });
+      .upsert(costsPayload, { onConflict: "shop_id,marketplace,article", ignoreDuplicates: true });
     if (e2) throw e2;
 
-    await logUpload(shopId, "sales", file.name, { year, month, row_count: skus.length });
+    await logUpload(shopId, "wildberries", "sales", file.name, { year, month, row_count: skus.length });
     return skus.length;
   }
 
@@ -55,12 +55,12 @@
   async function uploadAdsSpend(shopId, file) {
     const { periods, transactionCount } = await window.WBParse.parseAdsSpendFile(file);
     const payload = periods.map((p) => ({
-      shop_id: shopId, year: p.year, month: p.month,
+      shop_id: shopId, marketplace: "wildberries", year: p.year, month: p.month,
       ads_spend: p.balance, ads_promo_spend: p.promo,
     }));
-    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,year,month" });
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
     if (error) throw error;
-    await logUpload(shopId, "ads", file.name, {
+    await logUpload(shopId, "wildberries", "ads", file.name, {
       periods: periods.map((p) => ({ year: p.year, month: p.month })),
       row_count: transactionCount,
     });
@@ -69,37 +69,37 @@
 
   async function uploadOzonAccruals(shopId, file) {
     const { periods, transactionCount } = await window.WBParse.parseOzonAccruals(file);
-    const reports = periods.map((p) => ({ shop_id: shopId, ...p.report }));
-    const { error: reportError } = await sb().from("monthly_reports").upsert(reports, { onConflict: "shop_id,year,month" });
+    const reports = periods.map((p) => ({ shop_id: shopId, marketplace: "ozon", ...p.report }));
+    const { error: reportError } = await sb().from("monthly_reports").upsert(reports, { onConflict: "shop_id,marketplace,year,month" });
     if (reportError) throw reportError;
 
     const sales = periods.flatMap((p) => p.skus.map((sku) => ({
-      shop_id: shopId, year: p.report.year, month: p.report.month,
+      shop_id: shopId, marketplace: "ozon", year: p.report.year, month: p.report.month,
       article: sku.article, name: sku.name, bought_qty: sku.bought_qty, revenue: sku.revenue,
     })));
     if (sales.length) {
-      const { error: salesError } = await sb().from("sku_sales").upsert(sales, { onConflict: "shop_id,year,month,article" });
+      const { error: salesError } = await sb().from("sku_sales").upsert(sales, { onConflict: "shop_id,marketplace,year,month,article" });
       if (salesError) throw salesError;
-      const costs = sales.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
-      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,article", ignoreDuplicates: true });
+      const costs = sales.map((s) => ({ shop_id: shopId, marketplace: "ozon", article: s.article, name: s.name, cost_price: 0 }));
+      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,marketplace,article", ignoreDuplicates: true });
       if (costsError) throw costsError;
     }
-    await logUpload(shopId, "ozon_accruals", file.name, {
+    await logUpload(shopId, "ozon", "ozon_accruals", file.name, {
       periods: periods.map((p) => ({ year: p.report.year, month: p.report.month })),
       row_count: transactionCount,
     });
     return periods.length;
   }
 
-  async function saveCostPrice(shopId, article, name, cost) {
+  async function saveCostPrice(shopId, marketplace, article, name, cost) {
     const { error } = await sb()
       .from("sku_costs")
-      .upsert({ shop_id: shopId, article, name: name || "", cost_price: cost }, { onConflict: "shop_id,article" });
+      .upsert({ shop_id: shopId, marketplace, article, name: name || "", cost_price: cost }, { onConflict: "shop_id,marketplace,article" });
     if (error) throw error;
   }
 
-  async function listCosts(shopId) {
-    const { data, error } = await sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article");
+  async function listCosts(shopId, marketplace) {
+    const { data, error } = await sb().from("sku_costs").select("*").eq("shop_id", shopId).eq("marketplace", marketplace).order("article");
     if (error) throw error;
     return data || [];
   }
@@ -107,18 +107,19 @@
   // Массовый импорт себестоимости из файла (см. WBParse.parseCostsFile).
   // Название артикула, если в файле его нет, берётся из уже сохранённого —
   // импорт не должен затирать то, что уже подтянулось из отчёта «Продажи».
-  async function importCosts(shopId, rows, filename) {
-    const existing = await listCosts(shopId);
+  async function importCosts(shopId, marketplace, rows, filename) {
+    const existing = await listCosts(shopId, marketplace);
     const nameByArticle = new Map(existing.map((c) => [c.article, c.name]));
     const payload = rows.map((r) => ({
       shop_id: shopId,
+      marketplace,
       article: r.article,
       name: r.name || nameByArticle.get(r.article) || "",
       cost_price: r.cost_price,
     }));
-    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,article" });
+    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,marketplace,article" });
     if (error) throw error;
-    await logUpload(shopId, "costs", filename || "себестоимость.xlsx", {
+    await logUpload(shopId, marketplace, "costs", filename || "себестоимость.xlsx", {
       articles: rows.map((r) => r.article),
       row_count: payload.length,
     });
@@ -137,6 +138,7 @@
   // удаляет строки за период; для себестоимости — обнуляет цену только
   // у затронутых артикулов (сама карточка артикула остаётся).
   async function deleteUpload(shopId, upload) {
+    const marketplace = upload.marketplace || (upload.kind === "ozon_accruals" ? "ozon" : "wildberries");
     if (upload.kind === "summary") {
       const zeroed = {
         sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
@@ -145,23 +147,23 @@
       };
       for (const p of upload.periods || []) {
         const { error } = await sb().from("monthly_reports").update(zeroed)
-          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
         if (error) throw error;
       }
     } else if (upload.kind === "sales") {
       const { error } = await sb().from("sku_sales").delete()
-        .eq("shop_id", shopId).eq("year", upload.year).eq("month", upload.month);
+        .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", upload.year).eq("month", upload.month);
       if (error) throw error;
     } else if (upload.kind === "costs") {
       if (upload.articles && upload.articles.length) {
         const { error } = await sb().from("sku_costs").update({ cost_price: 0 })
-          .eq("shop_id", shopId).in("article", upload.articles);
+          .eq("shop_id", shopId).eq("marketplace", marketplace).in("article", upload.articles);
         if (error) throw error;
       }
     } else if (upload.kind === "ads") {
       for (const p of upload.periods || []) {
         const { error } = await sb().from("monthly_reports").update({ ads_spend: 0, ads_promo_spend: 0 })
-          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
         if (error) throw error;
       }
     } else if (upload.kind === "ozon_accruals") {
@@ -172,10 +174,10 @@
       };
       for (const p of upload.periods || []) {
         const { error: reportError } = await sb().from("monthly_reports").update(zeroed)
-          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
         if (reportError) throw reportError;
         const { error: salesError } = await sb().from("sku_sales").delete()
-          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
         if (salesError) throw salesError;
       }
     }

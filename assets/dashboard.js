@@ -10,32 +10,43 @@
 
   let charts = { pie: null, bar: null, trend: null };
 
-  async function loadPeriods(shopId) {
-    const { data, error } = await sb()
+  function withMarketplace(query, marketplace) {
+    return marketplace ? query.eq("marketplace", marketplace) : query;
+  }
+
+  async function loadPeriods(shopId, marketplace) {
+    const query = sb()
       .from("monthly_reports")
       .select("year,month")
       .eq("shop_id", shopId)
       .order("year", { ascending: false })
       .order("month", { ascending: false });
+    const { data, error } = await withMarketplace(query, marketplace);
     if (error) throw error;
     return data || [];
   }
 
-  async function loadPeriodData(shopId, year, month) {
+  async function loadPeriodData(shopId, year, month, marketplace) {
+    const reportQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month);
+    const salesQuery = sb().from("sku_sales").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month);
+    const costsQuery = sb().from("sku_costs").select("*").eq("shop_id", shopId);
     const [{ data: report }, { data: skus }, { data: costs }] = await Promise.all([
-      sb().from("monthly_reports").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month).maybeSingle(),
-      sb().from("sku_sales").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month),
-      sb().from("sku_costs").select("*").eq("shop_id", shopId),
+      withMarketplace(reportQuery, marketplace).maybeSingle(),
+      withMarketplace(salesQuery, marketplace),
+      withMarketplace(costsQuery, marketplace),
     ]);
     const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
     return { report, skus: skus || [], costMap };
   }
 
-  async function loadTrendData(shopId, taxRate) {
+  async function loadTrendData(shopId, taxRate, marketplace) {
+    const reportsQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).order("year", { ascending: false }).order("month", { ascending: false }).limit(12);
+    const salesQuery = sb().from("sku_sales").select("*").eq("shop_id", shopId);
+    const costsQuery = sb().from("sku_costs").select("*").eq("shop_id", shopId);
     const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }] = await Promise.all([
-      sb().from("monthly_reports").select("*").eq("shop_id", shopId).order("year", { ascending: false }).order("month", { ascending: false }).limit(12),
-      sb().from("sku_sales").select("*").eq("shop_id", shopId),
-      sb().from("sku_costs").select("*").eq("shop_id", shopId),
+      withMarketplace(reportsQuery, marketplace),
+      withMarketplace(salesQuery, marketplace),
+      withMarketplace(costsQuery, marketplace),
     ]);
     if (reportError) throw reportError;
     if (salesError) throw salesError;
