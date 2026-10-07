@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261007-analytics-panels1">
+<link rel="stylesheet" href="/assets/styles.css?v=20261007-ui-audit1">
 </head>
 <body>
 
@@ -199,7 +199,7 @@
         <span>В Ozon Seller откройте «Финансы → Начисления», выберите период и скачайте XLSX. В файле уже есть продажи, возвраты, комиссия, логистика, хранение, реклама и разрез по товарам.</span>
       </div>
       <div class="upload-grid ozon-upload-grid" id="ozonUploadGrid" hidden>
-        <div class="dropzone" id="dzOzonAccruals">
+        <div class="dropzone" id="dzOzonAccruals" role="button" tabindex="0" aria-label="Загрузить отчёт по начислениям Ozon">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Отчёт по начислениям Ozon</div>
           <div class="dz-hint">Можно загрузить любой период. Операции автоматически распределятся по месяцам по дате начисления; FBO и FBS обработаются вместе.</div>
           <a class="dz-link" href="https://seller.ozon.ru/app/finances" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть финансы Ozon Seller <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
@@ -208,14 +208,14 @@
         </div>
       </div>
       <div class="upload-grid" id="wbUploadGrid">
-        <div class="dropzone" id="dzSummary">
+        <div class="dropzone" id="dzSummary" role="button" tabindex="0" aria-label="Загрузить сводный отчёт Wildberries">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Сводный отчёт по продавцу</div>
           <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Загружаются сразу все месяцы, что есть в файле.</div>
           <a class="dz-link" href="https://seller.wildberries.ru/analytics-reports/summary-report" target="_blank" rel="noopener" onclick="event.stopPropagation()">Скачать на Wildberries <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
           <div class="dz-status" id="dzSummaryStatus"></div>
           <input type="file" id="fileSummary" accept=".xlsx,.xls">
         </div>
-        <div class="dropzone" id="dzSales">
+        <div class="dropzone" id="dzSales" role="button" tabindex="0" aria-label="Загрузить отчёт Продажи Wildberries">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Отчёт «Продажи» (по артикулам)</div>
           <div class="dz-period-row" onclick="event.stopPropagation()">
             <select id="salesYear"></select>
@@ -226,7 +226,7 @@
           <div class="dz-status" id="dzSalesStatus"></div>
           <input type="file" id="fileSales" accept=".xlsx,.xls">
         </div>
-        <div class="dropzone" id="dzAds">
+        <div class="dropzone" id="dzAds" role="button" tabindex="0" aria-label="Загрузить историю затрат на рекламу Wildberries">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> История затрат на рекламу</div>
           <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Период файла может быть любым — расход разложится по месяцам сам, по дате списания.</div>
           <a class="dz-link" href="https://cmp.wildberries.ru/campaigns/finances" target="_blank" rel="noopener" onclick="event.stopPropagation()">Скачать на Wildberries <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
@@ -384,7 +384,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon1"></script>
 <script src="/assets/upload.js?v=20261007-manual-expenses1"></script>
-<script src="/assets/dashboard.js?v=20261007-analytics-panels1"></script>
+<script src="/assets/dashboard.js?v=20261007-ui-audit1"></script>
 <script>
 (function () {
   let shop = null;
@@ -746,6 +746,12 @@
     const zone = document.getElementById(zoneId);
     const input = document.getElementById(fileInputId);
     zone.addEventListener("click", () => input.click());
+    zone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        input.click();
+      }
+    });
     input.addEventListener("change", () => { if (input.files[0]) onFile(input.files[0]); });
     ["dragenter", "dragover"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add("drag"); }));
     ["dragleave", "drop"].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove("drag"); }));
