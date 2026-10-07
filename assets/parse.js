@@ -23,9 +23,55 @@
     return isNaN(n) ? 0 : n;
   }
 
-  async function readWorkbook(file) {
+  async function readWorkbook(file, options = {}) {
     const buf = await file.arrayBuffer();
-    return window.XLSX.read(buf, { type: "array", cellDates: false });
+    return window.XLSX.read(buf, { type: "array", cellDates: false, ...options });
+  }
+
+  // Ozon формирует XLSX с текстом в ячейках t="str" и XML-сущностями.
+  // SheetJS 0.18.5 ошибочно повторно декодирует кириллицу как UTF-8.
+  // Эта функция воспроизводит его преобразование, чтобы узнавать как
+  // нормальный, так и повреждённый вариант служебных значений без тяжёлого
+  // повторного разбора XML-файла на сотни мегабайт.
+  function sheetJsLegacyText(text) {
+    let out = "", i = 0;
+    while (i < text.length) {
+      const c = text.charCodeAt(i++);
+      if (c < 128) { out += String.fromCharCode(c); continue; }
+      const d = text.charCodeAt(i++);
+      if (c > 191 && c < 224) {
+        out += String.fromCharCode(((c & 31) << 6) | (d & 63));
+        continue;
+      }
+      const e = text.charCodeAt(i++);
+      if (c < 240) {
+        out += String.fromCharCode(((c & 15) << 12) | ((d & 63) << 6) | (e & 63));
+        continue;
+      }
+      const f = text.charCodeAt(i++);
+      const w = (((c & 7) << 18) | ((d & 63) << 12) | ((e & 63) << 6) | (f & 63)) - 65536;
+      out += String.fromCharCode(0xD800 + ((w >>> 10) & 1023), 0xDC00 + (w & 1023));
+    }
+    return out;
+  }
+
+  function ozonTextEquals(value, expected) {
+    const text = String(value ?? "").trim();
+    return text === expected || text === sheetJsLegacyText(expected);
+  }
+
+  function ozonColIndex(header, expected) {
+    return header.findIndex((cell) => ozonTextEquals(cell, expected));
+  }
+
+  function normalizeOzonText(value, knownValues) {
+    const text = String(value ?? "").trim();
+    return knownValues.find((known) => text === known || text === sheetJsLegacyText(known)) || text;
+  }
+
+  function safeOzonProductName(value) {
+    const text = String(value ?? "").trim();
+    return Array.from(text).some((char) => char.codePointAt(0) > 0xFFFF) ? "" : text;
   }
 
   // ---- «Сводный отчёт по продавцу» -> строки по месяцам ----
@@ -238,18 +284,22 @@
   // произвольный диапазон и одновременно операции FBO и FBS.
   async function parseOzonAccruals(file) {
     const wb = await readWorkbook(file);
-    const sheet = wb.Sheets[wb.SheetNames.find((name) => name.toLowerCase().includes("начислен")) || wb.SheetNames[0]];
+    const sheetName = wb.SheetNames.find((name) => name.toLowerCase().includes("начислен")) || wb.SheetNames[0];
+    const sheet = wb.Sheets[sheetName];
     const aoa = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
-    const headerIdx = detectHeaderRow(aoa, ["Дата начисления", "Группа услуг", "Тип начисления", "Сумма итого"]);
+    const requiredHeaders = ["Дата начисления", "Группа услуг", "Тип начисления", "Сумма итого, руб."];
+    const headerIdx = aoa.slice(0, 6).findIndex((row) => requiredHeaders.every((expected) => (row || []).some((cell) => ozonTextEquals(cell, expected))));
     if (headerIdx === -1) throw new Error("Не удалось распознать Ozon «Отчёт по начислениям». Скачайте исходный XLSX из раздела «Финансы → Начисления».");
     const header = aoa[headerIdx].map((h) => String(h ?? "").trim());
     const i = {
-      date: colIndex(header, "Дата начисления"), group: colIndex(header, "Группа услуг"),
-      type: colIndex(header, "Тип начисления"), article: colIndex(header, "Артикул"),
-      sku: colIndex(header, "SKU"), name: colIndex(header, "Название товара"),
-      qty: colIndex(header, "Количество"), sellerPrice: colIndex(header, "Цена продавца"),
-      total: colIndex(header, "Сумма итого"),
+      date: ozonColIndex(header, "Дата начисления"), group: ozonColIndex(header, "Группа услуг"),
+      type: ozonColIndex(header, "Тип начисления"), article: ozonColIndex(header, "Артикул"),
+      sku: ozonColIndex(header, "SKU"), name: ozonColIndex(header, "Название товара"),
+      qty: ozonColIndex(header, "Количество"), sellerPrice: ozonColIndex(header, "Цена продавца"),
+      total: ozonColIndex(header, "Сумма итого, руб."),
     };
+    const knownGroups = ["Продажи", "Возвраты", "Вознаграждение Ozon", "Продвижение и реклама", "Услуги партнёров", "Компенсации и декомпенсации", "Услуги доставки", "Услуги FBO", "Другие услуги и штрафы", "Прочие начисления"];
+    const knownTypes = ["Выручка", "Возврат выручки"];
     const byMonth = new Map();
     let transactionCount = 0;
     for (let r = headerIdx + 1; r < aoa.length; r++) {
@@ -259,8 +309,8 @@
       const year = date.getFullYear(), month = date.getMonth() + 1, key = `${year}-${month}`;
       if (!byMonth.has(key)) byMonth.set(key, { year, month, totalNet: 0, groups: new Map(), orders: 0, qty: 0, skus: new Map() });
       const period = byMonth.get(key);
-      const group = String(row[i.group] ?? "").trim();
-      const type = String(row[i.type] ?? "").trim();
+      const group = normalizeOzonText(row[i.group], knownGroups);
+      const type = normalizeOzonText(row[i.type], knownTypes);
       const amount = num(row[i.total]);
       period.totalNet += amount;
       period.groups.set(group, (period.groups.get(group) || 0) + amount);
@@ -276,11 +326,11 @@
       if (isSale || isReturn) {
         const article = String(row[i.article] ?? row[i.sku] ?? "").trim();
         if (article) {
-          const sku = period.skus.get(article) || { article, name: String(row[i.name] ?? "").trim(), bought_qty: 0, revenue: 0 };
+          const sku = period.skus.get(article) || { article, name: safeOzonProductName(row[i.name]), bought_qty: 0, revenue: 0 };
           sku.revenue += amount;
           if (type === "Выручка") sku.bought_qty += Math.round(num(row[i.qty]));
           if (type === "Возврат выручки") sku.bought_qty -= Math.round(Math.abs(num(row[i.qty])));
-          if (!sku.name && row[i.name]) sku.name = String(row[i.name]).trim();
+          if (!sku.name && row[i.name]) sku.name = safeOzonProductName(row[i.name]);
           period.skus.set(article, sku);
         }
       }
@@ -291,7 +341,7 @@
       const sales = g("Продажи") + g("Возвраты");
       const commission = Math.max(0, -g("Вознаграждение Ozon"));
       const ads = Math.max(0, -g("Продвижение и реклама"));
-      const partnerAndOther = g("Услуги партнёров") + g("Компенсации и декомпенсации");
+      const partnerAndOther = g("Услуги партнёров") + g("Компенсации и декомпенсации") + g("Прочие начисления");
       return {
         report: {
           year: p.year, month: p.month, sales_amount: sales, orders_amount: p.orders,
