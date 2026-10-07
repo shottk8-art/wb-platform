@@ -12,6 +12,21 @@
   let charts = { pie: null, bar: null, trend: null };
   let skuView = { abc: "all", query: "", sort: "qty" };
 
+  function lastClosedPeriod(referenceDate = new Date()) {
+    const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+    return { year: date.getFullYear(), month: date.getMonth() + 1 };
+  }
+
+  function defaultPeriodValue(periods, referenceDate = new Date()) {
+    if (!periods || !periods.length) return "";
+    const closed = lastClosedPeriod(referenceDate);
+    const closedKey = `${closed.year}-${closed.month}`;
+    if (periods.some((period) => `${period.year}-${period.month}` === closedKey)) return closedKey;
+    const nearestClosed = periods.find((period) => period.year < closed.year || (period.year === closed.year && period.month < closed.month));
+    const selected = nearestClosed || periods[0];
+    return `${selected.year}-${selected.month}`;
+  }
+
   function withMarketplace(query, marketplace) {
     return marketplace ? query.eq("marketplace", marketplace) : query;
   }
@@ -481,5 +496,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod };
+  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
 })();

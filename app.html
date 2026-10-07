@@ -384,7 +384,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon-fix1"></script>
 <script src="/assets/upload.js?v=20261007-manual-expenses1"></script>
-<script src="/assets/dashboard.js?v=20261007-chart-polish1"></script>
+<script src="/assets/dashboard.js?v=20261007-last-closed1"></script>
 <script>
 (function () {
   let shop = null;
@@ -448,13 +448,14 @@
 
   function fillYearMonthSelects(yearSel, monthSel) {
     const now = new Date();
+    const closed = window.WBDashboard.lastClosedPeriod(now);
     const years = [];
     for (let y = now.getFullYear(); y >= now.getFullYear() - 3; y--) years.push(y);
     yearSel.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join("");
     const months = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
     monthSel.innerHTML = months.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
-    yearSel.value = now.getFullYear();
-    monthSel.value = now.getMonth() + 1;
+    yearSel.value = closed.year;
+    monthSel.value = closed.month;
   }
 
   async function refreshShopSwitch() {
@@ -596,7 +597,10 @@
       return;
     }
     sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
-    if (selectYear && selectMonth) sel.value = `${selectYear}-${selectMonth}`;
+    const requested = selectYear && selectMonth ? `${selectYear}-${selectMonth}` : "";
+    sel.value = periods.some((period) => `${period.year}-${period.month}` === requested)
+      ? requested
+      : window.WBDashboard.defaultPeriodValue(periods);
   }
 
   async function renderCurrentPeriod() {
@@ -1107,7 +1111,6 @@
         status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
         const sel = document.getElementById("periodSelect");
         await refreshPeriods();
-        if (periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
         await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
