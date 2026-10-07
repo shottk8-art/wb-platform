@@ -53,7 +53,12 @@
       costsQuery,
     ]);
     const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
-    return { report, skus: skus || [], costMap };
+    const costNameMap = new Map((costs || []).filter((c) => c.name).map((c) => [c.article, c.name]));
+    const namedSkus = (skus || []).map((sku) => ({
+      ...sku,
+      name: sku.name || costNameMap.get(sku.article) || sku.article,
+    }));
+    return { report, skus: namedSkus, costMap };
   }
 
   async function loadTrendData(shopId, taxRate, marketplace) {
