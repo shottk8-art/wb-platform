@@ -2,6 +2,11 @@
 // Используется и в личном кабинете (editable = true), и в публичной
 // витрине магазина (editable = false, без панели загрузки/ввода).
 (function () {
+  if (window.Chart) {
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
+  }
   const sb = () => window.supabaseClient;
   const fmtMoney = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
   const fmtQty = new Intl.NumberFormat("ru-RU");
