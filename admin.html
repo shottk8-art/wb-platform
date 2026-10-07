@@ -88,7 +88,7 @@
       <div class="card">
         <div class="tablewrap">
         <table class="costs">
-          <thead><tr><th>Название</th><th>Владелец</th><th>Участников</th><th>Загрузок</th><th>Последняя загрузка</th><th>Витрина</th></tr></thead>
+          <thead><tr><th>Название</th><th>Площадка</th><th>Владелец</th><th>Участников</th><th>Загрузок</th><th>Последняя загрузка</th><th>Витрина</th></tr></thead>
           <tbody id="shopsBody"></tbody>
         </table>
         </div>
@@ -198,13 +198,14 @@
       return `
       <tr>
         <td>${escapeHtml(s.name)}</td>
+        <td><span class="badge">${s.marketplace === "ozon" ? "Ozon" : "Wildberries"}</span></td>
         <td>${escapeHtml(ownerLabel)}</td>
         <td class="mono">${s.member_count}</td>
         <td class="mono">${s.upload_count}</td>
         <td class="mono">${fmtDate(s.last_upload_at)}</td>
         <td>${s.share_enabled ? `<span class="badge badge--answered">включена</span>` : `<span class="badge badge--read">выключена</span>`}</td>
       </tr>`;
-    }).join("") || `<tr><td colspan="6" class="empty">Пусто</td></tr>`;
+    }).join("") || `<tr><td colspan="7" class="empty">Пусто</td></tr>`;
 
     await refreshQuestions();
 

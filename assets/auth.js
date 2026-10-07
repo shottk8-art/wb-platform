@@ -71,7 +71,7 @@
     const suffix = Math.random().toString(36).slice(2, 6);
     const { data: created, error: createErr } = await sb()
       .from("shops")
-      .insert({ owner_id: session.user.id, name, slug: `${slug}-${suffix}` })
+      .insert({ owner_id: session.user.id, name, slug: `${slug}-${suffix}`, marketplace: "wildberries" })
       .select()
       .single();
     if (createErr) throw createErr;
@@ -136,13 +136,18 @@
     if (error) throw error;
   }
 
-  async function createShop(name) {
+  async function createShop(name, marketplace) {
     const session = await getSession();
     if (!session) throw new Error("Не авторизован");
     const suffix = Math.random().toString(36).slice(2, 6);
     const { data, error } = await sb()
       .from("shops")
-      .insert({ owner_id: session.user.id, name, slug: `${slugify(name)}-${suffix}` })
+      .insert({
+        owner_id: session.user.id,
+        name,
+        slug: `${slugify(name)}-${suffix}`,
+        marketplace: marketplace === "ozon" ? "ozon" : "wildberries",
+      })
       .select()
       .single();
     if (error) throw error;

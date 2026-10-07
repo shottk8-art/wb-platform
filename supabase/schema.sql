@@ -18,12 +18,14 @@ create table if not exists shops (
   owner_id      uuid not null references auth.users(id) on delete cascade,
   name          text not null,
   slug          text not null unique,
+  marketplace   text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
   share_enabled boolean not null default false,
   tax_rate      numeric not null default 0, -- % от суммы продаж, не привязан к месяцу
   created_at    timestamptz not null default now()
 );
 
 create index if not exists shops_owner_idx on shops(owner_id);
+create index if not exists shops_marketplace_idx on shops(owner_id, marketplace);
 
 -- ---------------------------------------------------------------------
 -- 2. СВОДНЫЙ ОТЧЁТ ПО МЕСЯЦАМ (из «Сводного отчёта по продавцу» WB)
@@ -294,6 +296,7 @@ begin
         'id', s.id,
         'name', s.name,
         'slug', s.slug,
+        'marketplace', s.marketplace,
         'owner_id', s.owner_id,
         'share_enabled', s.share_enabled,
         'created_at', s.created_at,

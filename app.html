@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Панель продавца WB — кабинет</title>
+<title>Панель продавца — WB и Ozon</title>
 <meta name="robots" content="noindex">
 
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
@@ -11,7 +11,7 @@
 <link rel="icon" href="/assets/icons/icon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#1f2a44">
+<meta name="theme-color" content="#f5f5f7">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,29 +33,48 @@
   <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.3 9.2a2.7 2.7 0 1 1 3.9 2.4c-.8.4-1.2 1-1.2 1.9v.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="16.6" r="1" fill="currentColor" stroke="none"/></symbol>
   <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5-9 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="3" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="icon-store" viewBox="0 0 24 24"><path d="M4 10v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9M3 10l2-6h14l2 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 10a3 3 0 0 0 5 2 3 3 0 0 0 4 0 3 3 0 0 0 4 0 3 3 0 0 0 5-2M9 20v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6M9 17h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="icon-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.3a3 3 0 0 1 0 5.4M17 14.5a5 5 0 0 1 3.5 4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M19 13.5l1.2 1-.9 2.2-1.6-.1a7 7 0 0 1-1.2 1.2l.1 1.6-2.2.9-1-1.2a7 7 0 0 1-1.8 0l-1 1.2-2.2-.9.1-1.6a7 7 0 0 1-1.2-1.2l-1.6.1-.9-2.2 1.2-1a7 7 0 0 1 0-1.8l-1.2-1 .9-2.2 1.6.1a7 7 0 0 1 1.2-1.2l-.1-1.6 2.2-.9 1 1.2a7 7 0 0 1 1.8 0l1-1.2 2.2.9-.1 1.6a7 7 0 0 1 1.2 1.2l1.6-.1.9 2.2-1.2 1a7 7 0 0 1 0 1.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
 </svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
 
 <div id="appScreen" hidden>
   <header class="topnav">
-    <div class="wrap">
-      <div class="brandline">
-        <div class="brandmark">WB</div>
-        <div>
-          <select id="shopSwitch" style="border:none; background:none; font-weight:600; font-size:15px; padding:0; width:auto; color:var(--ink);"></select>
-        </div>
-        <button class="ghost small" id="newShopBtn" title="Новый магазин"><svg class="icon icon-sm"><use href="#icon-plus"/></svg> Магазин</button>
-        <button class="ghost small" id="deleteShopBtn" title="Удалить текущий магазин"><svg class="icon icon-sm"><use href="#icon-trash"/></svg> Удалить</button>
+    <div class="sidebar-inner">
+      <div class="sidebar-brand">
+        <div class="brandmark">MP</div>
+        <div><strong>Панель продавца</strong><span>WB · Ozon</span></div>
       </div>
-      <div class="nav-right">
+      <div class="shop-context">
+        <span class="context-label">Магазин</span>
+        <select id="shopSwitch"></select>
+        <span class="marketplace-badge" id="marketplaceBadge">Wildberries</span>
+      </div>
+      <nav class="side-menu" aria-label="Основная навигация">
+        <a class="active" href="#secDashboard"><svg class="icon"><use href="#icon-dashboard"/></svg>Обзор</a>
+        <a href="#secUploadForms"><svg class="icon"><use href="#icon-upload"/></svg>Загрузка отчётов</a>
+        <a href="#secUploadsLog"><svg class="icon"><use href="#icon-file"/></svg>Журнал загрузок</a>
+        <a href="#secCosts"><svg class="icon"><use href="#icon-store"/></svg>Себестоимость</a>
+        <a href="#secMembers"><svg class="icon"><use href="#icon-people"/></svg>Участники</a>
+        <a href="#secSettings"><svg class="icon"><use href="#icon-settings"/></svg>Настройки</a>
+      </nav>
+      <div class="sidebar-actions">
+        <button class="sidebar-action" id="newShopBtn"><svg class="icon"><use href="#icon-plus"/></svg>Новый магазин</button>
+        <button class="sidebar-action" id="askQuestionBtn"><svg class="icon"><use href="#icon-help"/></svg>Задать вопрос</button>
+        <button class="sidebar-action" id="adminLink" hidden><svg class="icon"><use href="#icon-settings"/></svg>Админка</button>
+      </div>
+      <div class="sidebar-user">
         <span id="userEmail"></span>
-        <button class="ghost small" id="adminLink" hidden>Админка</button>
-        <button class="ghost small" id="askQuestionBtn"><svg class="icon icon-sm"><use href="#icon-help"/></svg> Задать вопрос</button>
-        <button class="ghost small" id="signOutBtn"><svg class="icon icon-sm"><use href="#icon-logout"/></svg> Выйти</button>
+        <button class="icon-button" id="signOutBtn" title="Выйти"><svg class="icon"><use href="#icon-logout"/></svg></button>
       </div>
     </div>
   </header>
+
+  <button class="mobile-menu-button" id="mobileMenuBtn" aria-label="Открыть меню" aria-expanded="false"><span></span><span></span><span></span></button>
 
   <div class="modal-backdrop" id="questionModal" hidden>
     <div class="modal-card">
@@ -77,9 +96,32 @@
     </div>
   </div>
 
-  <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
+  <div class="modal-backdrop" id="newShopModal" hidden>
+    <div class="modal-card compact-modal">
+      <h3>Новый магазин</h3>
+      <p class="hint">Выберите площадку — отчёты и показатели разных маркетплейсов не будут смешиваться.</p>
+      <label for="newShopName">Название магазина</label>
+      <input id="newShopName" type="text" placeholder="Например, Основной магазин">
+      <label for="newShopMarketplace">Маркетплейс</label>
+      <select id="newShopMarketplace">
+        <option value="wildberries">Wildberries</option>
+        <option value="ozon">Ozon</option>
+      </select>
+      <div class="modal-actions">
+        <button class="ghost small" id="newShopCancelBtn">Отмена</button>
+        <button class="primary" id="newShopCreateBtn">Создать магазин</button>
+      </div>
+    </div>
+  </div>
 
-    <section class="section">
+  <main class="app-main">
+
+    <div class="page-heading" id="secDashboard">
+      <div><h1>Обзор магазина</h1><p id="pageSubtitle">Финансовые показатели и продажи Wildberries</p></div>
+      <div class="period-bar"><select id="periodSelect"></select></div>
+    </div>
+
+    <section class="section" id="secSettings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <div class="share-box">
@@ -133,11 +175,15 @@
 
     <section class="section" id="secUploadForms">
       <div class="section-head">
-        <h2>Загрузить отчёты Wildberries</h2><span class="hint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span>
+        <h2 id="uploadSectionTitle">Загрузить отчёты Wildberries</h2><span class="hint" id="uploadSectionHint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       </div>
       <div class="collapsible-body"><div>
-      <div class="upload-grid">
+      <div class="marketplace-coming" id="ozonUploadNotice" hidden>
+        <strong>Импорт Ozon подготовлен к подключению</strong>
+        <span>Пришлите примеры отчётов Ozon — добавим точное сопоставление колонок без риска исказить показатели.</span>
+      </div>
+      <div class="upload-grid" id="wbUploadGrid">
         <div class="dropzone" id="dzSummary">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Сводный отчёт по продавцу</div>
           <div class="dz-hint">Перетащите файл сюда или нажмите, чтобы выбрать. Загружаются сразу все месяцы, что есть в файле.</div>
@@ -182,13 +228,6 @@
         </div>
       </div>
       </div></div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <h2>Показатели за период</h2><span class="hint">выберите месяц — цифры и графики ниже пересчитаются под него</span>
-        <div class="period-bar"><select id="periodSelect"></select></div>
-      </div>
     </section>
 
     <section class="section">
@@ -301,7 +340,10 @@
   async function refreshShopSwitch() {
     const shops = await window.WBAuth.listMyShops();
     const sel = document.getElementById("shopSwitch");
-    sel.innerHTML = shops.map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
+    sel.innerHTML = shops.map((s) => {
+      const market = s.marketplace === "ozon" ? "Ozon" : "WB";
+      return `<option value="${s.id}">${market} · ${escapeHtml(s.name)}</option>`;
+    }).join("");
     sel.value = shop.id;
   }
 
@@ -310,6 +352,19 @@
   }
 
   function updateShareBox() {
+    const marketplace = shop.marketplace === "ozon" ? "ozon" : "wildberries";
+    const marketplaceName = marketplace === "ozon" ? "Ozon" : "Wildberries";
+    const badge = document.getElementById("marketplaceBadge");
+    badge.textContent = marketplaceName;
+    badge.dataset.marketplace = marketplace;
+    document.getElementById("pageSubtitle").textContent = `Финансовые показатели и продажи ${marketplaceName}`;
+    document.getElementById("uploadSectionTitle").textContent = `Загрузить отчёты ${marketplaceName}`;
+    document.getElementById("wbUploadGrid").hidden = marketplace === "ozon";
+    document.getElementById("ozonUploadNotice").hidden = marketplace !== "ozon";
+    document.getElementById("uploadSectionHint").textContent = marketplace === "ozon"
+      ? "структура хранения готова — для подключения нужны примеры выгрузок Ozon"
+      : "файлы .xlsx обрабатываются в браузере, в базе сохраняются только рассчитанные суммы";
+
     const url = `${location.origin}/s/${shop.slug}`;
     document.getElementById("shareUrl").textContent = url;
     document.getElementById("shareToggle").checked = shop.share_enabled;
@@ -566,6 +621,20 @@
     document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
 
+    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    mobileMenuBtn.addEventListener("click", () => {
+      const opened = appScreen.classList.toggle("menu-open");
+      mobileMenuBtn.setAttribute("aria-expanded", String(opened));
+    });
+    document.querySelectorAll(".side-menu a").forEach((link) => {
+      link.addEventListener("click", () => {
+        document.querySelectorAll(".side-menu a").forEach((item) => item.classList.remove("active"));
+        link.classList.add("active");
+        appScreen.classList.remove("menu-open");
+        mobileMenuBtn.setAttribute("aria-expanded", "false");
+      });
+    });
+
     const questionModal = document.getElementById("questionModal");
     const questionText = document.getElementById("questionText");
     const photoInput = document.getElementById("questionPhotoInput");
@@ -627,18 +696,39 @@
       }
     });
 
-    document.getElementById("newShopBtn").addEventListener("click", async () => {
-      const name = prompt("Название нового магазина:");
-      if (!name) return;
-      shop = await window.WBAuth.createShop(name);
-      await refreshShopSwitch();
-      updateShareBox();
-      await refreshMembers();
-      await refreshPeriods();
-      await renderCurrentPeriod();
-      await refreshCostsTable();
-      await refreshUploadsLog();
-      toast("Магазин создан");
+    const newShopModal = document.getElementById("newShopModal");
+    const newShopName = document.getElementById("newShopName");
+    const closeNewShopModal = () => { newShopModal.hidden = true; };
+    document.getElementById("newShopBtn").addEventListener("click", () => {
+      newShopName.value = "";
+      document.getElementById("newShopMarketplace").value = "wildberries";
+      newShopModal.hidden = false;
+      newShopName.focus();
+    });
+    document.getElementById("newShopCancelBtn").addEventListener("click", closeNewShopModal);
+    newShopModal.addEventListener("click", (e) => { if (e.target === newShopModal) closeNewShopModal(); });
+    document.getElementById("newShopCreateBtn").addEventListener("click", async () => {
+      const name = newShopName.value.trim();
+      const marketplace = document.getElementById("newShopMarketplace").value;
+      if (!name) { newShopName.focus(); return; }
+      const btn = document.getElementById("newShopCreateBtn");
+      btn.disabled = true;
+      try {
+        shop = await window.WBAuth.createShop(name, marketplace);
+        closeNewShopModal();
+        await refreshShopSwitch();
+        updateShareBox();
+        await refreshMembers();
+        await refreshPeriods();
+        await renderCurrentPeriod();
+        await refreshCostsTable();
+        await refreshUploadsLog();
+        toast(`Магазин ${marketplace === "ozon" ? "Ozon" : "Wildberries"} создан`);
+      } catch (e) {
+        toast("Ошибка: " + e.message, true);
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     document.getElementById("deleteShopBtn").addEventListener("click", async () => {
