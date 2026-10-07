@@ -54,7 +54,7 @@ a{color:var(--accent);}
 }
 
 /* ---------- top nav ---------- */
-#appScreen > header.topnav{
+header.topnav{
   position:sticky; top:0; z-index:40;
   background:color-mix(in srgb, var(--surface) 72%, transparent);
   backdrop-filter:blur(20px) saturate(180%);
@@ -441,7 +441,7 @@ body{background:var(--page); font-size:14px; line-height:1.45; letter-spacing:-.
 #appScreen::before{display:none;}
 #appScreen{min-height:100vh;}
 
-header.topnav{
+#appScreen > header.topnav{
   position:fixed; inset:0 auto 0 0; z-index:45; width:248px;
   background:rgba(255,255,255,.9); border:0; border-right:1px solid var(--line);
   backdrop-filter:blur(22px) saturate(140%); -webkit-backdrop-filter:blur(22px) saturate(140%);
@@ -517,6 +517,7 @@ table.costs th,table.sku th{font-size:11px;}
 
 @media (max-width:560px){
   .app-main{padding-left:14px; padding-right:14px;}
+  .kpi-value{font-size:20px; white-space:nowrap;}
   .section-head{align-items:flex-start;}
   .section-head .hint{width:100%; order:3;}
   .card{border-radius:16px;}
