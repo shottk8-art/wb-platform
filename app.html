@@ -330,13 +330,13 @@
               <select id="skuSort" aria-label="Сортировка товаров">
                 <option value="qty">По выкупам</option>
                 <option value="revenue">По выручке</option>
-                <option value="profit">По прибыли</option>
+                <option value="profit">По валовой прибыли</option>
               </select>
             </div>
             <div class="skubar"><canvas id="skuChart"></canvas></div>
             <div class="tablewrap">
               <table class="sku">
-                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num">Прибыль, ₽</th></tr></thead>
+                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num" title="Выручка минус себестоимость товара">Валовая прибыль, ₽</th></tr></thead>
                 <tbody id="skuBody"></tbody>
                 <tfoot id="skuFoot"></tfoot>
               </table>
