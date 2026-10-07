@@ -40,6 +40,7 @@
   <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
   <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Zm-3 9 2 2 4-4"/></symbol>
   <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></symbol>
+  <symbol id="icon-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Zm6 10 .8 2.2L21 16l-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13ZM6 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z"/></symbol>
 </svg>
 
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
@@ -259,6 +260,27 @@
       <div class="kpi-row" id="kpiRow"></div>
     </section>
 
+    <section class="section app-view" id="secAiAnalysis" data-view="overview">
+      <div class="section-head"><h2>AI-анализ результатов</h2><span class="hint">выводы, риски и следующие шаги по выбранному магазину, месяцу и площадке</span></div>
+      <div class="card ai-analysis-card" id="aiAnalysisCard" data-state="idle">
+        <div class="ai-analysis-top">
+          <div class="ai-analysis-mark"><svg class="icon"><use href="#icon-sparkles"/></svg></div>
+          <div class="ai-analysis-copy" id="aiAnalysisIntro"><strong>Финансовый аналитик</strong><p>Сопоставит показатели с предыдущим месяцем, выделит отклонения и предложит конкретные действия.</p></div>
+          <button class="primary ai-analysis-button" id="aiAnalyzeBtn" type="button"><svg class="icon icon-sm"><use href="#icon-sparkles"/></svg><span>Проанализировать результаты</span></button>
+        </div>
+        <p class="ai-analysis-error" id="aiAnalysisError" hidden></p>
+        <div class="ai-analysis-result" id="aiAnalysisResult" hidden>
+          <p class="ai-analysis-summary" id="aiAnalysisSummary"></p>
+          <div class="ai-analysis-columns">
+            <div><h3>Главные выводы</h3><div class="ai-analysis-list" id="aiInsights"></div></div>
+            <div><h3>Что сделать</h3><div class="ai-analysis-list" id="aiActions"></div></div>
+          </div>
+          <div class="ai-analysis-caveats"><strong>Важно учитывать</strong><ul id="aiCaveats"></ul></div>
+        </div>
+        <p class="ai-analysis-note">AI может ошибаться. Проверяйте рекомендации перед принятием решений.</p>
+      </div>
+    </section>
+
     <section class="section app-view" id="secManualExpenses" data-view="overview">
       <div class="section-head">
         <h2>Ручные расходы</h2>
@@ -387,6 +409,7 @@
 <script src="/assets/parse.js?v=20261007-ozon-names2"></script>
 <script src="/assets/upload.js?v=20261007-shared-costs1"></script>
 <script src="/assets/dashboard.js?v=20261007-type1"></script>
+<script src="/assets/analysis.js?v=20261007-ai1"></script>
 <script>
 (function () {
   let shop = null;
@@ -606,6 +629,7 @@
   }
 
   async function renderCurrentPeriod() {
+    window.WBAnalysis.reset();
     const request = ++dashboardRequest;
     const sel = document.getElementById("periodSelect");
     const marketplaces = overviewMarketplaces();
@@ -1025,6 +1049,13 @@
     });
 
     document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
+
+    document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
+      const period = document.getElementById("periodSelect").value;
+      if (!period) return toast("Сначала загрузите отчёты за полный период", true);
+      const [year, month] = period.split("-").map(Number);
+      await window.WBAnalysis.analyze({ shop_id: shop.id, year, month, marketplace: overviewScope });
+    });
 
     const manualExpenseInputs = [document.getElementById("operationalExpensesInput"), document.getElementById("externalPromotionInput")];
     manualExpenseInputs.forEach((input) => input.addEventListener("input", () => {
