@@ -67,6 +67,30 @@
     return periods.length;
   }
 
+  async function uploadOzonAccruals(shopId, file) {
+    const { periods, transactionCount } = await window.WBParse.parseOzonAccruals(file);
+    const reports = periods.map((p) => ({ shop_id: shopId, ...p.report }));
+    const { error: reportError } = await sb().from("monthly_reports").upsert(reports, { onConflict: "shop_id,year,month" });
+    if (reportError) throw reportError;
+
+    const sales = periods.flatMap((p) => p.skus.map((sku) => ({
+      shop_id: shopId, year: p.report.year, month: p.report.month,
+      article: sku.article, name: sku.name, bought_qty: sku.bought_qty, revenue: sku.revenue,
+    })));
+    if (sales.length) {
+      const { error: salesError } = await sb().from("sku_sales").upsert(sales, { onConflict: "shop_id,year,month,article" });
+      if (salesError) throw salesError;
+      const costs = sales.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
+      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,article", ignoreDuplicates: true });
+      if (costsError) throw costsError;
+    }
+    await logUpload(shopId, "ozon_accruals", file.name, {
+      periods: periods.map((p) => ({ year: p.report.year, month: p.report.month })),
+      row_count: transactionCount,
+    });
+    return periods.length;
+  }
+
   async function saveCostPrice(shopId, article, name, cost) {
     const { error } = await sb()
       .from("sku_costs")
@@ -140,13 +164,27 @@
           .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
         if (error) throw error;
       }
+    } else if (upload.kind === "ozon_accruals") {
+      const zeroed = {
+        sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
+        delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
+        damage_comp: 0, return_comp: 0, other_fees: 0, ads_spend: 0, ads_promo_spend: 0,
+      };
+      for (const p of upload.periods || []) {
+        const { error: reportError } = await sb().from("monthly_reports").update(zeroed)
+          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+        if (reportError) throw reportError;
+        const { error: salesError } = await sb().from("sku_sales").delete()
+          .eq("shop_id", shopId).eq("year", p.year).eq("month", p.month);
+        if (salesError) throw salesError;
+      }
     }
     const { error } = await sb().from("uploads").delete().eq("id", upload.id);
     if (error) throw error;
   }
 
   window.WBUpload = {
-    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, saveCostPrice, listCosts, importCosts,
+    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadOzonAccruals, saveCostPrice, listCosts, importCosts,
     listUploads, deleteUpload,
   };
 })();

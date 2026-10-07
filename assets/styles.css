@@ -495,6 +495,8 @@ label{font-size:13px; color:var(--ink-soft);}
 .marketplace-coming[hidden]{display:none;}
 .marketplace-coming strong{font-size:15px;}
 .marketplace-coming span{font-size:13px; color:#385c90; max-width:70ch;}
+.ozon-upload-grid{margin-top:16px; grid-template-columns:minmax(0,680px);}
+.ozon-upload-grid .dropzone{min-height:230px;}
 .compact-modal label{margin-top:14px;}
 .modal-card{background:#fff; backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:0 28px 80px -32px rgba(0,0,0,.42);}
 .modal-card::before{display:none;}

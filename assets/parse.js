@@ -219,5 +219,97 @@
     return { periods, transactionCount };
   }
 
-  window.WBParse = { parseSummaryReport, parseSalesReport, parseCostsFile, parseAdsSpendFile };
+  function parseSheetDate(value) {
+    if (value instanceof Date && !isNaN(value)) return value;
+    if (typeof value === "number") {
+      const d = window.XLSX.SSF.parse_date_code(value);
+      return d ? new Date(d.y, d.m - 1, d.d) : null;
+    }
+    const text = String(value ?? "").trim();
+    const ru = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(text);
+    if (ru) return new Date(Number(ru[3]), Number(ru[2]) - 1, Number(ru[1]));
+    const parsed = new Date(text);
+    return isNaN(parsed) ? null : parsed;
+  }
+
+  // ---- Ozon «Отчёт по начислениям» ----
+  // Один файл содержит финансовый результат, рекламу и товарный разрез.
+  // Периоды определяются по «Дате начисления», поэтому файл может включать
+  // произвольный диапазон и одновременно операции FBO и FBS.
+  async function parseOzonAccruals(file) {
+    const wb = await readWorkbook(file);
+    const sheet = wb.Sheets[wb.SheetNames.find((name) => name.toLowerCase().includes("начислен")) || wb.SheetNames[0]];
+    const aoa = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+    const headerIdx = detectHeaderRow(aoa, ["Дата начисления", "Группа услуг", "Тип начисления", "Сумма итого"]);
+    if (headerIdx === -1) throw new Error("Не удалось распознать Ozon «Отчёт по начислениям». Скачайте исходный XLSX из раздела «Финансы → Начисления».");
+    const header = aoa[headerIdx].map((h) => String(h ?? "").trim());
+    const i = {
+      date: colIndex(header, "Дата начисления"), group: colIndex(header, "Группа услуг"),
+      type: colIndex(header, "Тип начисления"), article: colIndex(header, "Артикул"),
+      sku: colIndex(header, "SKU"), name: colIndex(header, "Название товара"),
+      qty: colIndex(header, "Количество"), sellerPrice: colIndex(header, "Цена продавца"),
+      total: colIndex(header, "Сумма итого"),
+    };
+    const byMonth = new Map();
+    let transactionCount = 0;
+    for (let r = headerIdx + 1; r < aoa.length; r++) {
+      const row = aoa[r];
+      const date = row && parseSheetDate(row[i.date]);
+      if (!date) continue;
+      const year = date.getFullYear(), month = date.getMonth() + 1, key = `${year}-${month}`;
+      if (!byMonth.has(key)) byMonth.set(key, { year, month, totalNet: 0, groups: new Map(), orders: 0, qty: 0, skus: new Map() });
+      const period = byMonth.get(key);
+      const group = String(row[i.group] ?? "").trim();
+      const type = String(row[i.type] ?? "").trim();
+      const amount = num(row[i.total]);
+      period.totalNet += amount;
+      period.groups.set(group, (period.groups.get(group) || 0) + amount);
+
+      const isSale = group === "Продажи";
+      const isReturn = group === "Возвраты";
+      if (isSale && type === "Выручка") {
+        period.qty += Math.round(num(row[i.qty]));
+        period.orders += Math.abs(num(row[i.sellerPrice]));
+      } else if (isReturn && type === "Возврат выручки") {
+        period.qty -= Math.round(Math.abs(num(row[i.qty])));
+      }
+      if (isSale || isReturn) {
+        const article = String(row[i.article] ?? row[i.sku] ?? "").trim();
+        if (article) {
+          const sku = period.skus.get(article) || { article, name: String(row[i.name] ?? "").trim(), bought_qty: 0, revenue: 0 };
+          sku.revenue += amount;
+          if (type === "Выручка") sku.bought_qty += Math.round(num(row[i.qty]));
+          if (type === "Возврат выручки") sku.bought_qty -= Math.round(Math.abs(num(row[i.qty])));
+          if (!sku.name && row[i.name]) sku.name = String(row[i.name]).trim();
+          period.skus.set(article, sku);
+        }
+      }
+      transactionCount++;
+    }
+    const periods = Array.from(byMonth.values()).map((p) => {
+      const g = (name) => p.groups.get(name) || 0;
+      const sales = g("Продажи") + g("Возвраты");
+      const commission = Math.max(0, -g("Вознаграждение Ozon"));
+      const ads = Math.max(0, -g("Продвижение и реклама"));
+      const partnerAndOther = g("Услуги партнёров") + g("Компенсации и декомпенсации");
+      return {
+        report: {
+          year: p.year, month: p.month, sales_amount: sales, orders_amount: p.orders,
+          bought_qty: p.qty, transfer_goods: sales - commission,
+          transfer_total: p.totalNet + ads,
+          delivery_cost: Math.max(0, -g("Услуги доставки")),
+          storage_cost: Math.max(0, -g("Услуги FBO")),
+          fines: Math.max(0, -g("Другие услуги и штрафы")),
+          acceptance_ops: 0, damage_comp: 0, return_comp: 0,
+          other_fees: Math.max(0, -partnerAndOther),
+          ads_spend: ads, ads_promo_spend: 0,
+        },
+        skus: Array.from(p.skus.values()),
+      };
+    }).sort((a, b) => a.report.year - b.report.year || a.report.month - b.report.month);
+    if (!periods.length) throw new Error("В отчёте Ozon не найдено ни одной операции с датой начисления.");
+    return { periods, transactionCount };
+  }
+
+  window.WBParse = { parseSummaryReport, parseSalesReport, parseCostsFile, parseAdsSpendFile, parseOzonAccruals };
 })();

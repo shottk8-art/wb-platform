@@ -132,12 +132,12 @@
     return `<div class="kpi-extra">ДРР(з) ${drrZ} · ДРР(в) ${drrV}</div>`;
   }
 
-  function renderKPI(container, d, prevD) {
+  function renderKPI(container, d, prevD, marketplace) {
     container.innerHTML = "";
     const cards = [
       { label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
-      { label: "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
+      { label: marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
       { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
       { label: "Расход на рекламу", value: d.rep.ads_spend, prev: prevD ? prevD.rep.ads_spend : null, unit: "₽", lowerIsBetter: true, extra: renderDrrLine(d.rep) },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true },
@@ -157,9 +157,9 @@
     });
   }
 
-  function renderExpenses(listEl, totalEl, canvas, d) {
+  function renderExpenses(listEl, totalEl, canvas, d, marketplace) {
     const items = [
-      ["Комиссия Wildberries", d.commission],
+      [marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
       ["Стоимость хранения", d.rep.storage_cost],
       ["Штрафы", d.rep.fines],

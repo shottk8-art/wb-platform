@@ -182,8 +182,17 @@
       </div>
       <div class="collapsible-body"><div>
       <div class="marketplace-coming" id="ozonUploadNotice" hidden>
-        <strong>Импорт Ozon подготовлен к подключению</strong>
-        <span>Пришлите примеры отчётов Ozon — добавим точное сопоставление колонок без риска исказить показатели.</span>
+        <strong>Нужен один файл: «Отчёт по начислениям»</strong>
+        <span>В Ozon Seller откройте «Финансы → Начисления», выберите период и скачайте XLSX. В файле уже есть продажи, возвраты, комиссия, логистика, хранение, реклама и разрез по товарам.</span>
+      </div>
+      <div class="upload-grid ozon-upload-grid" id="ozonUploadGrid" hidden>
+        <div class="dropzone" id="dzOzonAccruals">
+          <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Отчёт по начислениям Ozon</div>
+          <div class="dz-hint">Можно загрузить любой период. Операции автоматически распределятся по месяцам по дате начисления; FBO и FBS обработаются вместе.</div>
+          <a class="dz-link" href="https://seller.ozon.ru/app/finances" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть финансы Ozon Seller <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
+          <div class="dz-status" id="dzOzonStatus"></div>
+          <input type="file" id="fileOzonAccruals" accept=".xlsx,.xls">
+        </div>
       </div>
       <div class="upload-grid" id="wbUploadGrid">
         <div class="dropzone" id="dzSummary">
@@ -406,6 +415,7 @@
     document.getElementById("uploadSectionTitle").textContent = `Загрузить отчёты ${marketplaceName}`;
     document.getElementById("wbUploadGrid").hidden = marketplace === "ozon";
     document.getElementById("ozonUploadNotice").hidden = marketplace !== "ozon";
+    document.getElementById("ozonUploadGrid").hidden = marketplace !== "ozon";
     document.getElementById("uploadSectionHint").textContent = marketplace === "ozon"
       ? "структура хранения готова — для подключения нужны примеры выгрузок Ozon"
       : "файлы .xlsx обрабатываются в браузере, в базе сохраняются только рассчитанные суммы";
@@ -485,9 +495,9 @@
       // магазин без единого загруженного периода — явно сбрасываем панель,
       // иначе остаются данные, отрисованные для предыдущего магазина
       const empty = window.WBDashboard.computeDerived(null, [], new Map());
-      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null);
+      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null, shop.marketplace);
       window.WBDashboard.renderTrend(document.getElementById("trendChart"), []);
-      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty);
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, shop.marketplace);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
       return;
     }
@@ -504,10 +514,10 @@
       if (prevData.report) prevDerived = window.WBDashboard.computeDerived(prevData.report, prevData.skus, costMap, shop.tax_rate);
     } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
-    window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived);
+    window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, shop.marketplace);
     const trend = await window.WBDashboard.loadTrendData(shop.id, shop.tax_rate);
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), trend);
-    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
+    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, shop.marketplace);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
   }
 
@@ -518,7 +528,7 @@
       tbody.innerHTML = `<tr><td colspan="5" class="empty">Загрузок пока нет</td></tr>`;
       return;
     }
-    const kindLabel = { summary: "Сводный отчёт", sales: "Продажи", costs: "Себестоимость", ads: "Реклама" };
+    const kindLabel = { summary: "Сводный отчёт", sales: "Продажи", costs: "Себестоимость", ads: "Реклама", ozon_accruals: "Начисления Ozon" };
     tbody.innerHTML = uploads.map((u) => {
       let period = "—";
       if (u.kind === "summary" || u.kind === "ads") {
@@ -889,6 +899,23 @@
         await refreshPeriods(cur[0], cur[1]);
         if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
         await renderCurrentPeriod();
+        await refreshUploadsLog();
+      } catch (e) {
+        status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
+      }
+    });
+
+    wireDropzone("dzOzonAccruals", "fileOzonAccruals", async (file) => {
+      const status = document.getElementById("dzOzonStatus");
+      status.textContent = "Разбираем начисления…"; status.className = "dz-status";
+      try {
+        const n = await window.WBUpload.uploadOzonAccruals(shop.id, file);
+        status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
+        const sel = document.getElementById("periodSelect");
+        await refreshPeriods();
+        if (periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
+        await renderCurrentPeriod();
+        await refreshCostsTable();
         await refreshUploadsLog();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
