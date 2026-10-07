@@ -131,6 +131,9 @@
         <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); margin:0;">
           <input type="checkbox" id="shareToggle" style="width:auto;"> ссылка активна
         </label>
+        <button class="ghost small" id="deleteShopBtn" style="margin-left:auto; color:var(--red);">
+          <svg class="icon icon-sm"><use href="#icon-trash"/></svg> Удалить магазин
+        </button>
       </div>
     </section>
 
@@ -867,9 +870,11 @@
 
   init().catch(async (e) => {
     loading.hidden = true;
+    appScreen.hidden = false;
+    console.error("Ошибка инициализации кабинета", e);
     toast("Ошибка инициализации: " + e.message, true);
-    // не оставляем пустой экран (например, если сессия протухла) — уводим на вход
-    await window.WBAuth.signOut();
+    // Не удаляем действующую сессию из-за ошибки интерфейса или загрузки
+    // данных. Выход должен происходить только по явному действию пользователя.
   });
 })();
 </script>
