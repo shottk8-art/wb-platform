@@ -236,7 +236,7 @@
   }
 
   function renderExpenses(listEl, totalEl, canvas, d, marketplace) {
-    const palette = ["#1d1d1f", "#0071e3", "#34a853", "#7c66dc", "#f59e0b", "#e85d4a", "#64748b", "#0891b2", "#d97706", "#4f46e5", "#be3b69", "#16a085", "#8b5cf6"];
+    const palette = ["#5e5ce6", "#0a84ff", "#30b0c7", "#34c759", "#ff9f0a", "#ff6b5f", "#bf5af2", "#64d2ff", "#ac8e68", "#ff375f", "#8e8e93", "#af52de", "#00a6a6"];
     const items = [
       [marketplace === "all" ? "Комиссии маркетплейсов" : marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
@@ -253,9 +253,20 @@
       ["Себестоимость товара", d.cogs],
     ];
     const total = items.reduce((s, it) => s + Math.abs(it[1]), 0);
-    const visibleItems = items.map(([label, value], index) => ({ label, value, color: palette[index % palette.length] }))
+    const visibleItems = items.map(([label, value]) => ({ label, value }))
       .filter((item) => Math.abs(item.value) > 0.005)
-      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .map((item, index) => ({ ...item, color: palette[index % palette.length] }));
+    const chartItems = visibleItems.length > 6
+      ? [
+          ...visibleItems.slice(0, 5),
+          {
+            label: "Прочие расходы",
+            value: visibleItems.slice(5).reduce((sum, item) => sum + Math.abs(item.value), 0),
+            color: "#c7c7cc",
+          },
+        ]
+      : visibleItems;
     const salesShare = (d.rep.sales_amount || 0) > 0 ? (total / d.rep.sales_amount) * 100 : null;
     const totalText = `${fmtMoney.format(Math.round(total))} ₽`;
 
@@ -281,14 +292,16 @@
     charts.pie = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels: visibleItems.map((i) => i.label),
+        labels: chartItems.map((i) => i.label),
         datasets: [{
-          data: visibleItems.map((i) => Math.abs(i.value)),
-          backgroundColor: visibleItems.map((i) => i.color),
-          borderWidth: 0,
-          spacing: 2,
-          hoverOffset: 4,
-          borderRadius: 3,
+          data: chartItems.map((i) => Math.abs(i.value)),
+          backgroundColor: chartItems.map((i) => i.color),
+          borderColor: "#ffffff",
+          borderWidth: 3,
+          hoverBorderWidth: 3,
+          spacing: 1,
+          hoverOffset: 3,
+          borderRadius: 7,
         }],
       },
       options: {
@@ -299,7 +312,8 @@
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0}%` } },
         },
-        cutout: "72%",
+        cutout: "78%",
+        radius: "88%",
       },
     });
   }
