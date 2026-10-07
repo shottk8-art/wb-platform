@@ -589,6 +589,7 @@ table.costs th,table.sku th{font-size:11px;}
 
 .grid-2{grid-template-columns:minmax(300px,.82fr) minmax(0,1.5fr); gap:22px; align-items:start;}
 .upload-grid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+.upload-grid[hidden]{display:none;}
 .dropzone{min-height:220px; padding:24px 20px; border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center;}
 .dropzone .dz-title{font-size:15px; color:var(--ink); margin-bottom:8px;}
 .dropzone .dz-hint,.dz-link{font-size:13px; line-height:1.5;}
