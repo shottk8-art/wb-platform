@@ -260,7 +260,7 @@
     const colorDir = rawDir === "up" ? "down" : rawDir === "down" ? "up" : "flat";
     const icon = rawDir === "up" ? "icon-trend-up" : rawDir === "down" ? "icon-trend-down" : "icon-trend-flat";
     const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
-    const pct = prevValue !== 0 ? `${(Math.abs(diff) / Math.abs(prevValue) * 100).toFixed(1)}%` : diff === 0 ? "0%" : "новая статья";
+    const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "новая статья";
     return `<span class="expense-delta expense-delta--${colorDir}${className ? ` ${className}` : ""}">
       <svg class="icon icon-sm" aria-hidden="true"><use href="#${icon}"/></svg>
       <span>${sign}${fmtMoney.format(Math.abs(Math.round(diff)))} ₽ · ${pct}</span>
