@@ -85,6 +85,53 @@
     return { rep, commission, skuRows, cogs, ads, tax, netProfit };
   }
 
+  function assignAbc(rows) {
+    const totalRevenue = rows.reduce((sum, row) => sum + Math.max(row.revenue || 0, 0), 0);
+    let cumulative = 0;
+    [...rows].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)).forEach((row) => {
+      const before = totalRevenue > 0 ? cumulative / totalRevenue : 0;
+      cumulative += Math.max(row.revenue || 0, 0);
+      row.abc = before < 0.8 ? "A" : before < 0.95 ? "B" : "C";
+    });
+  }
+
+  function combineDerived(entries) {
+    if (!entries.length) return computeDerived(null, [], new Map(), 0);
+    const rep = {};
+    let commission = 0, cogs = 0, ads = 0, tax = 0, netProfit = 0;
+    const skuRows = [];
+    entries.forEach(({ derived, shop }) => {
+      Object.entries(derived.rep || {}).forEach(([key, value]) => {
+        if (typeof value === "number") rep[key] = (rep[key] || 0) + value;
+      });
+      commission += derived.commission || 0;
+      cogs += derived.cogs || 0;
+      ads += derived.ads || 0;
+      tax += derived.tax || 0;
+      netProfit += derived.netProfit || 0;
+      derived.skuRows.forEach((row) => skuRows.push(entries.length > 1 ? {
+        ...row,
+        article: `${shop.marketplace === "ozon" ? "Ozon" : "WB"} · ${row.article}`,
+        name: `${row.name || row.article} · ${shop.name}`,
+      } : { ...row }));
+    });
+    skuRows.sort((a, b) => b.bought_qty - a.bought_qty);
+    assignAbc(skuRows);
+    return { rep, commission, skuRows, cogs, ads, tax, netProfit };
+  }
+
+  function combineTrend(lists) {
+    const periods = new Map();
+    lists.flat().forEach((row) => {
+      const key = `${row.year}-${row.month}`;
+      const current = periods.get(key) || { year: row.year, month: row.month, sales: 0, profit: 0 };
+      current.sales += row.sales || 0;
+      current.profit += row.profit || 0;
+      periods.set(key, current);
+    });
+    return [...periods.values()].sort((a, b) => a.year - b.year || a.month - b.month).slice(-12);
+  }
+
   function el(html) {
     const t = document.createElement("template");
     t.innerHTML = html.trim();
@@ -137,7 +184,7 @@
     const cards = [
       { label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
-      { label: marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
+      { label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
       { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
       { label: "Расход на рекламу", value: d.rep.ads_spend, prev: prevD ? prevD.rep.ads_spend : null, unit: "₽", lowerIsBetter: true, extra: renderDrrLine(d.rep) },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true },
@@ -159,7 +206,7 @@
 
   function renderExpenses(listEl, totalEl, canvas, d, marketplace) {
     const items = [
-      [marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
+      [marketplace === "all" ? "Комиссии маркетплейсов" : marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
       ["Стоимость хранения", d.rep.storage_cost],
       ["Штрафы", d.rep.fines],
@@ -365,5 +412,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod };
+  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod };
 })();

@@ -558,6 +558,17 @@ table.costs th,table.sku th{font-size:11px;}
 .page-heading p{max-width:68ch; margin-top:8px; font-size:14px; color:var(--ink-soft);}
 .page-heading .period-bar select{min-width:210px; background:#fff; font-weight:600;}
 .period-bar[hidden]{display:none;}
+.overview-controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end;}
+.overview-controls[hidden]{display:none;}
+.segmented-control{display:inline-flex; align-items:center; gap:3px; padding:3px; border:1px solid var(--line); border-radius:12px; background:#eeeef0;}
+.segmented-control button{min-height:38px; padding:0 14px; border:0; border-radius:9px; background:transparent; color:var(--ink-soft); font:inherit; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background-color .18s ease,color .18s ease,box-shadow .18s ease;}
+.segmented-control button:hover{color:var(--ink);}
+.segmented-control button.active{background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.segmented-control button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.report-market-switch{display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:24px; padding:16px 18px; border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:var(--shadow);}
+.report-market-switch > div:first-child{display:flex; flex-direction:column; gap:4px;}
+.report-market-switch strong{font-size:14px; font-weight:650;}
+.report-market-switch span{color:var(--ink-mute); font-size:13px;}
 
 .section{margin-bottom:38px;}
 .section-head{display:grid; grid-template-columns:auto minmax(220px,1fr) auto auto; align-items:center; column-gap:16px; row-gap:5px; margin-bottom:15px;}
@@ -606,6 +617,9 @@ footer.note{max-width:72ch; margin:56px 0 0; padding-top:22px; border-top:1px so
   .page-heading{min-height:0; margin-bottom:30px; padding-bottom:22px;}
   .page-heading h1{font-size:30px;}
   .page-heading .period-bar,.page-heading .period-bar select{width:100%;}
+  .overview-controls{width:100%; justify-content:flex-start;}
+  .overview-controls .segmented-control{width:100%;}
+  .overview-controls .segmented-control button{flex:1;}
 }
 
 @media (max-width:600px){
@@ -621,6 +635,9 @@ footer.note{max-width:72ch; margin:56px 0 0; padding-top:22px; border-top:1px so
   .kpi,.kpi--hero{grid-column:1; min-height:124px; padding:18px;}
   .kpi--hero .kpi-value{font-size:29px;}
   .dropzone{min-height:170px;}
+  .report-market-switch{align-items:stretch; flex-direction:column; padding:15px;}
+  .report-market-switch .segmented-control{width:100%;}
+  .report-market-switch .segmented-control button{flex:1;}
 }
 
 /* ---------- поля и motion-система ---------- */
