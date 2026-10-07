@@ -701,3 +701,21 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
   .kpi-row .kpi,.exp-fill,.qty-fill{animation:none;}
   input,select,textarea,.kpi,.dropzone,.card{transition:background-color .12s ease,border-color .12s ease,color .12s ease;}
 }
+
+/* ---------- ручные расходы периода ---------- */
+.manual-expenses-card{padding:18px 20px;}
+.manual-expenses-grid{display:grid; grid-template-columns:minmax(220px,1fr) minmax(260px,1fr) auto; align-items:end; gap:16px;}
+.manual-expenses-grid label{display:block; margin-bottom:7px;}
+.manual-expenses-grid input{width:100%;}
+.manual-expenses-grid .field-help{display:block; margin-top:6px; color:var(--ink-mute); font-size:12px; line-height:1.4;}
+.manual-expenses-grid button{margin-bottom:25px; min-width:112px;}
+
+@media (max-width:900px){
+  .manual-expenses-grid{grid-template-columns:1fr 1fr;}
+  .manual-expenses-grid button{grid-column:1 / -1; width:100%; margin-bottom:0;}
+}
+
+@media (max-width:600px){
+  .manual-expenses-grid{grid-template-columns:1fr;}
+  .manual-expenses-grid button{grid-column:1;}
+}

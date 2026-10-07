@@ -133,6 +133,21 @@
     return data || [];
   }
 
+  async function saveManualExpenses(shopId, marketplace, year, month, operationalExpenses, externalPromotionExpenses) {
+    const payload = {
+      shop_id: shopId,
+      marketplace,
+      year,
+      month,
+      operational_expenses: Math.max(0, Number(operationalExpenses) || 0),
+      external_promotion_expenses: Math.max(0, Number(externalPromotionExpenses) || 0),
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
+    if (error) throw error;
+    return payload;
+  }
+
   // Отменяет загрузку: для сводного отчёта обнуляет только поля из файла
   // (расход на рекламу, введённый вручную, не трогаем); для продаж —
   // удаляет строки за период; для себестоимости — обнуляет цену только
@@ -187,6 +202,6 @@
 
   window.WBUpload = {
     uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadOzonAccruals, saveCostPrice, listCosts, importCosts,
-    listUploads, deleteUpload,
+    listUploads, deleteUpload, saveManualExpenses,
   };
 })();

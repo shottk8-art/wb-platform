@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261007-shop-markets1">
+<link rel="stylesheet" href="/assets/styles.css?v=20261007-manual-expenses1">
 </head>
 <body>
 
@@ -257,6 +257,28 @@
       <div class="kpi-row" id="kpiRow"></div>
     </section>
 
+    <section class="section app-view" id="secManualExpenses" data-view="overview">
+      <div class="section-head">
+        <h2>Ручные расходы</h2>
+        <span class="hint" id="manualExpensesHint">укажите расходы за выбранный месяц — они уменьшают чистую прибыль</span>
+      </div>
+      <div class="card manual-expenses-card">
+        <div class="manual-expenses-grid">
+          <div>
+            <label for="operationalExpensesInput">Операционные расходы, ₽</label>
+            <input id="operationalExpensesInput" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+            <span class="field-help">зарплаты, сервисы, упаковка и другие расходы магазина</span>
+          </div>
+          <div>
+            <label for="externalPromotionInput">Расходы на внешнее продвижение, ₽</label>
+            <input id="externalPromotionInput" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+            <span class="field-help">блогеры, посевы и реклама вне кабинета маркетплейса</span>
+          </div>
+          <button class="primary" id="saveManualExpensesBtn" disabled>Сохранить</button>
+        </div>
+      </div>
+    </section>
+
     <section class="section app-view" id="secTrend" data-view="overview">
       <div class="section-head">
         <h2>Динамика магазина</h2>
@@ -336,8 +358,8 @@
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon1"></script>
-<script src="/assets/upload.js?v=20261007-shop-markets1"></script>
-<script src="/assets/dashboard.js?v=20261007-shop-markets1"></script>
+<script src="/assets/upload.js?v=20261007-manual-expenses1"></script>
+<script src="/assets/dashboard.js?v=20261007-manual-expenses1"></script>
 <script>
 (function () {
   let shop = null;
@@ -440,6 +462,22 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function showManualExpenses(derived, enabled) {
+    const operational = document.getElementById("operationalExpensesInput");
+    const external = document.getElementById("externalPromotionInput");
+    const save = document.getElementById("saveManualExpensesBtn");
+    operational.value = derived.rep.operational_expenses || 0;
+    external.value = derived.rep.external_promotion_expenses || 0;
+    operational.disabled = !enabled;
+    external.disabled = !enabled;
+    save.disabled = true;
+    document.getElementById("manualExpensesHint").textContent = enabled
+      ? `расходы за выбранный месяц · ${overviewScope === "ozon" ? "Ozon" : "Wildberries"}`
+      : overviewScope === "all"
+        ? "показана сумма двух площадок — выберите WB или Ozon, чтобы изменить"
+        : "сначала загрузите отчёт или выберите период";
   }
 
   function updateShareBox() {
@@ -549,6 +587,7 @@
       window.WBDashboard.renderTrend(document.getElementById("trendChart"), []);
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
+      showManualExpenses(empty, false);
       return;
     }
     const [year, month] = sel.value.split("-").map(Number);
@@ -558,6 +597,7 @@
     }));
     if (request !== dashboardRequest) return;
     const derived = window.WBDashboard.combineDerived(currentEntries);
+    showManualExpenses(derived, overviewScope !== "all");
 
     // сравнение с предыдущим календарным месяцем (себестоимость и ставку
     // налога берём текущие — они не привязаны к периоду, истории не хранят)
@@ -948,6 +988,33 @@
     });
 
     document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
+
+    const manualExpenseInputs = [document.getElementById("operationalExpensesInput"), document.getElementById("externalPromotionInput")];
+    manualExpenseInputs.forEach((input) => input.addEventListener("input", () => {
+      document.getElementById("saveManualExpensesBtn").disabled = overviewScope === "all" || !document.getElementById("periodSelect").value;
+    }));
+    document.getElementById("saveManualExpensesBtn").addEventListener("click", async () => {
+      const period = document.getElementById("periodSelect").value;
+      if (!period || overviewScope === "all") return;
+      const [year, month] = period.split("-").map(Number);
+      const button = document.getElementById("saveManualExpensesBtn");
+      button.disabled = true;
+      try {
+        await window.WBUpload.saveManualExpenses(
+          shop.id,
+          overviewScope,
+          year,
+          month,
+          document.getElementById("operationalExpensesInput").value,
+          document.getElementById("externalPromotionInput").value,
+        );
+        await renderCurrentPeriod();
+        toast("Расходы сохранены и учтены в прибыли");
+      } catch (e) {
+        button.disabled = false;
+        toast("Ошибка: " + e.message, true);
+      }
+    });
 
     wireDropzone("dzSummary", "fileSummary", async (file) => {
       const status = document.getElementById("dzSummaryStatus");

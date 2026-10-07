@@ -66,6 +66,7 @@
       sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
       delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
       damage_comp: 0, return_comp: 0, other_fees: 0, ads_spend: 0, ads_promo_spend: 0,
+      operational_expenses: 0, external_promotion_expenses: 0,
     };
     const commission = (rep.sales_amount || 0) - (rep.transfer_goods || 0);
     const skuRows = skus.map((s) => {
@@ -91,9 +92,10 @@
     const cogs = skuRows.reduce((sum, s) => sum + s.total_cost, 0);
     const ads = rep.ads_spend || 0;
     const tax = (rep.sales_amount || 0) * ((taxRate || 0) / 100);
-    const netProfit = (rep.transfer_total || 0) - ads - cogs - tax;
+    const manualExpenses = (rep.operational_expenses || 0) + (rep.external_promotion_expenses || 0);
+    const netProfit = (rep.transfer_total || 0) - ads - cogs - tax - manualExpenses;
 
-    return { rep, commission, skuRows, cogs, ads, tax, netProfit };
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit };
   }
 
   function assignAbc(rows) {
@@ -109,7 +111,7 @@
   function combineDerived(entries) {
     if (!entries.length) return computeDerived(null, [], new Map(), 0);
     const rep = {};
-    let commission = 0, cogs = 0, ads = 0, tax = 0, netProfit = 0;
+    let commission = 0, cogs = 0, ads = 0, tax = 0, manualExpenses = 0, netProfit = 0;
     const skuRows = [];
     entries.forEach(({ derived, shop }) => {
       Object.entries(derived.rep || {}).forEach(([key, value]) => {
@@ -119,6 +121,7 @@
       cogs += derived.cogs || 0;
       ads += derived.ads || 0;
       tax += derived.tax || 0;
+      manualExpenses += derived.manualExpenses || 0;
       netProfit += derived.netProfit || 0;
       derived.skuRows.forEach((row) => skuRows.push(entries.length > 1 ? {
         ...row,
@@ -128,7 +131,7 @@
     });
     skuRows.sort((a, b) => b.bought_qty - a.bought_qty);
     assignAbc(skuRows);
-    return { rep, commission, skuRows, cogs, ads, tax, netProfit };
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit };
   }
 
   function combineTrend(lists) {
@@ -226,6 +229,8 @@
       ["Добровольная компенсация", d.rep.return_comp],
       ["Прочие доплаты", d.rep.other_fees],
       ["Расход на рекламу", d.ads],
+      ["Операционные расходы", d.rep.operational_expenses || 0],
+      ["Внешнее продвижение", d.rep.external_promotion_expenses || 0],
       ["Налог", d.tax],
       ["Себестоимость товара", d.cogs],
     ];

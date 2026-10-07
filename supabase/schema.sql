@@ -52,6 +52,8 @@ create table if not exists monthly_reports (
   other_fees      numeric not null default 0,   -- Доплаты (прочее)
   ads_spend       numeric not null default 0,   -- Расход на рекламу с баланса — уменьшает прибыль
   ads_promo_spend numeric not null default 0,   -- Расход промобонусами — справочно, прибыль не уменьшает
+  operational_expenses numeric not null default 0, -- Операционные расходы, ручной ввод
+  external_promotion_expenses numeric not null default 0, -- Внешнее продвижение, ручной ввод
   updated_at      timestamptz not null default now(),
   unique (shop_id, marketplace, year, month)
 );
