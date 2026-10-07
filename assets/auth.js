@@ -42,8 +42,22 @@
     try { body = await res.json(); } catch (_err) { /* ответ без JSON */ }
     if (!res.ok) throw new Error(body.error || "Не удалось войти через Telegram");
 
-    const { error } = await sb().auth.verifyOtp({ token_hash: body.token_hash, type: body.type });
+    const { data, error } = await sb().auth.verifyOtp({ token_hash: body.token_hash, type: body.type });
     if (error) throw error;
+
+    // verifyOtp обычно сам сохраняет сессию, но перед немедленным переходом
+    // на app.html браузер иногда не успевает закрепить её в хранилище. Явно
+    // устанавливаем полученную пару токенов и проверяем результат до редиректа.
+    if (!data?.session) throw new Error("Telegram подтвердил вход, но сессия не была создана");
+    const { error: sessionError } = await sb().auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (sessionError) throw sessionError;
+
+    const { data: confirmed } = await sb().auth.getSession();
+    if (!confirmed.session) throw new Error("Не удалось сохранить сессию. Попробуйте войти ещё раз");
+    return confirmed.session;
   }
 
   async function signOut() {
