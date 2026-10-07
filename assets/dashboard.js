@@ -270,10 +270,10 @@
         datasets: [{
           data: visibleItems.map((i) => Math.abs(i.value)),
           backgroundColor: visibleItems.map((i) => i.color),
-          borderColor: "var(--surface)",
-          borderWidth: 3,
-          hoverOffset: 5,
-          borderRadius: 4,
+          borderWidth: 0,
+          spacing: 2,
+          hoverOffset: 4,
+          borderRadius: 3,
         }],
       },
       options: {
