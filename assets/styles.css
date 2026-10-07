@@ -102,8 +102,35 @@ button.ghost:disabled:hover{border-color:var(--line); color:var(--ink-soft);}
 button.small{padding:6px 11px; font-size:12px;}
 
 /* ---------- icons ---------- */
-.icon{width:15px; height:15px; flex-shrink:0;}
-.icon-sm{width:12px; height:12px;}
+.icon-sprite{position:absolute; width:0; height:0; overflow:hidden;}
+.icon{
+  width:18px; height:18px; flex-shrink:0;
+  fill:none; stroke:currentColor; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.icon-sm{width:15px; height:15px;}
+.question-photo-preview{position:relative; width:160px; margin-top:10px;}
+.photo-remove-button{
+  position:absolute; top:-10px; right:-10px; z-index:1;
+  width:32px; min-width:32px; height:32px; min-height:32px; padding:0;
+  border-radius:50%; background:var(--surface); box-shadow:0 5px 16px -9px rgba(0,0,0,.5);
+}
+.q-thumb-slot{
+  width:120px; height:90px; margin-top:8px; overflow:hidden;
+  border:1px solid var(--line); border-radius:12px; background:var(--surface-2);
+}
+.q-thumb-slot::after{
+  content:""; display:block; width:32px; height:8px; margin:40px auto 0;
+  border-radius:999px; background:var(--line);
+  animation:thumb-loading 1s ease-in-out infinite alternate;
+}
+.q-thumb-slot.is-loaded::after{display:none;}
+.q-thumb-slot a{display:block; width:100%; height:100%;}
+.q-thumb-slot img{display:block; width:100%; height:100%; object-fit:cover; transition:transform 220ms var(--ease);}
+.q-thumb-slot a:hover img{transform:scale(1.035);}
+.q-thumb-slot a:focus-visible{outline:2px solid var(--accent); outline-offset:-3px; border-radius:11px;}
+@keyframes thumb-loading{to{opacity:.35; transform:scaleX(.7);}}
 input[type="text"], input[type="email"], input[type="number"], input[type="search"], select{
   border:1px solid var(--line-strong); border-radius:var(--radius-sm); padding:9px 11px; font-size:13px;
   background:var(--surface); color:var(--ink); width:100%;
@@ -114,6 +141,8 @@ input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible
 }
 @media (prefers-reduced-motion: reduce){
   button, input, select{transition:none;}
+  .q-thumb-slot::after{animation:none;}
+  .q-thumb-slot img{transition:none;}
 }
 label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; margin-bottom:5px;}
 
@@ -780,7 +809,7 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
 .sku-metric strong{color:inherit; font:inherit; font-weight:650; white-space:nowrap;}
 .sku-delta{display:inline-flex; max-width:100%; align-items:flex-start; justify-content:flex-end; gap:2px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; font-size:10px; font-weight:600; line-height:1.15; white-space:nowrap;}
 .sku-delta-copy{display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:1px;}
-.sku-delta .icon{width:12px; height:12px;}
+.sku-delta .icon{width:14px; height:14px;}
 .sku-delta--up{color:var(--good);}
 .sku-delta--down{color:var(--bad);}
 .sku-delta--flat{color:var(--ink-mute);}
@@ -877,6 +906,7 @@ table.costs,table.sku{font-variant-numeric:tabular-nums;}
 @media (pointer:coarse){
   button,.ghost.small,.primary.small{min-height:44px;}
   .collapse-btn,.icon-button{width:44px; height:44px;}
+  .photo-remove-button{width:44px; min-width:44px; height:44px;}
   .dz-link{min-height:44px; align-items:center;}
 }
 
