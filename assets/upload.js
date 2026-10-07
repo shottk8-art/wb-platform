@@ -38,10 +38,10 @@
     if (e1) throw e1;
 
     // заводим карточку себестоимости для новых артикулов, не трогая уже заполненные
-    const costsPayload = skus.map((s) => ({ shop_id: shopId, marketplace: "wildberries", article: s.article, name: s.name, cost_price: 0 }));
+    const costsPayload = skus.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
     const { error: e2 } = await sb()
       .from("sku_costs")
-      .upsert(costsPayload, { onConflict: "shop_id,marketplace,article", ignoreDuplicates: true });
+      .upsert(costsPayload, { onConflict: "shop_id,article", ignoreDuplicates: true });
     if (e2) throw e2;
 
     await logUpload(shopId, "wildberries", "sales", file.name, { year, month, row_count: skus.length });
@@ -80,8 +80,8 @@
     if (sales.length) {
       const { error: salesError } = await sb().from("sku_sales").upsert(sales, { onConflict: "shop_id,marketplace,year,month,article" });
       if (salesError) throw salesError;
-      const costs = sales.map((s) => ({ shop_id: shopId, marketplace: "ozon", article: s.article, name: s.name, cost_price: 0 }));
-      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,marketplace,article", ignoreDuplicates: true });
+      const costs = sales.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
+      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,article", ignoreDuplicates: true });
       if (costsError) throw costsError;
     }
     await logUpload(shopId, "ozon", "ozon_accruals", file.name, {
@@ -91,15 +91,15 @@
     return periods.length;
   }
 
-  async function saveCostPrice(shopId, marketplace, article, name, cost) {
+  async function saveCostPrice(shopId, _marketplace, article, name, cost) {
     const { error } = await sb()
       .from("sku_costs")
-      .upsert({ shop_id: shopId, marketplace, article, name: name || "", cost_price: cost }, { onConflict: "shop_id,marketplace,article" });
+      .upsert({ shop_id: shopId, article, name: name || "", cost_price: cost }, { onConflict: "shop_id,article" });
     if (error) throw error;
   }
 
-  async function listCosts(shopId, marketplace) {
-    const { data, error } = await sb().from("sku_costs").select("*").eq("shop_id", shopId).eq("marketplace", marketplace).order("article");
+  async function listCosts(shopId, _marketplace) {
+    const { data, error } = await sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article");
     if (error) throw error;
     return data || [];
   }
@@ -112,12 +112,11 @@
     const nameByArticle = new Map(existing.map((c) => [c.article, c.name]));
     const payload = rows.map((r) => ({
       shop_id: shopId,
-      marketplace,
       article: r.article,
       name: r.name || nameByArticle.get(r.article) || "",
       cost_price: r.cost_price,
     }));
-    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,marketplace,article" });
+    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,article" });
     if (error) throw error;
     await logUpload(shopId, marketplace, "costs", filename || "себестоимость.xlsx", {
       articles: rows.map((r) => r.article),
@@ -172,7 +171,7 @@
     } else if (upload.kind === "costs") {
       if (upload.articles && upload.articles.length) {
         const { error } = await sb().from("sku_costs").update({ cost_price: 0 })
-          .eq("shop_id", shopId).eq("marketplace", marketplace).in("article", upload.articles);
+          .eq("shop_id", shopId).in("article", upload.articles);
         if (error) throw error;
       }
     } else if (upload.kind === "ads") {

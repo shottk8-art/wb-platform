@@ -50,7 +50,7 @@
     const [{ data: report }, { data: skus }, { data: costs }] = await Promise.all([
       withMarketplace(reportQuery, marketplace).maybeSingle(),
       withMarketplace(salesQuery, marketplace),
-      withMarketplace(costsQuery, marketplace),
+      costsQuery,
     ]);
     const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
     return { report, skus: skus || [], costMap };
@@ -63,7 +63,7 @@
     const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }] = await Promise.all([
       withMarketplace(reportsQuery, marketplace),
       withMarketplace(salesQuery, marketplace),
-      withMarketplace(costsQuery, marketplace),
+      costsQuery,
     ]);
     if (reportError) throw reportError;
     if (salesError) throw salesError;

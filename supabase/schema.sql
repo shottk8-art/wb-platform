@@ -85,12 +85,11 @@ create index if not exists sku_sales_shop_idx on sku_sales(shop_id, year, month)
 create table if not exists sku_costs (
   id          uuid primary key default gen_random_uuid(),
   shop_id     uuid not null references shops(id) on delete cascade,
-  marketplace text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
   article     text not null,
   name        text not null default '',
   cost_price  numeric not null default 0,
   updated_at  timestamptz not null default now(),
-  unique (shop_id, marketplace, article)
+  unique (shop_id, article)
 );
 
 create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
