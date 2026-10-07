@@ -300,7 +300,7 @@
           <div class="section-head"><h2>Структура расходов</h2><span class="hint">на что уходит выручка за выбранный период</span></div>
           <div class="card analytics-card expense-card">
             <div class="analytics-summary">
-              <div><span>Всего расходов</span><strong class="mono" id="expHeroTotal">—</strong></div>
+              <div><span>Всего расходов</span><strong class="mono" id="expHeroTotal">—</strong><div id="expHeroDelta"></div></div>
               <div><span>Доля от продаж</span><strong id="expSalesShare">—</strong></div>
             </div>
             <div class="exp-body">
@@ -384,7 +384,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon-fix1"></script>
 <script src="/assets/upload.js?v=20261007-shared-costs1"></script>
-<script src="/assets/dashboard.js?v=20261007-expense-chart2"></script>
+<script src="/assets/dashboard.js?v=20261007-expense-compare1"></script>
 <script>
 (function () {
   let shop = null;
@@ -614,7 +614,7 @@
       const empty = window.WBDashboard.computeDerived(null, [], new Map());
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null, displayMarketplace);
       window.WBDashboard.renderTrend(document.getElementById("trendChart"), []);
-      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace);
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace, null);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
       showManualExpenses(empty, false);
       return;
@@ -646,7 +646,7 @@
     if (request !== dashboardRequest) return;
     const trend = window.WBDashboard.combineTrend(trends);
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), trend);
-    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace);
+    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
   }
 

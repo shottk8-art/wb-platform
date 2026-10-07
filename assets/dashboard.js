@@ -235,9 +235,8 @@
     });
   }
 
-  function renderExpenses(listEl, totalEl, canvas, d, marketplace) {
-    const palette = ["#5e5ce6", "#0a84ff", "#30b0c7", "#34c759", "#ff9f0a", "#ff6b5f", "#bf5af2", "#64d2ff", "#ac8e68", "#ff375f", "#8e8e93", "#af52de", "#00a6a6"];
-    const items = [
+  function expenseItems(d, marketplace) {
+    return [
       [marketplace === "all" ? "Комиссии маркетплейсов" : marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
       ["Стоимость хранения", d.rep.storage_cost],
@@ -252,7 +251,28 @@
       ["Налог", d.tax],
       ["Себестоимость товара", d.cogs],
     ];
+  }
+
+  function renderExpenseDelta(value, prevValue, className) {
+    if (prevValue == null) return "";
+    const diff = value - prevValue;
+    const rawDir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const colorDir = rawDir === "up" ? "down" : rawDir === "down" ? "up" : "flat";
+    const icon = rawDir === "up" ? "icon-trend-up" : rawDir === "down" ? "icon-trend-down" : "icon-trend-flat";
+    const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
+    const pct = prevValue !== 0 ? `${(Math.abs(diff) / Math.abs(prevValue) * 100).toFixed(1)}%` : diff === 0 ? "0%" : "новая статья";
+    return `<span class="expense-delta expense-delta--${colorDir}${className ? ` ${className}` : ""}">
+      <svg class="icon icon-sm" aria-hidden="true"><use href="#${icon}"/></svg>
+      <span>${sign}${fmtMoney.format(Math.abs(Math.round(diff)))} ₽ · ${pct}</span>
+    </span>`;
+  }
+
+  function renderExpenses(listEl, totalEl, canvas, d, marketplace, prevD) {
+    const palette = ["#5e5ce6", "#0a84ff", "#30b0c7", "#34c759", "#ff9f0a", "#ff6b5f", "#bf5af2", "#64d2ff", "#ac8e68", "#ff375f", "#8e8e93", "#af52de", "#00a6a6"];
+    const items = expenseItems(d, marketplace);
+    const prevItems = prevD ? new Map(expenseItems(prevD, marketplace)) : null;
     const total = items.reduce((s, it) => s + Math.abs(it[1]), 0);
+    const prevTotal = prevItems ? [...prevItems.values()].reduce((sum, value) => sum + Math.abs(value), 0) : null;
     const visibleItems = items.map(([label, value]) => ({ label, value }))
       .filter((item) => Math.abs(item.value) > 0.005)
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
@@ -276,6 +296,8 @@
     if (heroTotal) heroTotal.textContent = totalText;
     if (shareEl) shareEl.textContent = salesShare == null ? "—" : `${salesShare.toFixed(1)}%`;
     if (centerValue) centerValue.textContent = fmtShort.format(Math.round(total));
+    const heroDelta = document.getElementById("expHeroDelta");
+    if (heroDelta) heroDelta.innerHTML = renderExpenseDelta(total, prevTotal, "expense-delta--summary");
 
     listEl.innerHTML = visibleItems.length ? visibleItems.map(({ label, value, color }) => {
       const pct = total > 0 ? Math.abs(value / total) * 100 : 0;
@@ -283,7 +305,11 @@
         <div class="exp-row">
           <div class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></div>
           <div class="exp-track"><div class="exp-fill" style="--expense-color:${color};--expense-width:${Math.max(2, pct).toFixed(1)}%"></div></div>
-          <div class="exp-meta"><strong>${fmtMoney.format(Math.round(value))} ₽</strong><span>${pct.toFixed(1)}%</span></div>
+          <div class="exp-meta">
+            <strong>${fmtMoney.format(Math.round(value))} ₽</strong>
+            <span>${pct.toFixed(1)}%</span>
+            ${renderExpenseDelta(Math.abs(value), prevItems ? Math.abs(prevItems.get(label) || 0) : null)}
+          </div>
         </div>`;
     }).join("") : `<div class="analytics-empty">Расходов за этот период пока нет</div>`;
     totalEl.textContent = totalText;

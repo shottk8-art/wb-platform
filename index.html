@@ -97,7 +97,11 @@
       <div class="grid-2">
         <div>
           <div class="section-head"><h2>Структура расходов</h2><span class="hint">руб. за период</span></div>
-          <div class="card">
+          <div class="card expense-card">
+            <div class="analytics-summary">
+              <div><span>Всего расходов</span><strong class="mono" id="expHeroTotal">—</strong><div id="expHeroDelta"></div></div>
+              <div><span>Доля от продаж</span><strong id="expSalesShare">—</strong></div>
+            </div>
             <div class="exp-body">
               <div class="exp-chart">
                 <canvas id="expChart" role="img" aria-label="Диаграмма структуры расходов за выбранный период"></canvas>
@@ -138,7 +142,7 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
-<script src="/assets/dashboard.js?v=20261007-expense-chart2"></script>
+<script src="/assets/dashboard.js?v=20261007-expense-compare1"></script>
 <script>
 (function () {
   // /s/<slug> доходит до браузера как есть (Netlify рерайтит на сервере,
@@ -216,7 +220,7 @@
       } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, "all");
-      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, "all");
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, "all", prevDerived);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
     }
     select.addEventListener("change", renderPeriod);
