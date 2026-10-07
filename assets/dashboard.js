@@ -209,6 +209,30 @@
     return `<div class="kpi-extra">ДРР(з) ${drrZ} · ДРР(в) ${drrV}</div>`;
   }
 
+  function animateKpiNumber(element, fromValue, toValue, unit) {
+    const format = unit === "шт." ? fmtQty : fmtMoney;
+    const target = Number(toValue) || 0;
+    const from = Number.isFinite(Number(fromValue)) ? Number(fromValue) : 0;
+    element.textContent = format.format(Math.round(target));
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === target) return;
+
+    const startedAt = performance.now();
+    const duration = 720;
+    element.classList.add("is-counting");
+    const frame = (now) => {
+      if (!element.isConnected) return;
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      element.textContent = format.format(Math.round(from + (target - from) * eased));
+      if (progress < 1) requestAnimationFrame(frame);
+      else {
+        element.textContent = format.format(Math.round(target));
+        element.classList.remove("is-counting");
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+
   function renderKPI(container, d, prevD, marketplace) {
     container.innerHTML = "";
     const cards = [
@@ -223,14 +247,16 @@
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
-      container.appendChild(el(`
+      const card = el(`
         <div class="kpi${heroClass}">
           <div class="kpi-label">${escapeHtml(c.label)}</div>
-          <div class="kpi-value${negClass}">${valStr} <span class="kpi-unit">${c.unit}</span></div>
+          <div class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.unit}</span></div>
           ${renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral })}
           ${c.extra || ""}
         </div>
-      `));
+      `);
+      container.appendChild(card);
+      animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
   }
 
