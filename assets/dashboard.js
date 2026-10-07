@@ -422,11 +422,12 @@
     const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
     const icon = dir === "up" ? "icon-trend-up" : dir === "down" ? "icon-trend-down" : "icon-trend-flat";
     const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
-    const absolute = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
+    const exact = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
+    const absolute = fmtShort.format(Math.abs(Math.round(diff)));
     const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "новое";
-    return `<span class="sku-delta sku-delta--${dir}">
+    return `<span class="sku-delta sku-delta--${dir}" title="${sign}${exact} ${unit} · ${pct}" aria-label="Изменение: ${sign}${exact} ${unit}, ${pct}">
       <svg class="icon" aria-hidden="true"><use href="#${icon}"/></svg>
-      <span>${sign}${absolute} ${unit} · ${pct}</span>
+      <span>${sign}${absolute} · ${pct}</span>
     </span>`;
   }
 
