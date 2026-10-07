@@ -416,26 +416,41 @@
     C: "Группа C — оставшиеся ~5% выручки",
   };
 
-  function renderSkuTable(tbody, tfoot, hint, canvas, d) {
+  function renderSkuDelta(value, prevValue, unit) {
+    if (prevValue == null) return "";
+    const diff = value - prevValue;
+    const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const icon = dir === "up" ? "icon-trend-up" : dir === "down" ? "icon-trend-down" : "icon-trend-flat";
+    const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
+    const absolute = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
+    const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "новое";
+    return `<span class="sku-delta sku-delta--${dir}">
+      <svg class="icon" aria-hidden="true"><use href="#${icon}"/></svg>
+      <span>${sign}${absolute} ${unit} · ${pct}</span>
+    </span>`;
+  }
+
+  function renderSkuTable(tbody, tfoot, hint, canvas, d, prevD) {
     const counts = { A: 0, B: 0, C: 0 };
+    const prevRows = prevD ? new Map(prevD.skuRows.map((row) => [row.article, row])) : null;
     d.skuRows.forEach((s) => { counts[s.abc] = (counts[s.abc] || 0) + 1; });
     const search = document.getElementById("skuSearch");
     const sort = document.getElementById("skuSort");
     const filters = document.getElementById("skuAbcFilters");
     if (search) {
       search.value = skuView.query;
-      search.oninput = () => { skuView.query = search.value; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+      search.oninput = () => { skuView.query = search.value; renderSkuTable(tbody, tfoot, hint, canvas, d, prevD); };
     }
     if (sort) {
       sort.value = skuView.sort;
-      sort.onchange = () => { skuView.sort = sort.value; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+      sort.onchange = () => { skuView.sort = sort.value; renderSkuTable(tbody, tfoot, hint, canvas, d, prevD); };
     }
     if (filters) {
       filters.querySelectorAll("[data-abc]").forEach((button) => {
         const active = button.dataset.abc === skuView.abc;
         button.classList.toggle("active", active);
         button.setAttribute("aria-pressed", String(active));
-        button.onclick = () => { skuView.abc = button.dataset.abc; renderSkuTable(tbody, tfoot, hint, canvas, d); };
+        button.onclick = () => { skuView.abc = button.dataset.abc; renderSkuTable(tbody, tfoot, hint, canvas, d, prevD); };
       });
     }
 
@@ -468,13 +483,15 @@
           ? fmtMoney.format(Math.round(s.total_cost))
           : `<span class="cost-warn">не заполнено</span>`;
         const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
+        const prev = prevRows ? prevRows.get(s.article) : null;
+        const newBadge = prevRows && !prev ? `<span class="sku-new">Новый</span>` : "";
         return `
           <tr style="--row-index:${Math.min(index, 12)}">
-            <td>${abcBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
-            <td class="num"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div></td>
-            <td class="num mono">${fmtMoney.format(Math.round(s.revenue))}</td>
+            <td>${abcBadge}${newBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
+            <td class="num"><div class="sku-metric"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div>${prev ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
+            <td class="num mono"><div class="sku-metric"><strong>${fmtMoney.format(Math.round(s.revenue))}</strong>${prev ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
             <td class="num mono">${costCell}</td>
-            <td class="num ${profitClass}">${fmtMoney.format(Math.round(s.profit))}</td>
+            <td class="num ${profitClass}"><div class="sku-metric"><strong>${fmtMoney.format(Math.round(s.profit))}</strong>${prev ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
           </tr>`;
       }).join("");
 

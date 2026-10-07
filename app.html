@@ -384,7 +384,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261007-ozon-fix1"></script>
 <script src="/assets/upload.js?v=20261007-shared-costs1"></script>
-<script src="/assets/dashboard.js?v=20261007-hide-empty-promo1"></script>
+<script src="/assets/dashboard.js?v=20261007-sku-compare1"></script>
 <script>
 (function () {
   let shop = null;
@@ -615,7 +615,7 @@
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null, displayMarketplace);
       window.WBDashboard.renderTrend(document.getElementById("trendChart"), []);
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace, null);
-      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
+      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty, null);
       showManualExpenses(empty, false);
       return;
     }
@@ -647,7 +647,7 @@
     const trend = window.WBDashboard.combineTrend(trends);
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), trend);
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
-    window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
+    window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
   }
 
   async function refreshUploadsLog() {
