@@ -5,6 +5,7 @@
   const sb = () => window.supabaseClient;
   const fmtMoney = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
   const fmtQty = new Intl.NumberFormat("ru-RU");
+  const fmtCompact = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
   let charts = { pie: null, bar: null, trend: null };
@@ -261,7 +262,12 @@
           y: {
             border: { display: false },
             grid: { color: "rgba(127,127,127,.12)" },
-            ticks: { color: inkMute, callback: (v) => `${fmtMoney.format(Math.round(v / 1000))} тыс.` },
+            ticks: {
+              color: inkMute,
+              callback: (v) => Math.abs(v) >= 1000000
+                ? `${fmtCompact.format(v / 1000000)} млн ₽`
+                : `${fmtCompact.format(v / 1000)} тыс. ₽`,
+            },
           },
         },
       },
