@@ -55,12 +55,11 @@
         <span class="marketplace-badge" id="marketplaceBadge">Wildberries</span>
       </div>
       <nav class="side-menu" aria-label="Основная навигация">
-        <a class="active" href="#secDashboard"><svg class="icon"><use href="#icon-dashboard"/></svg>Обзор</a>
-        <a href="#secUploadForms"><svg class="icon"><use href="#icon-upload"/></svg>Загрузка отчётов</a>
-        <a href="#secUploadsLog"><svg class="icon"><use href="#icon-file"/></svg>Журнал загрузок</a>
-        <a href="#secCosts"><svg class="icon"><use href="#icon-store"/></svg>Себестоимость</a>
-        <a href="#secMembers"><svg class="icon"><use href="#icon-people"/></svg>Участники</a>
-        <a href="#secSettings"><svg class="icon"><use href="#icon-settings"/></svg>Настройки</a>
+        <a class="active" href="#overview" data-view="overview"><svg class="icon"><use href="#icon-dashboard"/></svg><span>Обзор</span></a>
+        <a href="#reports" data-view="reports"><svg class="icon"><use href="#icon-upload"/></svg><span>Отчёты</span></a>
+        <a href="#costs" data-view="costs"><svg class="icon"><use href="#icon-store"/></svg><span>Себестоимость</span></a>
+        <a href="#team" data-view="team"><svg class="icon"><use href="#icon-people"/></svg><span>Команда</span></a>
+        <a href="#settings" data-view="settings"><svg class="icon"><use href="#icon-settings"/></svg><span>Настройки</span></a>
       </nav>
       <div class="sidebar-actions">
         <button class="sidebar-action" id="newShopBtn"><svg class="icon"><use href="#icon-plus"/></svg>Новый магазин</button>
@@ -116,12 +115,12 @@
 
   <main class="app-main">
 
-    <div class="page-heading" id="secDashboard">
-      <div><h1>Обзор магазина</h1><p id="pageSubtitle">Финансовые показатели и продажи Wildberries</p></div>
+    <div class="page-heading">
+      <div><h1 id="pageTitle">Обзор</h1><p id="pageSubtitle">Главные показатели магазина за выбранный месяц</p></div>
       <div class="period-bar"><select id="periodSelect"></select></div>
     </div>
 
-    <section class="section" id="secSettings">
+    <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card" style="padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         <div class="share-box">
@@ -137,7 +136,7 @@
       </div>
     </section>
 
-    <section class="section" id="secTax">
+    <section class="section app-view" id="secTax" data-view="settings">
       <div class="section-head">
         <h2>Налог</h2><span class="hint">вычитается из чистой прибыли на дашборде — укажите свою ставку (например, УСН)</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
@@ -154,7 +153,7 @@
       </div></div>
     </section>
 
-    <section class="section" id="secMembers">
+    <section class="section app-view" id="secMembers" data-view="team">
       <div class="section-head">
         <h2>Участники</h2><span class="hint">добавьте человека по нику в Telegram — увидит и сможет загружать те же данные, но не настройки магазина</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
@@ -176,7 +175,7 @@
       </div></div>
     </section>
 
-    <section class="section" id="secUploadForms">
+    <section class="section app-view" id="secUploadForms" data-view="reports">
       <div class="section-head">
         <h2 id="uploadSectionTitle">Загрузить отчёты Wildberries</h2><span class="hint" id="uploadSectionHint">файлы .xlsx, ничего никуда кроме вашей базы не отправляется</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
@@ -216,7 +215,7 @@
       </div></div>
     </section>
 
-    <section class="section" id="secUploadsLog">
+    <section class="section app-view" id="secUploadsLog" data-view="reports">
       <div class="section-head">
         <h2>Журнал загрузок</h2><span class="hint">все загруженные файлы — удаление одного отменяет только те данные, что он добавил</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
@@ -233,11 +232,11 @@
       </div></div>
     </section>
 
-    <section class="section">
+    <section class="section app-view" id="secKpis" data-view="overview">
       <div class="kpi-row" id="kpiRow"></div>
     </section>
 
-    <section class="section">
+    <section class="section app-view" id="secAnalytics" data-view="overview">
       <div class="grid-2">
         <div>
           <div class="section-head"><h2>Структура расходов</h2><span class="hint">на что уходит выручка за выбранный период</span></div>
@@ -265,7 +264,7 @@
       </div>
     </section>
 
-    <section class="section" id="secCosts">
+    <section class="section app-view" id="secCosts" data-view="costs">
       <div class="section-head">
         <h2>Себестоимость по артикулам</h2>
         <span class="hint">нужна для расчёта прибыли — заполните вручную или файлом, действует до изменения</span>
@@ -309,6 +308,15 @@
   let shop = null;
   let periods = [];
   let session = null;
+  let activeView = "overview";
+
+  const VIEW_META = {
+    overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
+    reports: { title: "Отчёты", subtitle: "Загрузите новые данные и при необходимости отмените прошлую загрузку" },
+    costs: { title: "Себестоимость", subtitle: "Укажите закупочную цену товаров для точного расчёта прибыли" },
+    team: { title: "Команда", subtitle: "Управляйте доступом сотрудников к данным магазина" },
+    settings: { title: "Настройки", subtitle: "Налог, публичная витрина и управление магазином" },
+  };
 
   function isOwner() {
     return !!(shop && session && shop.owner_id === session.user.id);
@@ -316,6 +324,26 @@
 
   const loading = document.getElementById("loadingScreen");
   const appScreen = document.getElementById("appScreen");
+
+  function setActiveView(view, updateHash = true) {
+    if (!VIEW_META[view]) view = "overview";
+    activeView = view;
+    const meta = VIEW_META[view];
+    document.querySelectorAll(".app-view").forEach((section) => {
+      section.classList.toggle("is-active", section.dataset.view === view);
+    });
+    document.querySelectorAll(".side-menu [data-view]").forEach((link) => {
+      const selected = link.dataset.view === view;
+      link.classList.toggle("active", selected);
+      link.setAttribute("aria-current", selected ? "page" : "false");
+    });
+    document.getElementById("pageTitle").textContent = meta.title;
+    const market = shop?.marketplace === "ozon" ? "Ozon" : "Wildberries";
+    document.getElementById("pageSubtitle").textContent = `${meta.subtitle} · ${market}`;
+    document.querySelector(".page-heading .period-bar").hidden = !meta.period;
+    if (updateHash) history.replaceState(null, "", `#${view}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function toast(msg, isErr) {
     const t = document.createElement("div");
@@ -360,7 +388,7 @@
     const badge = document.getElementById("marketplaceBadge");
     badge.textContent = marketplaceName;
     badge.dataset.marketplace = marketplace;
-    document.getElementById("pageSubtitle").textContent = `Финансовые показатели и продажи ${marketplaceName}`;
+    setActiveView(activeView, false);
     document.getElementById("uploadSectionTitle").textContent = `Загрузить отчёты ${marketplaceName}`;
     document.getElementById("wbUploadGrid").hidden = marketplace === "ozon";
     document.getElementById("ozonUploadNotice").hidden = marketplace !== "ozon";
@@ -616,6 +644,8 @@
 
     loading.hidden = true;
     appScreen.hidden = false;
+    const initialView = location.hash.replace(/^#/, "");
+    setActiveView(VIEW_META[initialView] ? initialView : "overview", false);
 
     window.WBAdmin.isAdmin().then((admin) => {
       document.getElementById("adminLink").hidden = !admin;
@@ -629,10 +659,10 @@
       const opened = appScreen.classList.toggle("menu-open");
       mobileMenuBtn.setAttribute("aria-expanded", String(opened));
     });
-    document.querySelectorAll(".side-menu a").forEach((link) => {
-      link.addEventListener("click", () => {
-        document.querySelectorAll(".side-menu a").forEach((item) => item.classList.remove("active"));
-        link.classList.add("active");
+    document.querySelectorAll(".side-menu [data-view]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        setActiveView(link.dataset.view);
         appScreen.classList.remove("menu-open");
         mobileMenuBtn.setAttribute("aria-expanded", "false");
       });
