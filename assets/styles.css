@@ -774,8 +774,8 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
 .sku-card .qty-fill{border-radius:999px; background:#3b82f6;}
 .sku-metric{display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:3px;}
 .sku-metric strong{color:inherit; font:inherit; font-weight:650; white-space:nowrap;}
-.sku-delta{display:inline-flex; max-width:100%; align-items:center; justify-content:flex-end; gap:2px; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; font-size:10px; font-weight:600; line-height:1.2; white-space:nowrap; text-overflow:ellipsis;}
-.sku-delta > span{overflow:hidden; text-overflow:ellipsis;}
+.sku-delta{display:inline-flex; max-width:100%; align-items:flex-start; justify-content:flex-end; gap:2px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,sans-serif; font-size:10px; font-weight:600; line-height:1.15; white-space:nowrap;}
+.sku-delta-copy{display:flex; min-width:0; flex-direction:column; align-items:flex-end; gap:1px;}
 .sku-delta .icon{width:12px; height:12px;}
 .sku-delta--up{color:var(--good);}
 .sku-delta--down{color:var(--bad);}

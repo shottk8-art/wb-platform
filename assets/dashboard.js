@@ -427,7 +427,7 @@
     const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "новое";
     return `<span class="sku-delta sku-delta--${dir}" title="${sign}${exact} ${unit} · ${pct}" aria-label="Изменение: ${sign}${exact} ${unit}, ${pct}">
       <svg class="icon" aria-hidden="true"><use href="#${icon}"/></svg>
-      <span>${sign}${absolute} · ${pct}</span>
+      <span class="sku-delta-copy"><span>${sign}${absolute}</span><span>${pct}</span></span>
     </span>`;
   }
 
