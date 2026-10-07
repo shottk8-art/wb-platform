@@ -236,6 +236,20 @@
       <div class="kpi-row" id="kpiRow"></div>
     </section>
 
+    <section class="section app-view" id="secTrend" data-view="overview">
+      <div class="section-head">
+        <h2>Динамика магазина</h2>
+        <span class="hint">продажи и чистая прибыль за последние 12 месяцев</span>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-legend" aria-hidden="true">
+          <span><i class="trend-dot trend-dot--sales"></i>Продажи</span>
+          <span><i class="trend-dot trend-dot--profit"></i>Чистая прибыль</span>
+        </div>
+        <div class="trend-chart"><canvas id="trendChart"></canvas></div>
+      </div>
+    </section>
+
     <section class="section app-view" id="secAnalytics" data-view="overview">
       <div class="grid-2">
         <div>
@@ -472,6 +486,7 @@
       // иначе остаются данные, отрисованные для предыдущего магазина
       const empty = window.WBDashboard.computeDerived(null, [], new Map());
       window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null);
+      window.WBDashboard.renderTrend(document.getElementById("trendChart"), []);
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty);
       return;
@@ -490,6 +505,8 @@
     } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
     window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived);
+    const trend = await window.WBDashboard.loadTrendData(shop.id, shop.tax_rate);
+    window.WBDashboard.renderTrend(document.getElementById("trendChart"), trend);
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived);
   }

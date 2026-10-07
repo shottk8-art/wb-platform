@@ -7,7 +7,7 @@
   const fmtQty = new Intl.NumberFormat("ru-RU");
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
-  let charts = { pie: null, bar: null };
+  let charts = { pie: null, bar: null, trend: null };
 
   async function loadPeriods(shopId) {
     const { data, error } = await sb()
@@ -28,6 +28,23 @@
     ]);
     const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
     return { report, skus: skus || [], costMap };
+  }
+
+  async function loadTrendData(shopId, taxRate) {
+    const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }] = await Promise.all([
+      sb().from("monthly_reports").select("*").eq("shop_id", shopId).order("year", { ascending: false }).order("month", { ascending: false }).limit(12),
+      sb().from("sku_sales").select("*").eq("shop_id", shopId),
+      sb().from("sku_costs").select("*").eq("shop_id", shopId),
+    ]);
+    if (reportError) throw reportError;
+    if (salesError) throw salesError;
+    if (costsError) throw costsError;
+    const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
+    return (reports || []).map((report) => {
+      const periodSales = (sales || []).filter((row) => row.year === report.year && row.month === report.month);
+      const d = computeDerived(report, periodSales, costMap, taxRate);
+      return { year: report.year, month: report.month, sales: report.sales_amount || 0, profit: d.netProfit };
+    }).reverse();
   }
 
   // taxRate — ставка налога в % от суммы продаж (свойство магазина, не
@@ -190,6 +207,67 @@
     });
   }
 
+  function renderTrend(canvas, rows) {
+    if (charts.trend) charts.trend.destroy();
+    const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    charts.trend = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
+        datasets: [
+          {
+            label: "Продажи",
+            data: rows.map((r) => r.sales),
+            borderColor: "#0071e3",
+            backgroundColor: "rgba(0,113,227,.09)",
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHitRadius: 14,
+            tension: .38,
+            fill: true,
+          },
+          {
+            label: "Чистая прибыль",
+            data: rows.map((r) => r.profit),
+            borderColor: "#1d1d1f",
+            backgroundColor: "transparent",
+            borderWidth: 2.5,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHitRadius: 14,
+            tension: .38,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        animation: reduceMotion ? false : { duration: 720, easing: "easeOutQuart" },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(29,29,31,.94)",
+            padding: 12,
+            cornerRadius: 10,
+            displayColors: true,
+            callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmtMoney.format(Math.round(ctx.parsed.y))} ₽` },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: inkMute, maxRotation: 0 } },
+          y: {
+            border: { display: false },
+            grid: { color: "rgba(127,127,127,.12)" },
+            ticks: { color: inkMute, callback: (v) => `${fmtMoney.format(Math.round(v / 1000))} тыс.` },
+          },
+        },
+      },
+    });
+  }
+
   const ABC_TITLE = {
     A: "Группа A — вносит вклад в первые 80% выручки",
     B: "Группа B — вносит вклад в следующие 80–95% выручки",
@@ -281,5 +359,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, computeDerived, renderKPI, renderExpenses, renderSkuTable, formatPeriod };
+  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod };
 })();
