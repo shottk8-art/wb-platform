@@ -590,7 +590,7 @@
   }
 
   async function init() {
-    session = await window.WBAuth.getSession();
+    session = await window.WBAuth.waitForSession(4000);
     if (!session) { location.href = "/index.html"; return; }
     const meta = session.user.user_metadata || {};
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);

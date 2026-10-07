@@ -70,6 +70,20 @@
     return data.session;
   }
 
+  // После Telegram-входа кабинет открывается сразу на новой странице.
+  // В некоторых браузерах восстановление сохранённой Supabase-сессии
+  // занимает несколько сотен миллисекунд. Не считаем пользователя
+  // разлогиненным, пока не дали хранилищу короткое время на инициализацию.
+  async function waitForSession(timeoutMs) {
+    const deadline = Date.now() + (timeoutMs || 4000);
+    let session = await getSession();
+    while (!session && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      session = await getSession();
+    }
+    return session;
+  }
+
   // Возвращает первый доступный магазин пользователя (свой или тот, куда
   // его добавили как участника); если нет ни одного — создаёт свой.
   async function ensureShop(defaultName) {
@@ -182,7 +196,7 @@
   }
 
   window.WBAuth = {
-    signInWithMagicLink, signInWithTelegram, signOut, getSession,
+    signInWithMagicLink, signInWithTelegram, signOut, getSession, waitForSession,
     ensureShop, listMyShops, createShop, updateShop, deleteShop, slugify,
     listMembers, addMember, removeMember,
   };

@@ -159,6 +159,8 @@
     msg.textContent = "Входим через Telegram…"; msg.className = "auth-msg";
     try {
       await window.WBAuth.signInWithTelegram(tgUser);
+      // Даём браузеру завершить запись сессии до загрузки новой страницы.
+      await new Promise((resolve) => setTimeout(resolve, 250));
       location.href = "/app.html";
     } catch (err) {
       msg.textContent = "Не получилось войти: " + err.message;
