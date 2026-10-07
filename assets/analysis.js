@@ -39,7 +39,7 @@
       const caveats = card.querySelector("#aiCaveats"); caveats.replaceChildren();
       (analysis.caveats || []).forEach((text) => { const item = document.createElement("li"); item.textContent = text; caveats.append(item); });
       caveats.parentElement.hidden = !analysis.caveats?.length;
-      intro.hidden = true; result.hidden = false; button.querySelector("span").textContent = "Обновить анализ";
+      intro.hidden = true; result.hidden = false; button.querySelector("span").textContent = data.cached ? "Анализ актуален" : "Обновить анализ";
     } catch (cause) {
       card.dataset.state = "error"; error.textContent = cause.message || "Не удалось выполнить анализ"; error.hidden = false; button.querySelector("span").textContent = "Попробовать снова";
     } finally { button.disabled = false; }

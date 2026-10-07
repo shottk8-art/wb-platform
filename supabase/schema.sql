@@ -432,6 +432,24 @@ create policy "owner or admin can read question photos"
     )
   );
 
+-- ---- кэш AI-анализа ----
+-- Доступен только Edge Function через service_role. Повторный анализ того же
+-- набора рассчитанных показателей не расходует токены OpenAI.
+create table if not exists ai_analysis_cache (
+  id                 uuid primary key default gen_random_uuid(),
+  shop_id            uuid not null references shops(id) on delete cascade,
+  marketplace_scope  text not null check (marketplace_scope in ('wildberries','ozon','all')),
+  year               int not null,
+  month              int not null check (month between 1 and 12),
+  source_fingerprint text not null,
+  analysis           jsonb not null,
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now(),
+  unique (shop_id, marketplace_scope, year, month)
+);
+
+alter table ai_analysis_cache enable row level security;
+
 -- =====================================================================
 -- Готово. После выполнения этого файла:
 --  1. Supabase → Authentication → Providers → включите Email (Magic Link).

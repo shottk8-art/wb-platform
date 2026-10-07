@@ -7,6 +7,12 @@ const corsHeaders = {
 
 const num = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
 
+async function fingerprint(value: unknown) {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function calculate(report: Record<string, unknown>, sales: Record<string, unknown>[], costs: Map<string, number>, taxRate: number) {
   const cogs = sales.reduce((sum, row) => sum + num(costs.get(String(row.article))) * num(row.bought_qty), 0);
   const salesAmount = num(report.sales_amount);
@@ -73,14 +79,20 @@ Deno.serve(async (req) => {
     const costs = new Map((costRows || []).map((row) => [String(row.article), num(row.cost_price)]));
     const current = combine(reports.map((report) => calculate(report, (sales || []).filter((row) => row.marketplace === report.marketplace), costs, num(shop.tax_rate))));
     const previous = previousReports?.length ? combine(previousReports.map((report) => calculate(report, (previousSales || []).filter((row) => row.marketplace === report.marketplace), costs, num(shop.tax_rate)))) : null;
-    const topProducts = [...(sales || [])].sort((a, b) => num(b.revenue) - num(a.revenue)).slice(0, 8).map((row) => ({ marketplace: row.marketplace, article: row.article, name: row.name || row.article, units: num(row.bought_qty), revenue: num(row.revenue), gross_profit: num(row.revenue) - num(costs.get(String(row.article))) * num(row.bought_qty) }));
+    const topProducts = [...(sales || [])].sort((a, b) => num(b.revenue) - num(a.revenue) || String(a.article).localeCompare(String(b.article))).slice(0, 8).map((row) => ({ marketplace: row.marketplace, article: row.article, name: row.name || row.article, units: num(row.bought_qty), revenue: num(row.revenue), gross_profit: num(row.revenue) - num(costs.get(String(row.article))) * num(row.bought_qty) }));
+    const analysisInput = { period: { year, month }, marketplace: scope, current, previous, top_products: topProducts };
+    const sourceFingerprint = await fingerprint(analysisInput);
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: cached, error: cacheReadError } = await admin.from("ai_analysis_cache").select("analysis").eq("shop_id", shopId).eq("marketplace_scope", scope).eq("year", year).eq("month", month).eq("source_fingerprint", sourceFingerprint).maybeSingle();
+    if (cacheReadError) console.error("AI cache read failed", cacheReadError.message);
+    if (cached?.analysis) return json({ analysis: cached.analysis, period: { year, month }, marketplace: scope, cached: true });
 
     const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST", headers: { Authorization: `Bearer ${openAiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: Deno.env.get("OPENAI_MODEL") || "gpt-5.6-terra", store: false,
         instructions: "Ты финансовый аналитик продавца на маркетплейсах. Отвечай по-русски, кратко и конкретно. Используй только переданные цифры, не выдумывай причины и данные. Сравнивай с прошлым месяцем только когда previous не null. net_profit уже включает себестоимость, налог, рекламу и ручные расходы. Предлагай действия, которые можно проверить по данным.",
-        input: JSON.stringify({ period: { year, month }, marketplace: scope, current, previous, top_products: topProducts }),
+        input: JSON.stringify(analysisInput),
         text: { format: { type: "json_schema", name: "seller_analysis", strict: true, schema: {
           type: "object", additionalProperties: false,
           properties: {
@@ -104,7 +116,10 @@ Deno.serve(async (req) => {
     const responseData = await aiResponse.json();
     const outputText = responseData.output?.flatMap((item: { content?: { type?: string; text?: string }[] }) => item.content || []).find((item: { type?: string }) => item.type === "output_text")?.text;
     if (!outputText) return json({ error: "AI не вернул результат анализа" }, 502);
-    return json({ analysis: JSON.parse(outputText), period: { year, month }, marketplace: scope });
+    const analysis = JSON.parse(outputText);
+    const { error: cacheWriteError } = await admin.from("ai_analysis_cache").upsert({ shop_id: shopId, marketplace_scope: scope, year, month, source_fingerprint: sourceFingerprint, analysis, updated_at: new Date().toISOString() }, { onConflict: "shop_id,marketplace_scope,year,month" });
+    if (cacheWriteError) console.error("AI cache write failed", cacheWriteError.message);
+    return json({ analysis, period: { year, month }, marketplace: scope, cached: false });
   } catch (error) {
     console.error(error);
     return json({ error: error instanceof Error ? error.message : "Ошибка анализа" }, 500);
