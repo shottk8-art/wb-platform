@@ -419,6 +419,7 @@
   let overviewScope = "wildberries";
   let reportMarketplace = "wildberries";
   let dashboardRequest = 0;
+  let aiAllowed = false;
 
   const VIEW_META = {
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
@@ -813,6 +814,8 @@
     session = await window.WBAuth.waitForSession(4000);
     if (!session) { location.href = "/index.html"; return; }
     const meta = session.user.user_metadata || {};
+    aiAllowed = String(meta.telegram_username || "").replace(/^@/, "").toLowerCase() === "karlshott";
+    document.getElementById("secAiAnalysis").hidden = !aiAllowed;
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
     shop = await window.WBAuth.ensureShop();
@@ -1051,6 +1054,7 @@
     document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
+      if (!aiAllowed) return;
       const period = document.getElementById("periodSelect").value;
       if (!period) return toast("Сначала загрузите отчёты за полный период", true);
       const [year, month] = period.split("-").map(Number);

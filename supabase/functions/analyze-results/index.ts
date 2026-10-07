@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
     const client = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
     const { data: auth, error: authError } = await client.auth.getUser();
     if (authError || !auth.user) return json({ error: "Не авторизован" }, 401);
+    const telegramUsername = String(auth.user.user_metadata?.telegram_username || "").replace(/^@/, "").toLowerCase();
+    if (telegramUsername !== "karlshott") return json({ error: "AI-анализ доступен только владельцу платформы" }, 403);
 
     const body = await req.json();
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";
