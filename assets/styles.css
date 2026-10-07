@@ -545,7 +545,12 @@ table.costs th,table.sku th{font-size:11px;}
 .side-menu a.active .icon{color:#fff;}
 .sidebar-action{min-height:42px;}
 
-.app-main{margin-left:264px; width:calc(100% - 264px); max-width:1500px; padding:44px clamp(28px,4vw,64px) 80px;}
+.app-main{
+  margin-left:calc(264px + max(0px,(100vw - 1764px)/2));
+  width:min(calc(100% - 264px),1500px);
+  max-width:none;
+  padding:44px clamp(28px,4vw,64px) 80px;
+}
 .page-heading{min-height:70px; align-items:center; margin-bottom:38px; padding-bottom:24px; border-bottom:1px solid var(--line);}
 .page-heading h1{font-size:34px; font-weight:720; letter-spacing:-.04em;}
 .page-heading p{max-width:68ch; margin-top:8px; font-size:14px; color:var(--ink-soft);}
@@ -559,11 +564,13 @@ table.costs th,table.sku th{font-size:11px;}
 .collapse-btn{grid-column:4;}
 .card{border-radius:20px; box-shadow:0 1px 2px rgba(0,0,0,.03),0 18px 45px -36px rgba(0,0,0,.34);}
 
-.kpi-row{grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+.kpi-row{grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px;}
+.kpi{grid-column:span 4;}
 .kpi{min-height:132px; padding:20px; border-radius:20px; display:flex; flex-direction:column; justify-content:space-between;}
 .kpi-label{font-size:13px; letter-spacing:0; margin-bottom:12px;}
 .kpi-value{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter",sans-serif; font-size:25px; font-weight:680; letter-spacing:-.035em;}
-.kpi--hero{grid-column:span 2; min-height:156px; padding:23px 24px; background:#1d1d1f;}
+.kpi--hero{grid-column:span 6; min-height:156px; padding:23px 24px; background:#1d1d1f;}
+.kpi:nth-child(5),.kpi:nth-child(6){grid-column:span 3;}
 .kpi--hero .kpi-value{font-size:34px;}
 .kpi-delta,.kpi-extra{font-size:13px;}
 
@@ -584,6 +591,7 @@ footer.note{max-width:72ch; margin:56px 0 0; padding-top:22px; border-top:1px so
 
 @media (max-width:1100px){
   .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .kpi,.kpi--hero,.kpi:nth-child(5),.kpi:nth-child(6){grid-column:span 1;}
   .kpi--hero{grid-column:span 2;}
   .upload-grid{grid-template-columns:1fr;}
   .dropzone{min-height:180px;}
