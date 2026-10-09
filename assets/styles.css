@@ -651,8 +651,9 @@ table.costs th,table.sku th{font-size:11px;}
 .kpi-value{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums lining-nums;}
 .kpi--hero{grid-column:span 6; min-height:156px; padding:23px 24px; background:#1d1d1f;}
 .kpi:nth-child(5),.kpi:nth-child(6){grid-column:span 3;}
-.kpi.kpi--rate,.kpi.kpi--advertising-wide{grid-column:span 6;}
-.kpi.kpi--rate-first{grid-column:1 / span 6;}
+.kpi.kpi--advertising-wide{grid-column:span 6;}
+.kpi.kpi--rate{grid-column:span 4;}
+.kpi.kpi--rate-first{grid-column:1 / span 4;}
 .kpi--rate .kpi-extra{line-height:1.5;}
 .kpi--hero .kpi-value{font-size:34px;}
 .kpi-delta,.kpi-extra{font-size:13px;}
