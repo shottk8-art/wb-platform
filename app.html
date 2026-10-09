@@ -537,7 +537,7 @@
       : (view === "reports" || view === "costs")
         ? (reportMarketplace === "ozon" ? "Ozon" : "Wildberries")
         : "Wildberries и Ozon";
-    document.getElementById("pageSubtitle").textContent = `${meta.subtitle} · ${market}`;
+    document.getElementById("pageSubtitle").textContent = view === "api" ? meta.subtitle : `${meta.subtitle} · ${market}`;
     document.getElementById("overviewControls").hidden = !meta.period;
     if (updateHash) history.replaceState(null, "", `#${view}`);
     window.scrollTo({ top: 0, behavior: "smooth" });

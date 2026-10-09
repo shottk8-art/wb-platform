@@ -46,7 +46,7 @@
     el('apiCabinetAds').innerHTML = ads && Object.keys(ads).length ? pairs(Object.entries(ads).map(([type,data])=>[type,money(data.amount)])) : '<p class="hint">Рекламные списания пока не получены.</p>';
     const missing = cabinet?.missing_costs?.length || 0;
     el('apiCabinetReadiness').innerHTML = [
-      cabinet ? missing ? `Себестоимость не заполнена: ${missing} товаров с выкупами.` : 'Себестоимость заполнена для товаров с выкупами.' : 'Себестоимость проверим после загрузки.',
+      cabinet?.finance ? missing ? `Себестоимость не заполнена: ${missing} товаров с выкупами.` : 'Себестоимость заполнена для товаров с выкупами.' : 'Себестоимость проверим после загрузки финансов.',
       `Ставка налога: ${number(cabinet?.shop?.tax_rate)}%. Проверьте в настройках.`,
       'Операционные расходы и внешнее продвижение вводятся вручную в файловом обзоре.',
       sources.ads?.undated ? `Списания без даты: ${sources.ads.undated}. Не распределены по месяцам.` : 'Реклама распределяется по дате списания, время Москвы.',
