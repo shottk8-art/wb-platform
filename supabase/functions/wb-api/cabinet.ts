@@ -7,7 +7,7 @@ export function cabinetPeriod(value: unknown, now = new Date()) {
   const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
   const period = validatePeriod(start, end);
   const oldest = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10);
-  if (start < oldest || end >= now.toISOString().slice(0, 7) + '-01') throw new ApiError(400, 'В тесте доступны закрытые месяцы за последний год');
+  if (start < oldest || end >= now.toISOString().slice(0, 7) + '-01') throw new ApiError(400, 'Доступны закрытые месяцы за последний год');
   return period;
 }
 const text = (value: unknown) => String(value || '').slice(0, 300);
@@ -92,10 +92,13 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
 export async function readCabinet(admin: any, shopId: string, period: any) {
   const { data: shop, error: shopError } = await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
   if (shopError || !shop || shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
+  const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses,media_spend').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
+  if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
+  const settings = settingsRows?.[0] || { operational_expenses: '0.00', external_promotion_expenses: '0.00', media_spend: null };
   const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom).eq('date_to', period.dateTo).order('created_at', { ascending: false }).limit(1);
   if (error) throw new ApiError(500, 'Не удалось прочитать выгрузку');
   const job = jobs?.[0];
-  if (!job) return { job: null, shop, products: [], finance: null, sources: {} };
+  if (!job) return { job: null, shop, settings, products: [], finance: null, sources: {} };
   const sources = job.summary?.api_sources || {}, products = new Map<string, any>();
   for (const p of sources.orders?.rows || []) {
     const article = String(p.vendor_code || p.nm_id), old = products.get(article);
@@ -126,13 +129,42 @@ export async function readCabinet(admin: any, shopId: string, period: any) {
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), cost_price: prices.get(p.article) ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded';
+  const missing = safeProducts.filter(p => p.bought_qty > 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
+  const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: rowsCount, updated_at: job.updated_at, error_message: job.error_message },
-    complete, finance: financialComplete ? { ...job.summary?.totals, bought_qty: bought } : null, products: safeProducts,
-    missing_costs: safeProducts.filter(p => p.bought_qty > 0 && !(Number(p.cost_price) > 0)).map(p => p.article),
+    complete, settings, cogs, finance: financialComplete ? { ...job.summary?.totals, bought_qty: bought } : null, products: safeProducts,
+    missing_costs: missing,
     sources: { finance: { status: financialComplete ? 'downloaded' : 'loading' },
       orders: { status: sources.orders?.status || 'pending', amount: sources.orders?.orders_amount ?? null, count: sources.orders?.orders_count ?? null },
       ads: { status: sources.internal_ads?.status || 'pending', totals: sources.internal_ads?.period_totals || {}, undated: sources.internal_ads?.undated_operations || 0 },
-      media: { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null } },
+      media: settingsRows?.length ? { status: settings.media_spend == null ? 'needs_confirmation' : 'confirmed_by_user', amount: settings.media_spend == null ? null : String(settings.media_spend) } : { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null } },
     deductions: job.summary?.deductions || [], net_profit: null, reconciliation_required: true };
+}
+
+export function monthSettings(body: any) {
+  const amount = (value: unknown) => {
+    if (value == null || value === '' || (typeof value !== 'number' && typeof value !== 'string')) throw new ApiError(400, 'Укажите сумму расходов');
+    let v;
+    try { v = cents(value); } catch { throw new ApiError(400, 'Укажите сумму с точностью до копейки'); }
+    if (v < 0n || v > 100000000000n) throw new ApiError(400, 'Расходы должны быть от 0 до 1 млрд ₽');
+    return rub(v);
+  };
+  return { operational_expenses: amount(body.operational_expenses), external_promotion_expenses: amount(body.external_promotion_expenses), media_spend: body.media_spend == null || body.media_spend === '' ? null : amount(body.media_spend) };
+}
+
+export async function readCabinetTrend(admin: any, shopId: string) {
+  if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
+  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('date_from,date_to,summary').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
+  if (error) throw new ApiError(500, 'Не удалось прочитать динамику');
+  const byMonth = new Map();
+  for (const job of jobs || []) {
+    const month = job.date_from.slice(0,7);
+    if (byMonth.has(month)) continue;
+    try { const period = cabinetPeriod(month); if (period.dateFrom !== job.date_from || period.dateTo !== job.date_to) continue; } catch { continue; }
+    const s = job.summary?.api_sources;
+    if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
+    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(job.summary.totals?.retailAmount), orders:Number(s.orders.orders_amount), internalAds:Number(s.internal_ads.period_totals?.['Баланс']?.amount || 0) });
+  }
+  return [...byMonth.values()].sort((a,b)=>a.year-b.year || a.month-b.month).slice(-12);
 }

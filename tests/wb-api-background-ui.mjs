@@ -20,11 +20,9 @@ vm.runInNewContext(readFileSync(new URL('../assets/wb-api.js', import.meta.url),
   },
 });
 await window.WBApi.setContext({ shopId: 'test-shop', name: 'Test seller', allowed: true });
-el('wbApiPreviewBtn').events.click();
 for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve));
 assert.ok(!calls.includes('preview_step'), 'browser must only enqueue/read status, never drive WB pagination');
 assert.doesNotMatch(el('wbApiMessage').textContent || '', /Не закрывайте|43109 сек|Нажмите «Продолжить/);
-assert.match(el('wbApiMessage').textContent || '', /фонов|сервер/i);
-assert.match(el('wbApiMessage').textContent || '', /Последний запрос: Лимит запросов WB/);
+assert.deepEqual(calls,['status'],'key settings only read connection; background work belongs to the server');
 assert.doesNotMatch(el('wbApiMessage').textContent || '', /WB разрешит/);
 console.log('Background UI reproduction: passed (browser-independent scheduling).');

@@ -3,7 +3,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value == null ? '—' : Number(value).toLocaleString('ru-RU', {maximumFractionDigits:2}) + ' ₽';
   const number = value => value == null ? '—' : Number(value).toLocaleString('ru-RU');
-  let context = null, epoch = 0, timer = null, busy = false, cabinet = null;
+  let context = null, epoch = 0, timer = null, busy = false, cabinet = null, trend = [], trendMetric = 'orders', dirty = false, reloadQueued = false;
   const now = new Date(), closed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const defaultMonth = `${closed.getFullYear()}-${String(closed.getMonth() + 1).padStart(2,'0')}`;
   el('apiCabinetMonth').value = defaultMonth;
@@ -18,7 +18,9 @@
     el('apiCabinetRefresh').disabled = busy || loading;
     el('apiCabinetRefresh').hidden = !cabinet?.complete;
     el('apiCabinetMonth').disabled = busy;
-    el('apiCabinetSync').textContent = loading ? 'Загрузка на сервере' : cabinet?.job?.status === 'error' ? 'Повторить загрузку' : cabinet?.complete ? 'Показать сохранённые данные' : 'Загрузить данные';
+    el('apiCabinetSync').textContent = loading ? 'Загрузка на сервере' : cabinet?.job?.status === 'error' ? 'Повторить загрузку' : cabinet?.complete ? 'Обновить расчёт' : 'Загрузить данные';
+    for (const id of ['apiOperationalExpenses','apiExternalExpenses','apiMediaExpenses']) el(id).disabled = busy || !context?.allowed;
+    el('apiSaveExpenses').disabled = busy || !context?.allowed || !dirty;
     const sources = cabinet?.sources || {};
     const labels = {downloaded:'Получено из API',loading:'Загружается',pending:'Ожидает загрузки',confirmed_by_user:'Подтверждено владельцем',needs_confirmation:'Нужно подтверждение'};
     el('apiCabinetSources').innerHTML = [['finance','Финансы'],['orders','Заказы'],['ads','Внутренняя реклама'],['media','WB Media']].map(([key,label]) => {
@@ -30,14 +32,17 @@
     const balance = ads ? ads['Баланс']?.amount ?? 0 : null;
     const media = ['confirmed_by_user','downloaded'].includes(sources.media?.status) ? sources.media.amount : null;
     const metrics = [
-      ['Сумма заказов', money(orders?.amount), 'Воронка продаж · по дате заказа'],
-      ['Продажи по финансовому отчёту', money(f?.retailAmount), 'Продажи минус возвраты · цена из финансовой детализации'],
-      ['Внутренняя реклама', money(balance), 'Списания с баланса · кэшбэк отдельно'],
+      ['Сумма заказов', money(orders?.amount), 'Воронка продаж · по дате заказа', 'orders'],
+      ['Продажи по финансовому отчёту', money(f?.retailAmount), 'Продажи минус возвраты · цена из финансовой детализации', 'sales'],
+      ['Внутренняя реклама', money(balance), 'Списания с баланса · кэшбэк отдельно', 'internalAds'],
       ['WB Media', money(media), media == null ? 'Нет подтверждённой суммы' : sources.media.status === 'confirmed_by_user' ? 'Подтверждено владельцем, не API' : 'Получено из API'],
       ['Заказали', number(orders?.count) + (orders ? ' шт.' : ''), 'Все товары, включая удалённые карточки'],
       ['Выкупили', f ? number(f.bought_qty) + ' шт.' : '—', 'Без повторного количества в корректировках'],
+      ['Себестоимость выкупов', money(cabinet?.cogs), 'Текущая себестоимость × продажи минус возвраты'],
+      ['Операционные расходы', money(cabinet?.settings?.operational_expenses), 'Указаны вручную за выбранный месяц'],
+      ['Внешнее продвижение', money(cabinet?.settings?.external_promotion_expenses), 'Указано вручную за выбранный месяц'],
     ];
-    el('apiCabinetMetrics').innerHTML = metrics.map(([title,value,hint])=>`<div class="kpi"><div class="api-metric-label">${title}</div><strong class="api-metric-value">${esc(value)}</strong><p class="hint">${hint}</p></div>`).join('');
+    el('apiCabinetMetrics').innerHTML = metrics.map(([title,value,hint,metric])=>`<${metric ? 'button type="button"' : 'div'} class="kpi"${metric ? ` data-api-metric="${metric}" aria-pressed="${metric === trendMetric}" title="Показать динамику: ${title}"` : ''}><span class="api-metric-label">${title}</span><strong class="api-metric-value">${esc(value)}</strong><span class="hint">${hint}</span></${metric ? 'button' : 'div'}>`).join('');
     const pairs = rows => rows.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
     el('apiCabinetFinance').innerHTML = pairs([
       ['К перечислению за товар', money(f?.forPay)], ['Логистика', money(f?.deliveryService)], ['Хранение', money(f?.paidStorage)],
@@ -48,12 +53,28 @@
     el('apiCabinetReadiness').innerHTML = [
       cabinet?.finance ? missing ? `Себестоимость не заполнена: ${missing} товаров с выкупами.` : 'Себестоимость заполнена для товаров с выкупами.' : 'Себестоимость проверим после загрузки финансов.',
       `Ставка налога: ${number(cabinet?.shop?.tax_rate)}%. Проверьте в настройках.`,
-      'Операционные расходы и внешнее продвижение вводятся вручную в файловом обзоре.',
+      `Себестоимость выкупов: ${money(cabinet?.cogs)}.`,
       sources.ads?.undated ? `Списания без даты: ${sources.ads.undated}. Не распределены по месяцам.` : 'Реклама распределяется по дате списания, время Москвы.',
     ].map(s=>`<li>${esc(s)}</li>`).join('');
-    el('apiCabinetWarning').textContent = 'Чистая прибыль и общий ДРР пока не рассчитаны: сверяем финансовые корректировки, кэшбэк и базу суммы заказов. Данные API не заменяют загруженные файлы и не публикуются в витрине.';
+    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Чистая прибыль и общий ДРР не рассчитаны: требуется сверка корректировок и кэшбэка WB. Ниже — полученные суммы и ваши расходы. Данные API не публикуются в витрине.' : 'Загрузите закрытый месяц. Сервер последовательно получит финансы, заказы и внутреннюю рекламу; данные других магазинов не изменятся.';
     const products = [...(cabinet?.products || [])].sort((a,b)=>Number(b.orders_amount || 0)-Number(a.orders_amount || 0));
     el('apiCabinetProducts').innerHTML = products.length ? products.map(p=>`<tr><td><strong>${esc(p.name || p.article)}</strong><small>${esc(p.article)}</small></td><td>${number(p.orders_count)}</td><td>${money(p.orders_amount)}</td><td>${number(p.bought_qty)}</td><td>${money(p.for_pay)}</td><td>${Number(p.cost_price)>0 ? money(p.cost_price) : 'Не заполнена'}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Товары появятся после загрузки API.</td></tr>';
+  }
+  function fillExpenses() {
+    const settings = cabinet?.settings || {};
+    el('apiOperationalExpenses').value = settings.operational_expenses ?? 0;
+    el('apiExternalExpenses').value = settings.external_promotion_expenses ?? 0;
+    const media = cabinet?.sources?.media;
+    el('apiMediaExpenses').value = settings.media_spend ?? (media?.status === 'confirmed_by_user' ? media.amount : '') ?? '';
+    dirty = false;
+  }
+  function renderTrend() {
+    el('apiTrendEmpty').hidden = trend.length > 0;
+    document.querySelectorAll('#apiTrendControls [data-metric]').forEach(button => {
+      button.classList.toggle('active', button.dataset.metric === trendMetric);
+      button.setAttribute('aria-pressed', String(button.dataset.metric === trendMetric));
+    });
+    window.WBDashboard?.renderTrend(el('apiTrendChart'), trend, trendMetric, 'wildberries');
   }
   async function load(action = 'cabinet', refresh = false) {
     if (!context?.allowed || busy) return;
@@ -64,6 +85,12 @@
       const result = await window.WBApi.cabinet(action, month, refresh);
       if (current !== epoch || context.shopId !== shopId) return;
       cabinet = result.cabinet;
+      if (!dirty) fillExpenses();
+      let history;
+      try { history = await window.WBApi.cabinet('cabinet_trend', month); }
+      catch { history = {trend:[]}; el('apiTrendEmpty').textContent = 'Не удалось прочитать динамику. Нажмите «Обновить расчёт».'; }
+      if (current !== epoch || context.shopId !== shopId) return;
+      trend = history.trend || []; renderTrend();
       const job = cabinet.job;
       if (!job) status('За этот месяц выгрузки нет. Нажмите «Загрузить данные».');
       else if (job.status === 'loading') {
@@ -73,20 +100,36 @@
       else status(`${cabinet.complete ? 'Выгрузка готова' : 'Получена часть источников'} · ${new Date(job.updated_at).toLocaleString('ru-RU')}.`);
     } catch (error) { if (current === epoch) status(error.message, true); }
     finally {
-      if (current === epoch) { busy = false; render(); if (cabinet?.job?.status === 'loading') timer = setTimeout(()=>load(),15000); }
+      if (current === epoch) { busy = false; render(); if (reloadQueued) { reloadQueued = false; load(); } else if (cabinet?.job?.status === 'loading') timer = setTimeout(()=>load(),15000); }
     }
   }
   function setContext(next) {
     if (context?.shopId === next.shopId && context?.allowed === next.allowed) return;
-    context = {...next}; ++epoch; clearTimeout(timer); busy = false; cabinet = null;
+    context = {...next}; ++epoch; clearTimeout(timer); busy = false; cabinet = null; trend = []; dirty = false; reloadQueued = false;
     el('secApiCabinet').hidden = !next.allowed;
-    el('apiCabinetNav').hidden = !next.allowed;
     el('apiCabinetMonth').value = defaultMonth;
-    status(''); render();
+    status(''); fillExpenses(); render(); renderTrend();
     if (next.allowed) load();
   }
-  el('apiCabinetMonth').addEventListener('change',()=>{ cabinet = null; render(); load(); });
-  el('apiCabinetSync').addEventListener('click',()=>load('cabinet_start'));
+  el('apiCabinetMonth').addEventListener('change',()=>{ cabinet = null; dirty = false; fillExpenses(); el('apiExpensesStatus').textContent = ''; render(); load(); });
+  el('apiCabinetSync').addEventListener('click',()=>load(cabinet?.complete ? 'cabinet' : 'cabinet_start'));
   el('apiCabinetRefresh').addEventListener('click',()=>load('cabinet_start',true));
-  window.WBApiCabinet = {setContext, reload:()=>load()};
+  for (const id of ['apiOperationalExpenses','apiExternalExpenses','apiMediaExpenses']) el(id).addEventListener('input',()=>{ dirty = true; el('apiSaveExpenses').disabled = busy || !context?.allowed; });
+  el('apiCabinetExpensesForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!context?.allowed || busy || !dirty) return;
+    const current = ++epoch, shopId = context.shopId, month = el('apiCabinetMonth').value;
+    const payload = { operational_expenses: el('apiOperationalExpenses').value, external_promotion_expenses: el('apiExternalExpenses').value, media_spend: el('apiMediaExpenses').value || null };
+    clearTimeout(timer); busy = true; render();
+    try {
+      const result = await window.WBApi.cabinet('cabinet_settings',month,false,payload);
+      if (current !== epoch || context.shopId !== shopId) return;
+      cabinet = result.cabinet; fillExpenses(); el('apiExpensesStatus').textContent = 'Расходы сохранены'; el('apiExpensesStatus').dataset.error = 'false';
+    } catch (error) { if (current === epoch) { el('apiExpensesStatus').textContent = error.message; el('apiExpensesStatus').dataset.error = 'true'; } }
+    finally { if (current === epoch) { busy = false; render(); if (reloadQueued) { reloadQueued = false; load(); } else if (cabinet?.job?.status === 'loading') timer = setTimeout(()=>load(),15000); } }
+  });
+  const selectMetric = metric => { trendMetric = metric; render(); renderTrend(); };
+  document.querySelectorAll('#apiTrendControls [data-metric]').forEach(button => button.addEventListener('click',()=>selectMetric(button.dataset.metric)));
+  el('apiCabinetMetrics').addEventListener('click',event=>{ const card = event.target.closest('[data-api-metric]'); if (card) selectMetric(card.dataset.apiMetric); });
+  window.WBApiCabinet = {setContext, reload:()=>{ if (!context?.allowed) return; if (busy) reloadQueued = true; else load(); }};
 })();

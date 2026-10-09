@@ -1,7 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { ApiError, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { processPage } from './process.ts';
-import { cabinetPeriod, processCabinetSource, readCabinet } from './cabinet.ts';
+import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from './cabinet.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     });
     const { data: auth, error: authError } = await userClient.auth.getUser();
     if (authError || !auth.user) throw new ApiError(401, "Сессия истекла. Войдите заново");
-    if (auth.user.id !== PILOT_USER_ID) throw new ApiError(403, "Тест API доступен только владельцу платформы");
+    if (auth.user.id !== PILOT_USER_ID) throw new ApiError(403, "API доступен только владельцу платформы");
     const requestText = await req.text();
     if (requestText.length > 16000) throw new ApiError(400, "Слишком большой запрос");
     let body;
@@ -120,6 +120,16 @@ Deno.serve(async (req) => {
       return String(data);
     };
     const connection = await readConnection();
+    if (body.action === 'cabinet_trend') {
+      return json({ trend: await readCabinetTrend(admin, shopId) });
+    }
+    if (body.action === 'cabinet_settings') {
+      if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
+      const period = cabinetPeriod(body.month), settings = monthSettings(body);
+      const { error } = await admin.from('wb_api_month_settings').upsert({shop_id:shopId,month:period.dateFrom,...settings,updated_at:new Date().toISOString()}, {onConflict:'shop_id,month'});
+      if (error) throw new ApiError(500, 'Не удалось сохранить расходы месяца');
+      return json({ cabinet: await readCabinet(admin, shopId, period) });
+    }
     if (body.action === 'cabinet' || body.action === 'cabinet_start') {
       if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
       const period = cabinetPeriod(body.month);

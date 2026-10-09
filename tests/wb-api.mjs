@@ -4,7 +4,7 @@ import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
 import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
-import { cabinetPeriod, processCabinetSource, readCabinet } from '../supabase/functions/wb-api/cabinet.ts';
+import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -57,7 +57,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, cabinetPeriod, processCabinetSource, readCabinet, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null;
@@ -74,6 +74,7 @@ const chain = (table) => {
       return { data: job, error: null };
     }
     if (table === 'wb_api_preview_rows') return { data: [], error: null, count: 0 };
+    if (table === 'wb_api_month_settings') return { data: [], error: null };
     throw new Error('Unexpected table ' + table);
   };
   const obj = {
@@ -164,4 +165,18 @@ assert.equal((await invoke({ action: 'cabinet', month: '2026-09', shop_id: '0000
 sandbox.readCabinet = async () => ({ job: { status: 'complete' }, complete: true, sources: {} });
 assert.equal((await invoke({ action: 'cabinet_start', month: '2026-09' })).body.cached, true); assertions++;
 assert.equal(outbound.length, beforeCabinet); assertions++;
+const settingsWrite = await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:'10.01',external_promotion_expenses:'0',media_spend:'0'});
+assert.equal(settingsWrite.status,200); assertions++;
+assert.equal(dbWrites.at(-1).table,'wb_api_month_settings'); assertions++;
+assert.equal(dbWrites.at(-1).values.operational_expenses,'10.01'); assertions++;
+assert.equal(dbWrites.at(-1).values.media_spend,'0.00'); assertions++;
+assert.equal(dbWrites.at(-1).values.shop_id,PILOT_SHOP_ID); assertions++;
+assert.equal(dbWrites.at(-1).values.month,'2026-09-01'); assertions++;
+assert.equal(outbound.length,beforeCabinet); assertions++;
+assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:-1,external_promotion_expenses:0})).status,400); assertions++;
+assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',shop_id:'00000000-0000-4000-8000-000000000009',operational_expenses:0,external_promotion_expenses:0})).status,403); assertions++;
+authenticatedId = '00000000-0000-4000-8000-000000000099';
+assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:0,external_promotion_expenses:0})).status,403); assertions++;
+assert.equal((await invoke({action:'cabinet_trend'})).status,403); assertions++;
+authenticatedId = PILOT_USER_ID;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);

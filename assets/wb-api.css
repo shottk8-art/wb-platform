@@ -33,6 +33,12 @@
 .wb-api-deductions strong { flex-shrink:0; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
 #secWbApi [hidden], #secWbApi[hidden] { display:none !important; }
 #secApiCabinet[hidden], #secApiCabinet [hidden], #apiCabinetNav[hidden] { display:none !important; }
+#overviewSource[hidden], #overviewScope[hidden], .app-view[hidden], #overviewControls [hidden] { display:none !important; }
+.api-expenses-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:20px 0; }
+.api-expenses-grid input { width:100%; min-height:44px; font:inherit; font-size:16px; }
+.api-trend-controls { width:fit-content; max-width:100%; margin:18px 0; flex-wrap:wrap; }
+.api-trend-controls button { white-space:normal; }
+.api-trend-chart { position:relative; height:300px; min-width:0; }
 .api-cabinet-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:16px; }
 .api-cabinet-toolbar input { min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:inherit; color:var(--ink); background:var(--surface); }
 .api-cabinet-toolbar input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
@@ -46,6 +52,9 @@
 .api-source-list [data-state="confirmed_by_user"] { color:var(--accent); }
 .api-cabinet-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
 .api-cabinet-metrics .kpi { padding:22px; min-width:0; grid-column:auto; }
+.api-cabinet-metrics button.kpi { text-align:left; font:inherit; color:var(--ink); white-space:normal; height:auto; }
+.api-cabinet-metrics button.kpi[aria-pressed="true"] { border-color:var(--accent); }
+.api-cabinet-metrics .api-metric-label, .api-cabinet-metrics .hint { display:block; }
 .api-metric-label { font-size:14px; font-weight:500; color:var(--ink-soft); margin-bottom:16px; }
 .api-metric-value { font-size:clamp(22px,2.2vw,32px); font-weight:600; letter-spacing:-.025em; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .api-cabinet-metrics .hint { margin:12px 0 0; line-height:1.5; }
@@ -74,7 +83,7 @@
   .api-cabinet-toolbar > div { width:100%; }
   .api-cabinet-toolbar input { width:100%; }
   .api-cabinet-toolbar button { flex:1; }
-  .api-cabinet-metrics, .api-cabinet-columns { grid-template-columns:1fr; }
+  .api-cabinet-metrics, .api-cabinet-columns, .api-expenses-grid { grid-template-columns:1fr; }
   .api-cabinet-panel, .api-cabinet-metrics .kpi { padding:18px; }
 }
 @media(max-width:600px) {

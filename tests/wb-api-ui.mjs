@@ -23,7 +23,7 @@ vm.runInNewContext(readFileSync(new URL('../assets/wb-api.js', import.meta.url),
 await window.WBApi.setContext({ shopId: 'a', name: 'GREEN FLOW', allowed: true });
 assert.equal(el('secWbApi').hidden, false);
 assert.equal(el('wbApiShopName').textContent, 'GREEN FLOW');
-assert.equal(el('wbApiPreviewBtn').disabled, true);
+assert.equal(el('wbApiCheckBtn').disabled, true);
 assert.equal(el('wbApiKey').value, '');
 el('wbApiKey').value = 'dummy-test-only';
 el('wbApiKey').events.input();
@@ -33,15 +33,13 @@ assert.equal(el('wbApiKey').value, '', 'key removed from field before network re
 await new Promise((resolve) => setImmediate(resolve));
 assert.equal(requests.at(-1).action, 'connect');
 assert.equal(requests.at(-1).shop_id, 'a');
-assert.equal(el('wbApiPreviewBtn').disabled, false);
+assert.equal(el('wbApiCheckBtn').disabled, false);
 assert.match(el('wbApiConnectionStatus').textContent, /GREEN FLOW/);
 assert.match(el('wbApiConnectionStatus').textContent, /Персональный ключ/);
-assert.match(el('wbApiConnectionStatus').textContent, /1 запроса в минуту/);
 assert.doesNotMatch(el('wbApiMessage').textContent, /доступ к финансам подтверждён/i);
 assert.ok(!el('wbApiConnectionStatus').textContent.includes('dummy-test-only'));
 await window.WBApi.setContext({ shopId: 'b', name: 'Other store', allowed: true });
-assert.equal(el('wbApiPreviewBtn').disabled, true, 'old store connection reset synchronously');
-assert.equal(el('wbApiPreviewResult').hidden, true);
+assert.equal(el('wbApiCheckBtn').disabled, true, 'old store connection reset synchronously');
 assert.equal(el('wbApiKey').value, '');
 const before = requests.length;
 await window.WBApi.setContext({ shopId: 'c', name: 'Other user', allowed: false });
@@ -56,5 +54,6 @@ pendingResponse.resolve(new Response(JSON.stringify({ connection, job: null })))
 await old;
 assert.equal(el('secWbApi').hidden, true);
 assert.equal(el('wbApiShopName').textContent, 'New store');
-assert.equal(el('wbApiPreviewBtn').disabled, true);
+assert.equal(el('wbApiCheckBtn').disabled, true);
+assert.ok(requests.every(r=>['status','connect'].includes(r.action)),'settings have no legacy finance test controls');
 console.log('WB API UI: 22 assertions passed (personal metadata, account gate, key clearing, shop isolation, stale-response protection).');

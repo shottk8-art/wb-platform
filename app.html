@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261009-kpi-trend1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261009-cabinet1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-overview1">
 </head>
 <body>
 
@@ -60,7 +60,6 @@
       </div>
       <nav class="side-menu" aria-label="Основная навигация">
         <a class="active" href="#overview" data-view="overview"><svg class="icon"><use href="#icon-dashboard"/></svg><span>Обзор</span></a>
-        <a href="#api" data-view="api" id="apiCabinetNav" hidden><svg class="icon"><use href="#icon-dashboard"/></svg><span>API · тест</span></a>
         <a href="#reports" data-view="reports"><svg class="icon"><use href="#icon-upload"/></svg><span>Отчёты</span></a>
         <a href="#costs" data-view="costs"><svg class="icon"><use href="#icon-store"/></svg><span>Себестоимость</span></a>
         <a href="#team" data-view="team"><svg class="icon"><use href="#icon-people"/></svg><span>Команда</span></a>
@@ -118,6 +117,10 @@
     <div class="page-heading">
       <div><h1 id="pageTitle">Обзор</h1><p id="pageSubtitle">Главные показатели магазина за выбранный месяц</p></div>
       <div class="overview-controls" id="overviewControls">
+        <div class="segmented-control" id="overviewSource" aria-label="Источник данных" hidden>
+          <button type="button" data-source="api">API Wildberries</button>
+          <button type="button" data-source="files">Файлы отчётов</button>
+        </div>
         <div class="segmented-control" id="overviewScope" aria-label="Показывать данные">
           <button type="button" data-scope="wildberries">Wildberries</button>
           <button type="button" data-scope="ozon">Ozon</button>
@@ -127,22 +130,42 @@
       </div>
     </div>
 
-    <section class="section app-view" id="secApiCabinet" data-view="api" hidden>
+    <section class="section app-view" id="secApiCabinet" data-view="overview" hidden>
       <div class="api-cabinet-toolbar">
-        <div><label for="apiCabinetMonth">Месяц API-выгрузки</label><input type="month" id="apiCabinetMonth"></div>
+        <div><label for="apiCabinetMonth">Месяц</label><input type="month" id="apiCabinetMonth"></div>
         <button class="primary" type="button" id="apiCabinetSync">Загрузить данные</button>
         <button class="ghost" type="button" id="apiCabinetRefresh" hidden>Обновить из WB</button>
         <a href="#settings" class="api-cabinet-link">Настройки ключа</a>
       </div>
       <p class="api-cabinet-status" id="apiCabinetStatus" role="status" aria-live="polite"></p>
       <div class="api-cabinet-warning" id="apiCabinetWarning"></div>
-      <p class="hint">Личный тест GREEN FLOW. Финансы, заказы и внутреннюю рекламу получает сервер — страницу можно закрыть. Файловый обзор и другие магазины не изменяются.</p>
+      <p class="hint">Wildberries · данные через API. Загрузка идёт на сервере — страницу можно закрыть. Отчёты из файлов доступны отдельно и не смешиваются с API.</p>
       <ul class="api-source-list" id="apiCabinetSources" aria-label="Статусы источников"></ul>
       <div class="api-cabinet-metrics" id="apiCabinetMetrics"></div>
       <div class="api-cabinet-columns">
         <section class="card api-cabinet-panel"><h2>Финансовые начисления</h2><p class="hint">Поля финансовой детализации. Компенсации и удержания не вычитаются повторно как реклама.</p><dl id="apiCabinetFinance"></dl></section>
-        <section class="card api-cabinet-panel"><h2>Готовность расчёта</h2><ul id="apiCabinetReadiness"></ul><p><a href="#costs">Заполнить себестоимость</a> · <a href="#settings">Указать налог</a></p><h3>Рекламные списания</h3><dl id="apiCabinetAds"></dl><p class="hint">Кэшбэк и неизвестные способы оплаты показаны отдельно, без автоматического приравнивания к промобонусам.</p></section>
+        <section class="card api-cabinet-panel"><h2>Себестоимость и налог</h2><ul id="apiCabinetReadiness"></ul><p><a href="#costs">Изменить себестоимость</a> · <a href="#settings">Изменить налог</a></p><h3>Рекламные списания</h3><dl id="apiCabinetAds"></dl><p class="hint">Кэшбэк показан отдельно: он не приравнивается автоматически к промобонусам или денежным списаниям.</p></section>
       </div>
+      <section class="card api-cabinet-panel api-cabinet-products">
+        <h2>Расходы за месяц</h2><p class="hint">Сохраняются для выбранного месяца API. Для WB Media укажите подтверждённую сумму; 0 означает, что рекламы не было, пустое поле — сумма неизвестна.</p>
+        <form id="apiCabinetExpensesForm">
+          <div class="api-expenses-grid">
+            <div><label for="apiOperationalExpenses">Операционные расходы, ₽</label><input id="apiOperationalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
+            <div><label for="apiExternalExpenses">Внешнее продвижение, ₽</label><input id="apiExternalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
+            <div><label for="apiMediaExpenses">WB Media, ₽</label><input id="apiMediaExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" placeholder="Не подтверждено"></div>
+          </div>
+          <button id="apiSaveExpenses" type="submit" class="primary" disabled>Сохранить расходы</button>
+          <p id="apiExpensesStatus" class="api-cabinet-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <section class="card api-cabinet-panel api-cabinet-products">
+        <h2>Динамика магазина</h2><p class="hint">Сохранённые месяцы API. Нажмите на показатель, чтобы изменить график.</p>
+        <div class="segmented-control api-trend-controls" id="apiTrendControls" aria-label="Показатель графика">
+          <button type="button" data-metric="orders">Заказы, ₽</button><button type="button" data-metric="sales">Продажи, ₽</button><button type="button" data-metric="internalAds">Внутренняя реклама</button>
+        </div>
+        <p id="apiTrendEmpty" class="hint" hidden>Динамика появится после загрузки месяца.</p>
+        <div class="api-trend-chart"><canvas id="apiTrendChart" aria-label="Динамика выбранного показателя API" role="img"></canvas></div>
+      </section>
       <section class="card api-cabinet-panel api-cabinet-products"><h2>Товары из API</h2><p class="hint">Заказы — по дате заказа. Выкупы — продажи минус возвраты из финансового отчёта; корректировки не добавляют количество повторно. «К перечислению за товар» — не выручка и не прибыль.</p>
         <div class="table-scroll"><table><thead><tr><th>Товар</th><th>Заказы, шт.</th><th>Сумма заказов</th><th>Выкупили, шт.</th><th>К перечислению за товар</th><th>Себестоимость, ₽/шт.</th></tr></thead><tbody id="apiCabinetProducts"></tbody></table></div>
       </section>
@@ -166,12 +189,12 @@
 
     <section class="section app-view" id="secWbApi" data-view="settings" hidden>
       <div class="section-head">
-        <h2>API Wildberries</h2><span class="hint">тестовое подключение · пока только для @karlshott</span>
+        <h2>API Wildberries</h2><span class="hint">личное подключение · только для @karlshott</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       </div>
       <div class="collapsible-body"><div>
         <div class="card wb-api-card">
-          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Для тестового API-кабинета GREEN FLOW нужны категории «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Используйте персональный ключ своего продавца. Ключ хранится зашифрованным на сервере и не показывается после сохранения.</p>
+          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Нужны категории «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Используйте персональный ключ своего продавца. Ключ хранится зашифрованным на сервере и не показывается после сохранения. Загрузка месяца доступна в «Обзоре» GREEN FLOW.</p>
           <div class="wb-api-key-row">
             <div class="wb-api-key-field">
               <label for="wbApiKey">Персональный API-ключ Wildberries</label>
@@ -185,25 +208,6 @@
           </div>
           <p id="wbApiConnectionStatus" class="wb-api-status">API ещё не подключён к этому магазину</p>
           <p class="wb-api-message" id="wbApiMessage" role="status" aria-live="polite"></p>
-          <div class="wb-api-preview">
-            <h3>Фоновая загрузка финансовых отчётов</h3>
-            <p class="wb-api-intro">Выберите период или загрузите всю доступную историю с 29 января 2024 года по последний закрытый месяц. Сервер сам получает страницы отчёта и сохраняет прогресс — вкладку можно закрыть. Пока это отдельный тест: данные дашборда не изменятся.</p>
-            <p class="wb-api-intro">Для персонального ключа финансовая детализация доступна не чаще одного запроса в минуту. Сервер соблюдает лимит и автоматически продолжает загрузку. При ответе 429 сохраняется пауза, указанная WB. <a href="https://dev.wildberries.ru/docs/openapi/documents-and-accounting#tag/financialReports/operation/postV1SalesReportsDetailed" target="_blank" rel="noopener noreferrer">Лимиты финансовых отчётов WB</a></p>
-            <div class="wb-api-date-row">
-              <div><label for="wbApiDateFrom">Начало периода</label><input type="date" id="wbApiDateFrom"></div>
-              <div><label for="wbApiDateTo">Конец периода</label><input type="date" id="wbApiDateTo"></div>
-              <button type="button" class="primary" id="wbApiPreviewBtn" disabled>Загрузить отчёт в фоне</button>
-              <button type="button" class="ghost" id="wbApiHistoryBtn" disabled>Загрузить доступную историю</button>
-              <button type="button" class="ghost" id="wbApiRefreshBtn" hidden>Обновить из WB</button>
-            </div>
-            <div id="wbApiPreviewResult" class="wb-api-preview-result" hidden>
-              <p class="wb-api-preview-caption" id="wbApiPreviewCaption"></p>
-              <div class="wb-api-totals" id="wbApiPreviewTotals"></div>
-              <h3>Расшифровка прочих удержаний</h3>
-              <ul class="wb-api-deductions" id="wbApiDeductions"></ul>
-              <p class="wb-api-intro">Это финансовые начисления WB, не расчёт чистой прибыли. Удержания могут включать рекламу и возвраты авансов; их нельзя повторно вычитать поверх уже импортированных расходов. Полноту баллов за отзывы и медийной рекламы проверим по файлам.</p>
-            </div>
-          </div>
         </div>
       </div></div>
     </section>
@@ -465,7 +469,7 @@
 
     <footer class="note">
       Файлы отчётов обрабатываются в браузере и не сохраняются — сохраняются рассчитанные данные.
-      Тестовые API-выгрузки обрабатываются и сохраняются на сервере.<br>
+      API-выгрузки обрабатываются и сохраняются на сервере.<br>
       Разработано · <a href="https://t.me/karlshott" target="_blank" rel="noopener">@karlshott</a>
     </footer>
   </main>
@@ -482,10 +486,10 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
-<script src="/assets/dashboard.js?v=20261009-kpi-trend1"></script>
+<script src="/assets/dashboard.js?v=20261010-api-overview1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
-<script src="/assets/wb-api.js?v=20261009-cabinet1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261009-cabinet1"></script>
+<script src="/assets/wb-api.js?v=20261010-overview1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261010-overview1"></script>
 <script>
 (function () {
   let shop = null;
@@ -500,7 +504,6 @@
   let currentTrend = [];
 
   const VIEW_META = {
-    api: { title: "GREEN FLOW · API", subtitle: "Личный тест автоматической загрузки Wildberries" },
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
     reports: { title: "Отчёты", subtitle: "Загрузите новые данные и при необходимости отмените прошлую загрузку" },
     costs: { title: "Себестоимость", subtitle: "Укажите закупочную цену товаров для точного расчёта прибыли" },
@@ -519,8 +522,8 @@
   const appScreen = document.getElementById("appScreen");
 
   function setActiveView(view, updateHash = true) {
+    if (view === 'api') view = 'overview'; // Existing bookmarks open the regular overview.
     if (!VIEW_META[view]) view = "overview";
-    if (view === 'api' && !apiCabinetAllowed()) view = 'overview';
     activeView = view;
     const meta = VIEW_META[view];
     document.querySelectorAll(".app-view").forEach((section) => {
@@ -539,8 +542,29 @@
         : "Wildberries и Ozon";
     document.getElementById("pageSubtitle").textContent = view === "api" ? meta.subtitle : `${meta.subtitle} · ${market}`;
     document.getElementById("overviewControls").hidden = !meta.period;
+    updateOverviewSource();
+    if (view === 'overview' && overviewSource === 'api') window.WBApiCabinet?.reload();
     if (updateHash) history.replaceState(null, "", `#${view}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  let overviewSource = 'files', sourceShopId = null;
+  function updateOverviewSource() {
+    const allowed = apiCabinetAllowed();
+    if (sourceShopId !== shop?.id) { sourceShopId = shop?.id; overviewSource = allowed ? 'api' : 'files'; }
+    if (!allowed) overviewSource = 'files';
+    const api = allowed && overviewSource === 'api';
+    document.getElementById('overviewSource').hidden = !allowed;
+    document.querySelectorAll('#overviewSource [data-source]').forEach(button => {
+      button.classList.toggle('active', button.dataset.source === overviewSource);
+      button.setAttribute('aria-pressed', String(button.dataset.source === overviewSource));
+    });
+    document.getElementById('secApiCabinet').hidden = !api;
+    for (const id of ['secKpis','secManualExpenses','secTrend','secAnalytics']) document.getElementById(id).hidden = api;
+    document.getElementById('secAiAnalysis').hidden = api || !aiAllowed;
+    document.getElementById('overviewScope').hidden = api;
+    document.getElementById('periodSelect').parentElement.hidden = api;
+    if (activeView === 'overview' && api) document.getElementById('pageSubtitle').textContent = 'Экономика магазина · Wildberries · данные API';
   }
 
   function toast(msg, isErr) {
@@ -649,6 +673,7 @@
     const owner = isOwner();
     window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: owner && session.user.id === "bbb002c4-cd7a-490d-b9c0-72aed5424261" });
     window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
+    updateOverviewSource();
     document.getElementById("deleteShopBtn").hidden = !owner;
     document.getElementById("shareToggle").disabled = !owner;
     document.getElementById("saveTaxBtn").disabled = !owner;
@@ -900,6 +925,7 @@
           btn.disabled = true;
           toast("Себестоимость сохранена");
           renderCurrentPeriod();
+          window.WBApiCabinet?.reload();
         } catch (e) { toast("Ошибка: " + e.message, true); }
       });
     });
@@ -990,6 +1016,9 @@
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
 
     const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    document.querySelectorAll('#overviewSource [data-source]').forEach(button => button.addEventListener('click', () => {
+      overviewSource = button.dataset.source; setActiveView('overview');
+    }));
     document.querySelectorAll('#secApiCabinet a[href^="#"]').forEach(link => link.addEventListener('click', event => {
       event.preventDefault(); setActiveView(link.getAttribute('href').slice(1));
     }));
@@ -1013,6 +1042,7 @@
         updateScopeButtons();
         await refreshPeriods();
         await renderCurrentPeriod();
+        window.WBApiCabinet?.reload();
       });
     });
 
@@ -1186,6 +1216,7 @@
         document.getElementById("taxSaveHint").textContent = "Сохранено";
         setTimeout(() => (document.getElementById("taxSaveHint").textContent = ""), 2000);
         await renderCurrentPeriod();
+        window.WBApiCabinet?.reload();
       } catch (e) { toast("Ошибка: " + e.message, true); }
     });
 

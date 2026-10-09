@@ -15,10 +15,11 @@
   const fmtShort = new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 });
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
-  let charts = { pie: null, bar: null, trend: null };
+  let charts = { pie: null, bar: null, trends: new WeakMap() };
   let skuView = { abc: "all", query: "", sort: "qty" };
 
   const TREND_METRICS = {
+    orders: { label: "Сумма заказов", unit: "₽", color: "#0071e3" },
     sales: { label: "Сумма продаж", unit: "₽", color: "#0071e3" },
     quantity: { label: "Выкупили", unit: "шт.", color: "#0071e3" },
     transfer: { label: "К выплате после удержаний", unit: "₽", color: "#0071e3" },
@@ -510,13 +511,13 @@
         },
       },
     };
-    if (charts.trend && charts.trend.canvas === canvas) {
-      charts.trend.data = config.data;
-      charts.trend.options = config.options;
-      charts.trend.update(reduceMotion ? "none" : undefined);
+    const trendChart = charts.trends.get(canvas);
+    if (trendChart) {
+      trendChart.data = config.data;
+      trendChart.options = config.options;
+      trendChart.update(reduceMotion ? "none" : undefined);
     } else {
-      if (charts.trend) charts.trend.destroy();
-      charts.trend = new Chart(canvas, config);
+      charts.trends.set(canvas, new Chart(canvas, config));
     }
   }
 
