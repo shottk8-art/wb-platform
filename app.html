@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261009-media-drr2">
+<link rel="stylesheet" href="/assets/styles.css?v=20261009-total-drr1">
 </head>
 <body>
 
@@ -318,7 +318,7 @@
         <div class="trend-toolbar">
           <div class="segmented-control trend-mode" id="trendMode" aria-label="Показатели графика">
             <button type="button" class="active" data-trend-mode="money" aria-pressed="true">Финансы</button>
-            <button type="button" data-trend-mode="drr" aria-pressed="false">ДРР внутр.</button>
+            <button type="button" data-trend-mode="drr" aria-pressed="false">ДРР</button>
           </div>
           <div class="trend-legend" id="trendLegend" aria-hidden="true">
             <span><i class="trend-dot trend-dot--sales"></i>Продажи</span>
@@ -420,7 +420,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
-<script src="/assets/dashboard.js?v=20261009-internal-drr1"></script>
+<script src="/assets/dashboard.js?v=20261009-total-drr1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script>
 (function () {
@@ -1082,10 +1082,10 @@
         });
         const isDrr = trendMode === "drr";
         document.getElementById("trendHint").textContent = isDrr
-          ? "доля рекламных расходов от заказов и выкупов за последние 12 месяцев"
+          ? "все денежные расходы на рекламу / сумма заказов или продаж за последние 12 месяцев"
           : "продажи и чистая прибыль за последние 12 месяцев";
         document.getElementById("trendLegend").innerHTML = isDrr
-          ? `<span><i class="trend-dot trend-dot--drr-orders"></i>ДРР внутренней рекламы по заказам</span><span><i class="trend-dot trend-dot--drr-sales"></i>ДРР внутренней рекламы по продажам</span>`
+          ? `<span><i class="trend-dot trend-dot--drr-orders"></i>ДРР (заказа)</span><span><i class="trend-dot trend-dot--drr-sales"></i>ДРР (выкупа)</span>`
           : `<span><i class="trend-dot trend-dot--sales"></i>Продажи</span><span><i class="trend-dot trend-dot--profit"></i>Чистая прибыль</span>`;
         window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMode);
       });

@@ -11,6 +11,7 @@
   const fmtMoney = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
   const fmtQty = new Intl.NumberFormat("ru-RU");
   const fmtCompact = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+  const fmtRate = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const fmtShort = new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 });
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
@@ -34,6 +35,17 @@
 
   function withMarketplace(query, marketplace) {
     return marketplace ? query.eq("marketplace", marketplace) : query;
+  }
+
+  // Только денежные расходы: промобонусы справочные и в ДРР не входят.
+  function advertisingRatios(rep) {
+    const ads = (Number(rep.ads_spend) || 0) + (Number(rep.wb_media_spend) || 0)
+      + (Number(rep.external_promotion_expenses) || 0);
+    return {
+      ads,
+      drrOrders: rep.orders_amount > 0 ? ads / rep.orders_amount * 100 : null,
+      drrSales: rep.sales_amount > 0 ? ads / rep.sales_amount * 100 : null,
+    };
   }
 
   async function loadPeriods(shopId, marketplace) {
@@ -81,14 +93,10 @@
       const d = computeDerived(report, periodSales, costMap, taxRate);
       const salesAmount = report.sales_amount || 0;
       const ordersAmount = report.orders_amount || 0;
-      // ДРР считаем только по внутреннему продвижению: медийная реклама
-      // вынесена в отдельную статью и не смешивается с аукционными расходами.
-      const ads = report.ads_spend || 0;
       return {
         year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit,
-        orders: ordersAmount, ads,
-        drrOrders: ordersAmount > 0 ? ads / ordersAmount * 100 : null,
-        drrSales: salesAmount > 0 ? ads / salesAmount * 100 : null,
+        orders: ordersAmount,
+        ...advertisingRatios(report),
       };
     }).reverse();
   }
@@ -203,8 +211,9 @@
   // Иконка при этом всегда показывает фактическое направление изменения.
   function renderDeltaChip(value, prevValue, unit, opts) {
     opts = opts || {};
-    if (prevValue == null) return "";
-    const diff = value - prevValue;
+    if (value == null || prevValue == null) return "";
+    // Для долей сравниваем процентные пункты, а не рубли или относительный рост.
+    const diff = unit === "%" ? Math.round((value - prevValue) * 10) / 10 : value - prevValue;
     const rawDir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
     const icon = rawDir === "up" ? "icon-trend-up" : rawDir === "down" ? "icon-trend-down" : "icon-trend-flat";
     let colorDir = rawDir;
@@ -213,32 +222,22 @@
       else if (opts.lowerIsBetter) colorDir = rawDir === "up" ? "down" : "up";
     }
     const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
-    const absStr = unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
+    const absStr = unit === "%" ? fmtRate.format(Math.abs(diff)) : unit === "шт." ? fmtQty.format(Math.abs(Math.round(diff))) : fmtMoney.format(Math.abs(Math.round(diff)));
     const pct = prevValue !== 0 ? (Math.abs(diff) / Math.abs(prevValue)) * 100 : null;
-    const pctStr = pct == null ? "" : ` · ${pct.toFixed(1)}%`;
+    const pctStr = unit === "%" || pct == null ? "" : ` · ${pct.toFixed(1)}%`;
     return `
       <div class="kpi-delta kpi-delta--${colorDir}">
         <svg class="icon icon-sm"><use href="#${icon}"/></svg>
-        <span>${sign}${absStr} ${unit}${pctStr}</span>
+        <span>${sign}${absStr} ${unit === "%" ? "п.п." : unit}${pctStr}</span>
       </div>`;
   }
 
-  // ДРР — доля рекламных расходов. (з) — от суммы заказов, (в) — от
-  // суммы продаж (обе берутся из сводного отчёта). Прочерк, если делить не на что.
-  function renderDrrLine(rep, adsAmount) {
-    const ads = adsAmount == null ? (rep.ads_spend || 0) : adsAmount;
-    const orders = rep.orders_amount || 0;
-    const sales = rep.sales_amount || 0;
-    const drrZ = orders > 0 ? `${((ads / orders) * 100).toFixed(1)}%` : "—";
-    const drrV = sales > 0 ? `${((ads / sales) * 100).toFixed(1)}%` : "—";
-    return `<div class="kpi-extra">ДРР внутренней рекламы: заказы ${drrZ} · продажи ${drrV}</div>`;
-  }
-
   function animateKpiNumber(element, fromValue, toValue, unit) {
-    const format = unit === "шт." ? fmtQty : fmtMoney;
+    const format = unit === "%" ? fmtRate : unit === "шт." ? fmtQty : fmtMoney;
+    const rounded = (value) => unit === "%" ? value : Math.round(value);
     const target = Number(toValue) || 0;
     const from = Number.isFinite(Number(fromValue)) ? Number(fromValue) : 0;
-    element.textContent = format.format(Math.round(target));
+    element.textContent = format.format(rounded(target));
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === target) return;
 
     const startedAt = performance.now();
@@ -248,10 +247,10 @@
       if (!element.isConnected) return;
       const progress = Math.min(1, (now - startedAt) / duration);
       const eased = 1 - Math.pow(1 - progress, 4);
-      element.textContent = format.format(Math.round(from + (target - from) * eased));
+      element.textContent = format.format(rounded(from + (target - from) * eased));
       if (progress < 1) requestAnimationFrame(frame);
       else {
-        element.textContent = format.format(Math.round(target));
+        element.textContent = format.format(rounded(target));
         element.classList.remove("is-counting");
       }
     };
@@ -260,6 +259,9 @@
 
   function renderKPI(container, d, prevD, marketplace) {
     container.innerHTML = "";
+    const rates = advertisingRatios(d.rep);
+    const prevRates = prevD ? advertisingRatios(prevD.rep) : null;
+    const advertisingHint = marketplace === "ozon" ? "Продвижение Ozon + внешняя реклама" : "Внутренняя + медийная + внешняя реклама";
     const cards = [
       { label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
@@ -270,7 +272,7 @@
         value: d.rep.ads_spend || 0,
         prev: prevD ? prevD.rep.ads_spend || 0 : null,
         unit: "₽", lowerIsBetter: true,
-        extra: renderDrrLine(d.rep, d.rep.ads_spend || 0),
+        className: marketplace === "ozon" ? " kpi--advertising-wide" : "",
       },
       {
         label: "Медийная реклама",
@@ -278,22 +280,28 @@
         prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
         unit: "₽", lowerIsBetter: true, hideForOzon: true,
       },
+      { label: "ДРР (заказа)", value: rates.drrOrders, prev: prevRates ? prevRates.drrOrders : null,
+        unit: "%", lowerIsBetter: true, className: " kpi--rate kpi--rate-first",
+        extra: `<div class="kpi-extra">${advertisingHint}<br>от суммы заказов</div>` },
+      { label: "ДРР (выкупа)", value: rates.drrSales, prev: prevRates ? prevRates.drrSales : null,
+        unit: "%", lowerIsBetter: true, className: " kpi--rate",
+        extra: `<div class="kpi-extra">${advertisingHint}<br>от суммы продаж</div>` },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
     ];
     cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon")).forEach((c) => {
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
-      const valStr = c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
+      const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
       const card = el(`
-        <div class="kpi${heroClass}">
+        <div class="kpi${heroClass}${c.className || ""}">
           <div class="kpi-label">${escapeHtml(c.label)}</div>
-          <div class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.unit}</span></div>
+          <div class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></div>
           ${renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral })}
           ${c.extra || ""}
         </div>
       `);
       container.appendChild(card);
-      animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
+      if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
   }
 
@@ -415,7 +423,7 @@
     const isDrr = mode === "drr";
     const datasets = isDrr ? [
       {
-        label: "ДРР внутренней рекламы по заказам",
+        label: "ДРР (заказа)",
         data: rows.map((r) => r.drrOrders),
         borderColor: "#ff9f0a",
         backgroundColor: "rgba(255,159,10,.10)",
@@ -423,7 +431,7 @@
         tension: .38, fill: true, spanGaps: true,
       },
       {
-        label: "ДРР внутренней рекламы по продажам",
+        label: "ДРР (выкупа)",
         data: rows.map((r) => r.drrSales),
         borderColor: "#af52de",
         backgroundColor: "transparent",
