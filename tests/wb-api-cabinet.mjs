@@ -19,7 +19,7 @@ const ads = adsSnapshot([
   {updTime:'2026-09-02T00:00:00+03:00',updSum:'0.10',paymentType:'Баланс'},
 ],from,to);
 assert.equal(ads.period_totals['Баланс'].amount,'10.30','legitimate identical operations are retained');
-assert.deepEqual(ads.classification_pending,['Кэшбэк']);
+assert.deepEqual(ads.classification_pending,[]);
 assert.equal(ads.undated_operations,1);
 assert.equal(ads.period_totals['Промобонусы'],undefined);
 assert.throws(()=>adsSnapshot([{updTime:from,updSum:'x',paymentType:'Баланс'}],from,to));
@@ -41,7 +41,7 @@ assert.equal(job.summary.api_sources.media.status,'needs_confirmation','absence 
 await assert.rejects(()=>processCabinetSource(admin,{...job,shop_id:'other'},fetcher));
 // Exercise the read model: corrections carry money but never another bought unit.
 const data={shops:{id:PILOT_SHOP_ID,name:'GREEN FLOW',tax_rate:0},wb_api_preview_jobs:[{...job,summary:{...job.summary,totals:{retailAmount:'100.00'}}}],
-wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,forPay:80}},
+wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,forPay:80,retailAmount:100}},
 {payload:{vendorCode:'SKU',sellerOperName:'Коррекция продаж',docTypeName:'Продажа',quantity:1,forPay:5}},
 {payload:{vendorCode:'SKU',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
 const reader={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},range(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
@@ -62,6 +62,8 @@ assert.equal(saved.cogs,'7.00','correction is not another unit of cost');
 assert.equal(saved.sources.media.amount,'0.00');
 assert.equal(saved.sources.media.status,'confirmed_by_user');
 assert.equal(saved.settings.operational_expenses,'25.10');
+assert.equal(saved.net_profit,'32.90');
+assert.equal(saved.reconciliation_required,false);
 data.wb_api_month_settings[0].media_spend=null;
 assert.equal((await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to})).sources.media.status,'needs_confirmation','clearing a confirmation must not restore an old job zero');
 const oldSummary=structuredClone(data.wb_api_preview_jobs[0].summary);

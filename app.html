@@ -144,7 +144,7 @@
       <div class="api-cabinet-metrics" id="apiCabinetMetrics"></div>
       <div class="api-cabinet-columns">
         <section class="card api-cabinet-panel"><h2>Финансовые начисления</h2><p class="hint">Поля финансовой детализации. Компенсации и удержания не вычитаются повторно как реклама.</p><dl id="apiCabinetFinance"></dl></section>
-        <section class="card api-cabinet-panel"><h2>Себестоимость и налог</h2><ul id="apiCabinetReadiness"></ul><p><a href="#costs">Изменить себестоимость</a> · <a href="#settings">Изменить налог</a></p><h3>Рекламные списания</h3><dl id="apiCabinetAds"></dl><p class="hint">Кэшбэк показан отдельно: он не приравнивается автоматически к промобонусам или денежным списаниям.</p></section>
+        <section class="card api-cabinet-panel"><h2>Себестоимость и налог</h2><ul id="apiCabinetReadiness"></ul><p><a href="#costs">Изменить себестоимость</a> · <a href="#settings">Изменить налог</a></p><h3>Рекламные списания</h3><dl id="apiCabinetAds"></dl><p class="hint">Баланс и счёт уменьшают прибыль. Бонусы, промобонусы и рекламный кэшбэк показаны справочно.</p></section>
       </div>
       <section class="card api-cabinet-panel api-cabinet-products">
         <h2>Расходы за месяц</h2><p class="hint">Сохраняются для выбранного месяца API. Для WB Media укажите подтверждённую сумму; 0 означает, что рекламы не было, пустое поле — сумма неизвестна.</p>
@@ -162,6 +162,7 @@
         <h2>Динамика магазина</h2><p class="hint">Сохранённые месяцы API. Нажмите на показатель, чтобы изменить график.</p>
         <div class="segmented-control api-trend-controls" id="apiTrendControls" aria-label="Показатель графика">
           <button type="button" data-metric="orders">Заказы, ₽</button><button type="button" data-metric="sales">Продажи, ₽</button><button type="button" data-metric="internalAds">Внутренняя реклама</button>
+          <button type="button" data-metric="profit">Прибыль</button><button type="button" data-metric="drrOrders">ДРР заказов</button><button type="button" data-metric="drrSales">ДРР выкупа</button>
         </div>
         <p id="apiTrendEmpty" class="hint" hidden>Динамика появится после загрузки месяца.</p>
         <div class="api-trend-chart"><canvas id="apiTrendChart" aria-label="Динамика выбранного показателя API" role="img"></canvas></div>

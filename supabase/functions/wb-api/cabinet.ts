@@ -1,4 +1,5 @@
 import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
+import { advertising, economy } from './economy.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -41,7 +42,7 @@ export function adsSnapshot(response: any, from: string, to: string) {
   }
   return { status: 'downloaded', date_from: from, date_to: to, timezone: 'Europe/Moscow', fetched_at: new Date().toISOString(),
     period_totals: Object.fromEntries(Object.entries(totals).map(([key, v]) => [key, { amount: rub(v), operations: operations[key] }])),
-    undated_operations: undated, classification_pending: Object.keys(totals).filter(t => !['Баланс','Бонусы','Промобонусы'].includes(t)), applied_to_dashboard: false };
+    undated_operations: undated, classification_pending: advertising(Object.fromEntries(Object.entries(totals).map(([k,v])=>[k,{amount:rub(v)}]))).unknown, applied_to_dashboard: false };
 }
 
 async function commit(admin: any, job: any, summary: any, status = 'loading') {
@@ -106,11 +107,19 @@ export async function readCabinet(admin: any, shopId: string, period: any) {
       orders_amount: rub(cents(old?.orders_amount) + cents(p.orders_amount)), bought_qty: 0, for_pay: 0n });
   }
   let bought = 0, rowsCount = 0;
+  const financialTotals: Record<string, bigint> = {};
   for (let offset = 0; ; offset += 1000) {
     const { data: rows, error } = await admin.from('wb_api_preview_rows').select('payload').eq('job_id', job.id).order('rrd_id').range(offset, offset + 999);
     if (error) throw new ApiError(500, 'Не удалось прочитать товары');
     rowsCount += rows.length;
+    const page = summarize(rows.map((r: any) => r.payload));
+    for (const [key, value] of Object.entries(page.totals)) financialTotals[key] = (financialTotals[key] || 0n) + cents(value);
     for (const { payload: p } of rows) {
+      financialTotals.additionalPayment = (financialTotals.additionalPayment || 0n) + cents(p.additionalPayment);
+      // Advertising charged to the seller balance can also appear in deductions.
+      // Add back only explicit WB advertising charges before applying spend once.
+      const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
+      if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) financialTotals.advertisingDeductions = (financialTotals.advertisingDeductions || 0n) + cents(p.deduction);
       const article = String(p.vendorCode || p.nmId || '');
       if (!article) continue;
       const row = products.get(article) || { article, name: text(p.title), orders_count: null, orders_amount: null, bought_qty: 0, for_pay: 0n };
@@ -131,15 +140,18 @@ export async function readCabinet(admin: any, shopId: string, period: any) {
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty > 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
+  const finance = financialComplete ? { ...Object.fromEntries(Object.entries(financialTotals).map(([k,v])=>[k,rub(v)])), bought_qty: bought } : null;
+  const media = settingsRows?.length ? { status: settings.media_spend == null ? 'needs_confirmation' : 'confirmed_by_user', amount: settings.media_spend == null ? null : String(settings.media_spend) } : { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null };
+  const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: rowsCount, updated_at: job.updated_at, error_message: job.error_message },
-    complete, settings, cogs, finance: financialComplete ? { ...job.summary?.totals, bought_qty: bought } : null, products: safeProducts,
+    complete, settings, cogs, finance, products: safeProducts,
     missing_costs: missing,
     sources: { finance: { status: financialComplete ? 'downloaded' : 'loading' },
       orders: { status: sources.orders?.status || 'pending', amount: sources.orders?.orders_amount ?? null, count: sources.orders?.orders_count ?? null },
       ads: { status: sources.internal_ads?.status || 'pending', totals: sources.internal_ads?.period_totals || {}, undated: sources.internal_ads?.undated_operations || 0 },
-      media: settingsRows?.length ? { status: settings.media_spend == null ? 'needs_confirmation' : 'confirmed_by_user', amount: settings.media_spend == null ? null : String(settings.media_spend) } : { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null } },
-    deductions: job.summary?.deductions || [], net_profit: null, reconciliation_required: true };
+      media },
+    deductions: job.summary?.deductions || [], economy: calculated, net_profit: calculated?.net_profit ?? null, reconciliation_required: false };
 }
 
 export function monthSettings(body: any) {
@@ -164,7 +176,9 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     try { const period = cabinetPeriod(month); if (period.dateFrom !== job.date_from || period.dateTo !== job.date_to) continue; } catch { continue; }
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
-    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(job.summary.totals?.retailAmount), orders:Number(s.orders.orders_amount), internalAds:Number(s.internal_ads.period_totals?.['Баланс']?.amount || 0) });
+    const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to});
+    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), internalAds:Number(c.economy?.internal_ads), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
+    if (byMonth.size >= 12) break;
   }
   return [...byMonth.values()].sort((a,b)=>a.year-b.year || a.month-b.month).slice(-12);
 }

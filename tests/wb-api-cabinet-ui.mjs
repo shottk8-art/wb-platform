@@ -15,7 +15,7 @@ assert.match(css,/\.api-cabinet-status\[data-error="true"\]\s*\{[^}]*var\(--bad\
 window.WBApiCabinet.setContext({shopId:'green',allowed:true});await tick();
 assert.equal(el('secApiCabinet').hidden,false);
 assert.equal(el('apiCabinetMonth').value,'2026-09');
-assert.match(el('apiCabinetWarning').textContent,/не рассчитаны/);
+assert.match(el('apiCabinetWarning').textContent,/Прибыль =/);
 assert.match(el('apiCabinetAds').innerHTML,/Кэшбэк/);
 assert.match(el('apiCabinetMetrics').innerHTML,/Нет подтверждённой суммы/);
 assert.match(el('apiCabinetProducts').innerHTML,/&lt;img/);

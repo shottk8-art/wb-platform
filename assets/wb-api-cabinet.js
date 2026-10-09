@@ -29,24 +29,34 @@
     }).join('');
     const f = cabinet?.finance, orders = sources.orders?.status === 'downloaded' ? sources.orders : null;
     const ads = sources.ads?.status === 'downloaded' ? sources.ads.totals : null;
-    const balance = ads ? ads['Баланс']?.amount ?? 0 : null;
+    const e = cabinet?.economy;
+    const balance = ads ? e?.internal_ads ?? ads['Баланс']?.amount ?? 0 : null;
     const media = ['confirmed_by_user','downloaded'].includes(sources.media?.status) ? sources.media.amount : null;
     const metrics = [
       ['Сумма заказов', money(orders?.amount), 'Воронка продаж · по дате заказа', 'orders'],
       ['Продажи по финансовому отчёту', money(f?.retailAmount), 'Продажи минус возвраты · цена из финансовой детализации', 'sales'],
-      ['Внутренняя реклама', money(balance), 'Списания с баланса · кэшбэк отдельно', 'internalAds'],
-      ['WB Media', money(media), media == null ? 'Нет подтверждённой суммы' : sources.media.status === 'confirmed_by_user' ? 'Подтверждено владельцем, не API' : 'Получено из API'],
+      ['Итого к перечислению (WB)', money(e?.payout), 'После удержаний и компенсаций из финансового отчёта', 'transfer'],
+      ['Чистая прибыль', money(cabinet?.net_profit), e?.missing?.length ? e.missing.join(' · ') : 'После себестоимости, налога и всех указанных расходов', 'profit'],
+      ['Внутренняя реклама', money(balance), 'Баланс + счёт · без бонусов и рекламного кэшбэка', 'internalAds'],
+      ['WB Media', money(media), media == null ? 'Нет подтверждённой суммы' : sources.media.status === 'confirmed_by_user' ? 'Подтверждено владельцем, не API' : 'Получено из API', 'mediaAds'],
+      ['ДРР (заказа)', e?.drr_orders == null ? '—' : number(Number(e.drr_orders.toFixed(1))) + ' %', 'Внутренняя + медийная + внешняя реклама / заказы', 'drrOrders'],
+      ['ДРР (выкупа)', e?.drr_sales == null ? '—' : number(Number(e.drr_sales.toFixed(1))) + ' %', 'Вся денежная реклама / продажи финансового отчёта', 'drrSales'],
       ['Заказали', number(orders?.count) + (orders ? ' шт.' : ''), 'Все товары, включая удалённые карточки'],
       ['Выкупили', f ? number(f.bought_qty) + ' шт.' : '—', 'Без повторного количества в корректировках'],
       ['Себестоимость выкупов', money(cabinet?.cogs), 'Текущая себестоимость × продажи минус возвраты'],
       ['Операционные расходы', money(cabinet?.settings?.operational_expenses), 'Указаны вручную за выбранный месяц'],
       ['Внешнее продвижение', money(cabinet?.settings?.external_promotion_expenses), 'Указано вручную за выбранный месяц'],
+      ['Налог', money(e?.tax), `Ставка ${number(cabinet?.shop?.tax_rate)}% от продаж финансового отчёта`],
     ];
+    if (Number(e?.promo)) metrics.push(['Промобонусы и рекламный кэшбэк', money(e.promo), 'Справочно · не уменьшают прибыль', 'promo']);
     el('apiCabinetMetrics').innerHTML = metrics.map(([title,value,hint,metric])=>`<${metric ? 'button type="button"' : 'div'} class="kpi"${metric ? ` data-api-metric="${metric}" aria-pressed="${metric === trendMetric}" title="Показать динамику: ${title}"` : ''}><span class="api-metric-label">${title}</span><strong class="api-metric-value">${esc(value)}</strong><span class="hint">${hint}</span></${metric ? 'button' : 'div'}>`).join('');
     const pairs = rows => rows.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
     el('apiCabinetFinance').innerHTML = pairs([
       ['К перечислению за товар', money(f?.forPay)], ['Логистика', money(f?.deliveryService)], ['Хранение', money(f?.paidStorage)],
       ['Приёмка', money(f?.paidAcceptance)], ['Штрафы', money(f?.penalty)], ['Прочие удержания', money(f?.deduction)],
+      ['Корректировка вознаграждения WB', money(f?.additionalPayment)],
+      ['Баллы за отзывы и лояльность, нетто', money(f?.cashbackAmount)], ['Комиссия лояльности', money(f?.cashbackCommissionChange)], ['Компенсация скидки лояльности', money(f?.cashbackDiscount)],
+      ['Реклама в удержаниях (без повторного вычета)', money(e?.advertising_already_withheld)],
     ]);
     el('apiCabinetAds').innerHTML = ads && Object.keys(ads).length ? pairs(Object.entries(ads).map(([type,data])=>[type,money(data.amount)])) : '<p class="hint">Рекламные списания пока не получены.</p>';
     const missing = cabinet?.missing_costs?.length || 0;
@@ -56,7 +66,7 @@
       `Себестоимость выкупов: ${money(cabinet?.cogs)}.`,
       sources.ads?.undated ? `Списания без даты: ${sources.ads.undated}. Не распределены по месяцам.` : 'Реклама распределяется по дате списания, время Москвы.',
     ].map(s=>`<li>${esc(s)}</li>`).join('');
-    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Чистая прибыль и общий ДРР не рассчитаны: требуется сверка корректировок и кэшбэка WB. Ниже — полученные суммы и ваши расходы. Данные API не публикуются в витрине.' : 'Загрузите закрытый месяц. Сервер последовательно получит финансы, заказы и внутреннюю рекламу; данные других магазинов не изменятся.';
+    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Прибыль = к перечислению после удержаний − себестоимость − налог − внутренняя и медийная реклама − операционные расходы − внешнее продвижение. Реклама, уже включённая в удержания, не вычитается повторно. Бонусы — справочно. Данные API не публикуются в витрине.' : 'Загрузите закрытый месяц. Сервер последовательно получит финансы, заказы и внутреннюю рекламу; данные других магазинов не изменятся.';
     const products = [...(cabinet?.products || [])].sort((a,b)=>Number(b.orders_amount || 0)-Number(a.orders_amount || 0));
     el('apiCabinetProducts').innerHTML = products.length ? products.map(p=>`<tr><td><strong>${esc(p.name || p.article)}</strong><small>${esc(p.article)}</small></td><td>${number(p.orders_count)}</td><td>${money(p.orders_amount)}</td><td>${number(p.bought_qty)}</td><td>${money(p.for_pay)}</td><td>${Number(p.cost_price)>0 ? money(p.cost_price) : 'Не заполнена'}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Товары появятся после загрузки API.</td></tr>';
   }
