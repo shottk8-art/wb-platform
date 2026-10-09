@@ -62,7 +62,10 @@
 .api-cabinet-panel dd { margin:0; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .api-cabinet-products { margin-top:20px; }
 .api-cabinet-products .table-scroll { overflow-x:auto; }
-.api-cabinet-products table { width:100%; font-size:13px; }
+.api-cabinet-products table { width:100%; font-size:13px; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.api-cabinet-products th, .api-cabinet-products td { padding:10px 14px; }
+.api-cabinet-products th:first-child { text-align:left; min-width:180px; }
+.api-cabinet-products thead tr, .api-cabinet-products tbody tr:not(:last-child) { border-bottom:1px solid var(--line); }
 .api-cabinet-products th:not(:first-child), .api-cabinet-products td:not(:first-child) { text-align:right; white-space:nowrap; }
 .api-cabinet-products td strong { font-weight:500; }
 .api-cabinet-products td small { display:block; margin-top:5px; color:var(--ink-soft); }
