@@ -317,9 +317,8 @@
 
   // ---- WB Media / расширенная статистика ----
   // Формат выгрузок менялся, поэтому узнаём распространённые названия
-  // колонок. Если файл агрегирован и не содержит даты в каждой строке,
-  // используем месяц, выбранный пользователем перед загрузкой.
-  async function parseWbMedia(file, fallbackYear, fallbackMonth) {
+  // колонок. Период определяется по дате каждой операции.
+  async function parseWbMedia(file) {
     const wb = await readWorkbook(file);
     const dateAliases = ["дата", "день", "период"];
     const spendAliases = ["затраты, ₽", "затраты, руб", "затраты (руб", "расходы, ₽", "расходы, руб", "расход, ₽", "потрачено", "сумма затрат"];
@@ -373,8 +372,8 @@
         const amount = num(row[spendIdx]);
         if (Math.abs(amount) < 0.00001) continue;
         const date = dateIdx >= 0 ? parseSheetDate(row[dateIdx]) : null;
-        const year = date ? date.getFullYear() : Number(fallbackYear);
-        const month = date ? date.getMonth() + 1 : Number(fallbackMonth);
+        const year = date ? date.getFullYear() : 0;
+        const month = date ? date.getMonth() + 1 : 0;
         if (!year || !month) continue;
         const key = `${year}-${month}`;
         if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0, orders: 0 });
@@ -385,7 +384,7 @@
     }
     if (!recognized) throw new Error("Не удалось найти колонку «Затраты» в выгрузке WB Media.");
     const periods = [...byMonth.values()].sort((a, b) => a.year - b.year || a.month - b.month);
-    if (!periods.length) throw new Error("В файле WB Media не найдено расходов.");
+    if (!periods.length) throw new Error("В файле WB Media не найдено расходов с корректной датой списания.");
     return { periods, transactionCount };
   }
 

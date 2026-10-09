@@ -67,12 +67,12 @@
     return periods.length;
   }
 
-  async function uploadWbMedia(shopId, file, year, month) {
+  async function uploadWbMedia(shopId, file) {
     const duplicate = await sb().from("uploads").select("id").eq("shop_id", shopId)
       .eq("kind", "wb_media").eq("filename", file.name).maybeSingle();
     if (duplicate.error) throw duplicate.error;
     if (duplicate.data) throw new Error("Этот отчёт WB Media уже загружен.");
-    const { periods, transactionCount } = await window.WBParse.parseWbMedia(file, year, month);
+    const { periods, transactionCount } = await window.WBParse.parseWbMedia(file);
     const payload = [];
     for (const p of periods) {
       const { data: current, error: readError } = await sb().from("monthly_reports")
