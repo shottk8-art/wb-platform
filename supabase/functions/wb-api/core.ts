@@ -34,7 +34,7 @@ export function validateKey(value: unknown) {
   const token = value.trim().replace(/^Bearer\s+/i, "");
   if (token.length < 100 || token.length > 10000 || !/^[A-Za-z0-9_.-]+$/.test(token)) throw new ApiError(400, "Проверьте API-ключ: вставьте токен целиком, без пробелов");
   let expiresAt: string | null = null;
-  // This is only expiry/sandbox UX; WB endpoints authenticate the actual token.
+  // Claims are only local validation/UX. WB authenticates the actual token.
   try {
     const part = token.split(".")[1];
     const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=")));
@@ -43,8 +43,21 @@ export function validateKey(value: unknown) {
       if (payload.exp * 1000 <= Date.now()) throw new ApiError(400, "Срок действия ключа истёк. Создайте новый токен в WB");
       expiresAt = new Date(payload.exp * 1000).toISOString();
     }
-  } catch (e) { if (e instanceof ApiError) throw e; }
+    if (payload.acc !== 3) throw new ApiError(400, "Для личного подключения нужен персональный ключ WB. Создайте его для своего магазина с категорией «Финансы»");
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(400, "Не удалось распознать персональный ключ WB. Вставьте токен целиком");
+  }
   return { token, expiresAt };
+}
+// Only non-sensitive metadata is returned to the UI; never return JWT claims.
+export function keyInfo(token: string) {
+  try {
+    const part = token.split(".")[1];
+    const payload = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=")));
+    if (payload.acc === 3 && payload.t !== true) return { key_type: "personal", finance_interval_seconds: 60 };
+  } catch { /* A legacy/unrecognized key must not be described as personal. */ }
+  return { key_type: "unknown", finance_interval_seconds: null };
 }
 export function upstreamError(status: number, retryAfter: number) {
   if (status === 401) return new ApiError(400, "WB отклонил ключ. Проверьте токен и срок его действия");
@@ -69,6 +82,19 @@ export function sanitizeRows(rows: unknown) {
     unique.set(String(id), safe);
   }
   return [...unique.values()];
+}
+export function pageCursor(rows: Record<string, unknown>[], previous: string) {
+  if (!rows.length) return previous;
+  let last = 0n;
+  for (const row of rows) {
+    const id = BigInt(String(row.rrdId));
+    // Staging/bootstrap use ordered IDs. Stop rather than silently skipping a
+    // non-monotonic page. Duplicate boundary IDs are handled by the caller.
+    if (id < last) throw new ApiError(400, "WB вернул операции не по порядку. Загрузка остановлена, чтобы не пропустить данные");
+    last = id;
+  }
+  if (last <= BigInt(previous)) throw new ApiError(502, "WB не продвинул страницу отчёта. Проверьте загрузку позже");
+  return String(last); // WB contract: ID of the LAST row, not the maximum ID.
 }
 function cents(value: unknown) {
   if (value === null || value === undefined || value === "") return 0n;

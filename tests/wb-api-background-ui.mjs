@@ -8,7 +8,7 @@ const el = (id) => {
   if (!elements.has(id)) elements.set(id, { value: '', dataset: {}, events: {}, addEventListener(type, fn) { this.events[type] = fn; } });
   return elements.get(id);
 };
-const job = { id: 'test-job', status: 'loading', date_from: '2026-09-01', date_to: '2026-09-30', row_count: 0 };
+const job = { id: 'test-job', status: 'loading', date_from: '2026-09-01', date_to: '2026-09-30', row_count: 0, error_message: 'Лимит запросов WB' };
 const connection = { seller_name: 'Test seller', next_request_at: '2026-10-10T04:34:00Z' };
 const window = { WBAuth: { getSession: async () => ({ access_token: 'fake-session' }) }, WB_CONFIG: { SUPABASE_URL: 'https://example.test', SUPABASE_ANON_KEY: 'public-test' } };
 vm.runInNewContext(readFileSync(new URL('../assets/wb-api.js', import.meta.url), 'utf8'), {
@@ -25,4 +25,6 @@ for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve)
 assert.ok(!calls.includes('preview_step'), 'browser must only enqueue/read status, never drive WB pagination');
 assert.doesNotMatch(el('wbApiMessage').textContent || '', /Не закрывайте|43109 сек|Нажмите «Продолжить/);
 assert.match(el('wbApiMessage').textContent || '', /фонов|сервер/i);
+assert.match(el('wbApiMessage').textContent || '', /Последний запрос: Лимит запросов WB/);
+assert.doesNotMatch(el('wbApiMessage').textContent || '', /WB разрешит/);
 console.log('Background UI reproduction: passed (browser-independent scheduling).');

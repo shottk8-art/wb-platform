@@ -9,7 +9,7 @@ const el = (id) => {
 };
 const requests = [];
 let pendingResponse;
-const connection = { seller_name: 'GREEN FLOW', checked_at: '2026-10-09T12:00:00Z' };
+const connection = { seller_name: 'GREEN FLOW', key_type: 'personal', finance_interval_seconds: 60, checked_at: '2026-10-09T12:00:00Z' };
 const window = { WBAuth: { getSession: async () => ({ access_token: 'test-session' }) }, WB_CONFIG: { SUPABASE_URL: 'https://example.test', SUPABASE_ANON_KEY: 'public-test' } };
 vm.runInNewContext(readFileSync(new URL('../assets/wb-api.js', import.meta.url), 'utf8'), {
   window, document: { getElementById: el }, AbortSignal, Intl, Date, clearTimeout, setTimeout,
@@ -35,6 +35,9 @@ assert.equal(requests.at(-1).action, 'connect');
 assert.equal(requests.at(-1).shop_id, 'a');
 assert.equal(el('wbApiPreviewBtn').disabled, false);
 assert.match(el('wbApiConnectionStatus').textContent, /GREEN FLOW/);
+assert.match(el('wbApiConnectionStatus').textContent, /Персональный ключ/);
+assert.match(el('wbApiConnectionStatus').textContent, /1 запроса в минуту/);
+assert.doesNotMatch(el('wbApiMessage').textContent, /доступ к финансам подтверждён/i);
 assert.ok(!el('wbApiConnectionStatus').textContent.includes('dummy-test-only'));
 await window.WBApi.setContext({ shopId: 'b', name: 'Other store', allowed: true });
 assert.equal(el('wbApiPreviewBtn').disabled, true, 'old store connection reset synchronously');
@@ -54,4 +57,4 @@ await old;
 assert.equal(el('secWbApi').hidden, true);
 assert.equal(el('wbApiShopName').textContent, 'New store');
 assert.equal(el('wbApiPreviewBtn').disabled, true);
-console.log('WB API UI: 19 assertions passed (account gate, key clearing, shop isolation, stale-response protection).');
+console.log('WB API UI: 22 assertions passed (personal metadata, account gate, key clearing, shop isolation, stale-response protection).');

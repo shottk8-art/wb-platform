@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
-import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 
 let assertions = 0;
@@ -17,7 +17,19 @@ check(() => assert.throws(() => validateKey('invalid'), ApiError));
 const token = (payload) => `e30.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.${'x'.repeat(100)}`;
 check(() => assert.throws(() => validateKey(token({ exp: 1 })), /истёк/));
 check(() => assert.throws(() => validateKey(token({ t: true })), /песочницы/));
-check(() => assert.equal(validateKey(token({ exp: 4102444800 })).expiresAt, '2100-01-01T00:00:00.000Z'));
+check(() => assert.equal(validateKey(token({ acc: 3, exp: 4102444800 })).expiresAt, '2100-01-01T00:00:00.000Z'));
+check(() => assert.throws(() => validateKey(token({ acc: 1, exp: 4102444800 })), /персональный/));
+check(() => assert.throws(() => validateKey(token({ acc: 4, exp: 4102444800 })), /персональный/));
+check(() => assert.throws(() => validateKey(token({ exp: 4102444800 })), /персональный/));
+check(() => assert.throws(() => validateKey('x'.repeat(150)), /распознать/));
+check(() => assert.deepEqual(keyInfo(token({ acc: 3 })), { key_type: 'personal', finance_interval_seconds: 60 }));
+check(() => assert.equal(keyInfo(token({ acc: 1 })).key_type, 'unknown'));
+check(() => assert.equal(keyInfo(token({ acc: 3, t: true })).key_type, 'unknown'));
+check(() => assert.equal(keyInfo('invalid').key_type, 'unknown'));
+check(() => assert.equal(pageCursor([{ rrdId: '1' }, { rrdId: '2' }, { rrdId: '3' }], '2'), '3'));
+check(() => assert.equal(pageCursor([], '3'), '3'));
+check(() => assert.throws(() => pageCursor([{ rrdId: '4' }, { rrdId: '3' }], '2'), /не по порядку/));
+check(() => assert.throws(() => pageCursor([{ rrdId: '2' }], '2'), /не продвинул/));
 const rows = sanitizeRows([
   { rrdId: 1, docTypeName: 'Продажа', retailAmount: '100.10', forPay: '80.05', cashbackAmount: '10.00', cashbackCommissionChange: '1.00', cashbackDiscount: '2.10', token: 'must-not-survive', customer: 'PII' },
   { rrdId: 2, docTypeName: 'Возврат', retailAmount: '20.00', forPay: '16.00', cashbackAmount: '2.00', cashbackCommissionChange: '0.20', cashbackDiscount: '0.10' },
@@ -44,10 +56,11 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null;
+const storedKey = token({ acc: 3, exp: 4102444800 });
 const job = { id: '00000000-0000-4000-8000-000000000001', shop_id: '63175e7a-5b26-425e-893f-68889b32f02f', date_from: '2026-09-01', date_to: '2026-09-30', cursor_id: 0, status: 'loading' };
 const chain = (table) => {
   let operation = 'select', values, count = false;
@@ -79,7 +92,7 @@ const sandbox = {
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
     from: chain,
-    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? 'fake-server-key' : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null }),
+    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? storedKey : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null }),
   }),
   fetch: async (url, options) => {
     outbound.push({ url, body: options.body });
@@ -99,6 +112,13 @@ assert.equal(outbound.length, 0); assertions++;
 authenticatedId = PILOT_USER_ID; owner = false;
 assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
 owner = true;
+const status = await invoke({ action: 'status' });
+assert.equal(status.body.connection.key_type, 'personal'); assertions++;
+assert.equal(status.body.connection.finance_interval_seconds, 60); assertions++;
+assert.ok(!JSON.stringify(status.body).includes(storedKey)); assertions++;
+const wrongType = await invoke({ action: 'connect', api_key: token({ acc: 1, exp: 4102444800 }) });
+assert.equal(wrongType.status, 400); assertions++;
+assert.equal(outbound.length, 0); assertions++;
 assert.equal((await invoke({ action: 'status' }, true, 'https://evil.example')).status, 403); assertions++;
 claimWait = 42;
 assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.background, true); assertions++;
@@ -128,5 +148,5 @@ upstreamStatus = 429;
 upstreamRetry = '43109';
 assert.equal((await worker()).body.retry_after, 43109); assertions++;
 assert.ok(Date.parse(dbWrites.findLast((item) => item.table === 'wb_api_connections').values.next_request_at) > Date.now() + 43100 * 1000); assertions++;
-assert.ok(!JSON.stringify(completed.body).includes('fake-server-key')); assertions++;
+assert.ok(!JSON.stringify(completed.body).includes(storedKey)); assertions++;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);

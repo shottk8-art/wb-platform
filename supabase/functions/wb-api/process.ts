@@ -1,4 +1,4 @@
-import { ApiError, FINANCE_FIELDS, mergeSummaries, sanitizeRows, summarize } from './core.ts';
+import { ApiError, FINANCE_FIELDS, mergeSummaries, pageCursor, sanitizeRows, summarize, validateKey } from './core.ts';
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
 export async function processPage(admin: any, job: any, shopId: string, wbFetch: any) {
@@ -7,14 +7,14 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
   if (Number(wait) > 0) return { retry_after: Number(wait) };
   const { data: token, error: keyError } = await admin.rpc('wb_api_read_key', { p_shop_id: shopId });
   if (keyError || !token) throw new ApiError(400, 'Сначала подключите API магазина');
-  const response = await wbFetch(String(token), 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed', {
+  const personal = validateKey(String(token));
+  const response = await wbFetch(personal.token, 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed', {
     dateFrom: job.date_from, dateTo: `${job.date_to}T23:59:59`, limit: 50000,
     rrdId: Number(job.cursor_id), period: 'weekly', fields: FINANCE_FIELDS,
   });
   const rows = sanitizeRows(response || []);
-  let cursor = BigInt(job.cursor_id);
-  for (const row of rows) if (BigInt(String(row.rrdId)) > cursor) cursor = BigInt(String(row.rrdId));
-  if (rows.length && cursor <= BigInt(job.cursor_id)) throw new ApiError(502, 'WB не продвинул страницу отчёта. Проверьте загрузку позже');
+  // Check the raw sequence: deduplication must not hide an out-of-order last row.
+  const cursor = pageCursor(response || [], String(job.cursor_id));
   const freshRows = rows.filter((row) => BigInt(String(row.rrdId)) > BigInt(job.cursor_id));
   let accumulated = job.summary;
   // Upgrade an existing pilot job without discarding its already saved rows.

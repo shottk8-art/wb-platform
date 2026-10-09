@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
-import { mergeSummaries, summarize, validatePeriod } from '../supabase/functions/wb-api/core.ts';
+import { ApiError, mergeSummaries, summarize, validatePeriod } from '../supabase/functions/wb-api/core.ts';
 
 const job = { id: 'fake-job', shop_id: 'fake-shop', cursor_id: '2', status: 'loading', summary: null };
 const saved = new Map([
@@ -8,8 +8,10 @@ const saved = new Map([
   ['2', { rrdId: '2', docTypeName: 'Возврат', retailAmount: '20.00' }],
 ]);
 let failCommit = true, wait = 0, outbound = 0;
+const personalKey = `e30.${Buffer.from(JSON.stringify({ acc: 3, exp: 4102444800 })).toString('base64url')}.${'x'.repeat(100)}`;
+let key = personalKey;
 const admin = {
-  rpc: async (name) => ({ data: name === 'wb_api_read_key' ? 'fake-only' : wait }),
+  rpc: async (name) => ({ data: name === 'wb_api_read_key' ? key : wait }),
   from(table) {
     let values, range, ceiling = Infinity;
     const q = {
@@ -40,14 +42,31 @@ assert.equal(job.summary.totals.retailAmount, '80.11');
 assert.equal(job.row_count, 3);
 assert.equal(saved.size, 3);
 assert.equal(job.status, 'loading', 'short page is not proof of completeness');
+// Following an out-of-order last ID must never silently drop financial rows.
+page = [{ rrdId: 5, retailAmount: '1.00' }, { rrdId: 4, retailAmount: '1.00' }];
+await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher), (error) => error instanceof ApiError && error.status === 400);
+assert.equal(job.cursor_id, '3');
+assert.equal(saved.size, 3, 'invalid page is rejected before writes');
+page = [{ rrdId: 3 }, { rrdId: 4 }, { rrdId: 3 }];
+await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher), /не по порядку/);
+assert.equal(job.cursor_id, '3', 'dedup must not hide a non-monotonic raw page');
+page = [{ rrdId: 3 }, { rrdId: 4, retailAmount: '0.01' }, { rrdId: 4, retailAmount: '0.01' }];
+await processPage(admin, { ...job }, job.shop_id, fetcher);
+assert.equal(job.cursor_id, '4');
+assert.equal(job.summary.totals.retailAmount, '80.12');
+assert.equal(job.row_count, 4, 'duplicate last row does not duplicate totals');
 page = null;
 await processPage(admin, { ...job }, job.shop_id, fetcher);
 assert.equal(job.status, 'complete');
-assert.equal(job.summary.totals.retailAmount, '80.11');
+assert.equal(job.summary.totals.retailAmount, '80.12');
 wait = 43109;
 const before = outbound;
 assert.equal((await processPage(admin, { ...job }, job.shop_id, fetcher)).retry_after, 43109);
 assert.equal(outbound, before, 'cooldown must not send an early WB request');
+wait = 0;
+key = `e30.${Buffer.from(JSON.stringify({ acc: 1, exp: 4102444800 })).toString('base64url')}.${'x'.repeat(100)}`;
+await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher), /персональный/);
+assert.equal(outbound, before, 'unsupported token type must not reach WB');
 assert.equal(mergeSummaries(summarize([{ deduction: '0.10' }]), summarize([{ deduction: '0.20' }])).totals.deduction, '0.30');
 assert.equal(validatePeriod('2024-01-29', '2026-09-30').dateFrom, '2024-01-29');
 console.log('WB background pages: passed (crash recovery, deduplication, exact totals, history, quota).');

@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { ApiError, PILOT_USER_ID, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
+import { ApiError, PILOT_USER_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { processPage } from './process.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
@@ -96,7 +96,10 @@ Deno.serve(async (req) => {
     const readConnection = async () => {
       const { data, error } = await admin.from("wb_api_connections").select(CONNECTION_COLUMNS).eq("shop_id", shopId).maybeSingle();
       if (error) throw new ApiError(500, "Не удалось прочитать настройки API");
-      return data;
+      if (!data) return null;
+      const { data: storedKey, error: keyError } = await admin.rpc("wb_api_read_key", { p_shop_id: shopId });
+      if (keyError || !storedKey) throw new ApiError(500, "Не удалось прочитать тип подключения API");
+      return { ...data, ...keyInfo(String(storedKey)) };
     };
     const readJob = async (jobId: string) => {
       const { data, error } = await admin.from("wb_api_preview_jobs").select(JOB_COLUMNS).eq("id", jobId).eq("shop_id", shopId).maybeSingle();

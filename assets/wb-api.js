@@ -50,7 +50,7 @@
     el("wbApiConnectBtn").textContent = connection ? "Заменить ключ и проверить" : "Сохранить и проверить";
     const status = el("wbApiConnectionStatus");
     status.textContent = connection
-      ? `Подключён продавец WB: ${connection.seller_name}. Проверено: ${date(connection.checked_at)}${connection.expires_at ? `. Ключ действует до ${date(connection.expires_at)}` : ""}`
+      ? `Подключён продавец WB: ${connection.seller_name}.${connection.key_type === 'personal' ? ' Персональный ключ · финансовые отчёты: не чаще 1 запроса в минуту.' : ''} Проверено: ${date(connection.checked_at)}${connection.expires_at ? `. Ключ действует до ${date(connection.expires_at)}` : ""}`
       : "API ещё не подключён к этому магазину";
     status.dataset.connected = connection ? "true" : "false";
     el("wbApiPreviewResult").hidden = !(samePeriod && job.status === "complete");
@@ -63,7 +63,7 @@
       const fields = [
         ["retailAmount", "Продажи по финансовому отчёту"], ["forPay", "К перечислению за товар"],
         ["deliveryService", "Логистика"], ["paidStorage", "Хранение"], ["paidAcceptance", "Приёмка"],
-        ["penalty", "Штрафы"], ["cashbackAmount", "Баллы / кешбэк по API"],
+        ["penalty", "Штрафы"], ["cashbackAmount", "Баллы программы лояльности"],
         ["cashbackCommissionChange", "Комиссия программы лояльности"],
         ["cashbackDiscount", "Компенсация скидки по лояльности"], ["deduction", "Прочие удержания, включая рекламу"],
       ];
@@ -81,8 +81,9 @@
       message(job.error_message || 'Загрузка остановлена. Можно повторить.', true);
     } else {
       const wait = Math.max(0, Math.ceil((Date.parse(connection?.next_request_at) - Date.now()) / 1000));
-      const readyAt = wait > 90 ? ` WB разрешит следующий запрос ${date(connection.next_request_at)}.` : '';
-      message(`Фоновая загрузка на сервере: сохранено ${Number(job.row_count || 0).toLocaleString('ru-RU')} операций.${readyAt} Можно закрыть страницу — загрузка продолжится автоматически.`);
+      const readyAt = wait > 90 ? ` Следующая попытка сервера — не раньше ${date(connection.next_request_at)}.` : '';
+      const issue = job.error_message ? ` Последний запрос: ${job.error_message}.` : '';
+      message(`Фоновая загрузка на сервере: сохранено ${Number(job.row_count || 0).toLocaleString('ru-RU')} операций.${issue}${readyAt} Можно закрыть страницу — загрузка продолжится автоматически.`);
     }
   }
   async function poll(ctx, epoch) {
@@ -106,13 +107,13 @@
     const epoch = ++generation, ctx = { ...context };
     busy = true;
     render();
-    message(action === "connect" || action === "check" ? "Проверяем ключ и доступ к финансовым отчётам WB…" : "Загружаем…");
+    message(action === "connect" || action === "check" ? "Проверяем персональный ключ и подключение к WB…" : "Загружаем…");
     try {
       const result = await request(action, payload, ctx);
       if (epoch !== generation) return;
       if ("connection" in result) connection = result.connection;
       if ("job" in result) job = result.job;
-      message(action === "disconnect" ? "API отключён. Загруженные вручную данные не изменены." : action === "preview_start" && result.cached ? "Показан ранее полученный тестовый отчёт. Новый запрос в WB не выполнялся." : "Ключ проверен, доступ к финансам подтверждён.");
+      message(action === "disconnect" ? "API отключён. Загруженные вручную данные не изменены." : action === "preview_start" && result.cached ? "Показан ранее полученный тестовый отчёт. Новый запрос в WB не выполнялся." : "Ключ проверен, продавец подтверждён. Доступ к детализации проверяется при загрузке отчёта.");
       if (action === 'preview_start') jobMessage();
     } catch (error) {
       if (epoch === generation) message(error.message + (error.retryAfter ? ` Повторите через ${error.retryAfter} сек.` : ""), true);

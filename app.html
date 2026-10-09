@@ -149,11 +149,11 @@
       </div>
       <div class="collapsible-body"><div>
         <div class="card wb-api-card">
-          <p class="wb-api-intro">Подключение для магазина <strong id="wbApiShopName"></strong>. Вставьте ключ именно этого продавца WB с доступом к категории «Финансы», желательно только на чтение. Ключ хранится зашифрованным на сервере и не показывается после сохранения.</p>
+          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Вставьте персональный ключ именно этого продавца WB с категорией «Финансы», желательно только на чтение. Используйте ключи только ваших собственных магазинов. Ключ хранится зашифрованным на сервере и не показывается после сохранения.</p>
           <div class="wb-api-key-row">
             <div class="wb-api-key-field">
-              <label for="wbApiKey">API-ключ Wildberries</label>
-              <input id="wbApiKey" type="password" placeholder="Вставьте API-ключ WB" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="10000">
+              <label for="wbApiKey">Персональный API-ключ Wildberries</label>
+              <input id="wbApiKey" type="password" placeholder="Вставьте персональный ключ WB" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="10000">
             </div>
             <div class="wb-api-actions">
               <button class="primary" type="button" id="wbApiConnectBtn" disabled>Сохранить и проверить</button>
@@ -166,7 +166,7 @@
           <div class="wb-api-preview">
             <h3>Фоновая загрузка финансовых отчётов</h3>
             <p class="wb-api-intro">Выберите период или загрузите всю доступную историю с 29 января 2024 года по последний закрытый месяц. Сервер сам получает страницы отчёта и сохраняет прогресс — вкладку можно закрыть. Пока это отдельный тест: данные дашборда не изменятся.</p>
-            <p class="wb-api-intro">Базовый ключ WB может иметь длительные паузы между запросами. Это ограничение WB, загрузка возобновится автоматически. <a href="https://dev.wildberries.ru/knowledge-base/articles/019d49a1-0d73-71e9-be3e-b2c44567470c" target="_blank" rel="noopener noreferrer">О типах ключей и ограничениях</a></p>
+            <p class="wb-api-intro">Для персонального ключа финансовая детализация доступна не чаще одного запроса в минуту. Сервер соблюдает лимит и автоматически продолжает загрузку. При ответе 429 сохраняется пауза, указанная WB. <a href="https://dev.wildberries.ru/docs/openapi/documents-and-accounting#tag/financialReports/operation/postV1SalesReportsDetailed" target="_blank" rel="noopener noreferrer">Лимиты финансовых отчётов WB</a></p>
             <div class="wb-api-date-row">
               <div><label for="wbApiDateFrom">Начало периода</label><input type="date" id="wbApiDateFrom"></div>
               <div><label for="wbApiDateTo">Конец периода</label><input type="date" id="wbApiDateTo"></div>

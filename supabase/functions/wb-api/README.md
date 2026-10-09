@@ -2,6 +2,11 @@
 
 Only the verified immutable auth ID of @karlshott may use the endpoint, and
 only for shops owned by that account. The client-side gate is not authorization.
+This is a private, personal-token integration for the account's own sellers,
+not SaaS onboarding. Connect and worker paths accept personal WB tokens only
+(acc=3, not sandbox). JWT claims do not authenticate a key: WB still verifies it.
+Status returns only the key type and documented finance interval, never claims
+or credentials. Seller-info/ping do not prove permission for report detail.
 
 Apply `supabase/migrations/20261009190000_wb_api_test.sql` before deploying
 `wb-api`. Keys are encrypted in Supabase Vault. Neither keys nor secret IDs are
@@ -27,6 +32,9 @@ The server enforces 63 seconds or the longer WB `X-Ratelimit-Retry` duration
 Only empty/204 finalizes. Duplicate rows upsert by `(job_id, rrd_id)`. Cursor and
 partial totals update together, in exact integer kopecks; retries before cursor
 commit replace rows safely. Older pilot jobs bootstrap totals from saved rows.
+The next cursor is the last raw response row ID. Non-monotonic pages stop before
+any data writes, instead of using a maximum ID that could skip financial rows.
+Changing the key does not blindly reset an outstanding WB Retry cooldown.
 Transient failures retry with bounded backoff (five attempts), credential/data
 errors stop for operator review. Dispatch handles one job per seller at a time.
 The history button requests data since 2024-01-29 through the last closed month;
