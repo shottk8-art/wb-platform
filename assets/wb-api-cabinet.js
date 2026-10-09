@@ -134,7 +134,11 @@
     try {
       const result = await window.WBApi.cabinet('cabinet_settings',month,false,payload);
       if (current !== epoch || context.shopId !== shopId) return;
-      cabinet = result.cabinet; fillExpenses(); el('apiExpensesStatus').textContent = 'Расходы сохранены'; el('apiExpensesStatus').dataset.error = 'false';
+      cabinet = result.cabinet; fillExpenses();
+      const e = cabinet.economy;
+      trend = trend.map(point => `${point.year}-${String(point.month).padStart(2,'0')}` === month ? {...point, profit:e?.net_profit == null ? null : Number(e.net_profit), mediaAds:cabinet.sources.media.amount == null ? null : Number(cabinet.sources.media.amount), drrOrders:e?.drr_orders ?? null, drrSales:e?.drr_sales ?? null} : point);
+      renderTrend();
+      el('apiExpensesStatus').textContent = 'Расходы сохранены'; el('apiExpensesStatus').dataset.error = 'false';
     } catch (error) { if (current === epoch) { el('apiExpensesStatus').textContent = error.message; el('apiExpensesStatus').dataset.error = 'true'; } }
     finally { if (current === epoch) { busy = false; render(); if (reloadQueued) { reloadQueued = false; load(); } else if (cabinet?.job?.status === 'loading') timer = setTimeout(()=>load(),15000); } }
   });
