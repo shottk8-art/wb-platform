@@ -74,4 +74,8 @@ assert.equal(history[0].sales,100);
 assert.equal(history[0].orders,100);
 assert.equal(history[0].internalAds,10);
 await assert.rejects(()=>readCabinetTrend(reader,'another-shop'));
+data.wb_api_preview_rows=[{payload:{vendorCode:'RETURN-ONLY',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80,retailAmount:100}}];
+const returnOnly=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
+assert.equal(returnOnly.cogs,null,'return-only products also need a known cost for reversal');
+assert.deepEqual(returnOnly.missing_costs,['RETURN-ONLY']);
 console.log('API cabinet: passed (periods, Moscow dates, exact money, pagination, retries, isolation, unknown media, correction quantity).');

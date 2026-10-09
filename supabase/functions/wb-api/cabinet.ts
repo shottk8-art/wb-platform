@@ -138,7 +138,7 @@ export async function readCabinet(admin: any, shopId: string, period: any) {
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), cost_price: prices.get(p.article) ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded';
-  const missing = safeProducts.filter(p => p.bought_qty > 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
+  const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
   const finance = financialComplete ? { ...Object.fromEntries(Object.entries(financialTotals).map(([k,v])=>[k,rub(v)])), bought_qty: bought } : null;
   const media = settingsRows?.length ? { status: settings.media_spend == null ? 'needs_confirmation' : 'confirmed_by_user', amount: settings.media_spend == null ? null : String(settings.media_spend) } : { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null };
