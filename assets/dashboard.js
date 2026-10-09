@@ -456,6 +456,13 @@
     const metric = getTrendMetric(metricKey, marketplace);
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const values = rows.map(row => {
+      const raw = row[metricKey];
+      if ((typeof raw !== 'number' && typeof raw !== 'string') || String(raw).trim() === '') return null;
+      const value = Number(raw);
+      return Number.isFinite(value) ? value : null;
+    });
+    const singlePoint = values.length === 1 && values[0] != null;
     const formatValue = (value, compact) => {
       if (value == null) return "нет данных";
       if (metric.unit === "%") return `${fmtRate.format(value)}%`;
@@ -470,12 +477,12 @@
       data: {
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
         datasets: [{
-          label: metric.label, data: rows.map((row) => row[metricKey] ?? null),
+          label: metric.label, data: values,
           borderColor: metric.color, backgroundColor: `${metric.color}14`,
           borderWidth: 2.5,
-          pointRadius: rows.map((row, index) => Number.isFinite(row[metricKey])
-            && !Number.isFinite(rows[index - 1]?.[metricKey])
-            && !Number.isFinite(rows[index + 1]?.[metricKey]) ? 4 : 0),
+          pointRadius: singlePoint ? 5 : values.map((value, index) => value != null
+            && values[index - 1] == null && values[index + 1] == null ? 4 : 0),
+          pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: metric.color,
           pointBackgroundColor: metric.color,
           pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
           fill: true, spanGaps: false,

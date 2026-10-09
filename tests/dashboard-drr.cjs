@@ -112,7 +112,7 @@ async function main() {
     assert.equal(chart.data.datasets.length, 1);
     assert.equal(chart.data.datasets[0].data[0], trend[0][metric]);
     assert.equal(chart.data.datasets[0].label, api.getTrendMetric(metric, 'wildberries').label);
-    assert.equal(chart.data.datasets[0].pointRadius[0], 4, 'one-month series is visible');
+    assert.equal(chart.data.datasets[0].pointRadius, 5, 'one-month series has an explicit visible marker');
   }
   assert.equal(created, 1, 'metric switching updates the existing chart');
   assert.equal(chart.updatedMode, 'none');
