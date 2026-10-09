@@ -67,6 +67,59 @@
     return periods.length;
   }
 
+  async function uploadWbFinancialDetails(shopId, file) {
+    const duplicate = await sb().from("uploads").select("id").eq("shop_id", shopId)
+      .eq("kind", "wb_financial_details").eq("filename", file.name).maybeSingle();
+    if (duplicate.error) throw duplicate.error;
+    if (duplicate.data) throw new Error("Этот детализированный отчёт уже загружен.");
+    const { periods, transactionCount } = await window.WBParse.parseWbFinancialDetails(file);
+    const payload = [];
+    for (const p of periods) {
+      const { data: current, error: readError } = await sb().from("monthly_reports")
+        .select("loyalty_points_spend,loyalty_program_fee")
+        .eq("shop_id", shopId).eq("marketplace", "wildberries").eq("year", p.year).eq("month", p.month).maybeSingle();
+      if (readError) throw readError;
+      payload.push({
+        shop_id: shopId, marketplace: "wildberries", year: p.year, month: p.month,
+        loyalty_points_spend: (current?.loyalty_points_spend || 0) + p.points,
+        loyalty_program_fee: (current?.loyalty_program_fee || 0) + p.fee,
+      });
+    }
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
+    if (error) throw error;
+    await logUpload(shopId, "wildberries", "wb_financial_details", file.name, {
+      periods: periods.map((p) => ({ year: p.year, month: p.month, points: p.points, fee: p.fee })),
+      row_count: transactionCount,
+    });
+    return periods.length;
+  }
+
+  async function uploadWbMedia(shopId, file, year, month) {
+    const duplicate = await sb().from("uploads").select("id").eq("shop_id", shopId)
+      .eq("kind", "wb_media").eq("filename", file.name).maybeSingle();
+    if (duplicate.error) throw duplicate.error;
+    if (duplicate.data) throw new Error("Этот отчёт WB Media уже загружен.");
+    const { periods, transactionCount } = await window.WBParse.parseWbMedia(file, year, month);
+    const payload = [];
+    for (const p of periods) {
+      const { data: current, error: readError } = await sb().from("monthly_reports")
+        .select("wb_media_spend")
+        .eq("shop_id", shopId).eq("marketplace", "wildberries").eq("year", p.year).eq("month", p.month).maybeSingle();
+      if (readError) throw readError;
+      payload.push({
+        shop_id: shopId, marketplace: "wildberries", year: p.year, month: p.month,
+        wb_media_spend: (current?.wb_media_spend || 0) + p.amount,
+      });
+    }
+    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
+    if (error) throw error;
+    await logUpload(shopId, "wildberries", "wb_media", file.name, {
+      periods: periods.map((p) => ({ year: p.year, month: p.month, amount: p.amount })),
+      row_count: transactionCount,
+    });
+    return periods.length;
+  }
+
   async function uploadOzonAccruals(shopId, file) {
     const { periods, transactionCount } = await window.WBParse.parseOzonAccruals(file);
     const reports = periods.map((p) => ({ shop_id: shopId, marketplace: "ozon", ...p.report }));
@@ -180,6 +233,29 @@
           .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
         if (error) throw error;
       }
+    } else if (upload.kind === "wb_financial_details") {
+      for (const p of upload.periods || []) {
+        const { data: current, error: readError } = await sb().from("monthly_reports")
+          .select("loyalty_points_spend,loyalty_program_fee")
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month).maybeSingle();
+        if (readError) throw readError;
+        const { error } = await sb().from("monthly_reports").update({
+          loyalty_points_spend: (current?.loyalty_points_spend || 0) - (p.points || 0),
+          loyalty_program_fee: (current?.loyalty_program_fee || 0) - (p.fee || 0),
+        })
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
+        if (error) throw error;
+      }
+    } else if (upload.kind === "wb_media") {
+      for (const p of upload.periods || []) {
+        const { data: current, error: readError } = await sb().from("monthly_reports").select("wb_media_spend")
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month).maybeSingle();
+        if (readError) throw readError;
+        const { error } = await sb().from("monthly_reports")
+          .update({ wb_media_spend: Math.max(0, (current?.wb_media_spend || 0) - (p.amount || 0)) })
+          .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);
+        if (error) throw error;
+      }
     } else if (upload.kind === "ozon_accruals") {
       const zeroed = {
         sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
@@ -200,7 +276,8 @@
   }
 
   window.WBUpload = {
-    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadOzonAccruals, saveCostPrice, listCosts, importCosts,
+    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadWbFinancialDetails, uploadWbMedia,
+    uploadOzonAccruals, saveCostPrice, listCosts, importCosts,
     listUploads, deleteUpload, saveManualExpenses,
   };
 })();

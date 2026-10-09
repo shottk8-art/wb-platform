@@ -52,6 +52,9 @@ create table if not exists monthly_reports (
   other_fees      numeric not null default 0,   -- Доплаты (прочее)
   ads_spend       numeric not null default 0,   -- Расход на рекламу с баланса — уменьшает прибыль
   ads_promo_spend numeric not null default 0,   -- Расход промобонусами — справочно, прибыль не уменьшает
+  wb_media_spend  numeric not null default 0,   -- WB Media: оплачивается отдельно и уменьшает прибыль
+  loyalty_points_spend numeric not null default 0, -- Баллы, удержанные по программам лояльности (уже внутри transfer_total)
+  loyalty_program_fee numeric not null default 0,  -- Стоимость участия/комиссия программы лояльности (уже внутри transfer_total)
   operational_expenses numeric not null default 0, -- Операционные расходы, ручной ввод
   external_promotion_expenses numeric not null default 0, -- Внешнее продвижение, ручной ввод
   updated_at      timestamptz not null default now(),
@@ -104,7 +107,7 @@ create table if not exists uploads (
   id         uuid primary key default gen_random_uuid(),
   shop_id    uuid not null references shops(id) on delete cascade,
   marketplace text not null default 'wildberries' check (marketplace in ('wildberries','ozon')),
-  kind       text not null check (kind in ('summary','sales','costs','ads','ozon_accruals')),
+  kind       text not null check (kind in ('summary','sales','costs','ads','wb_financial_details','wb_media','ozon_accruals')),
   filename   text not null,
   periods    jsonb,
   year       int,
