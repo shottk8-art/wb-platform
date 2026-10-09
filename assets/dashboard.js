@@ -76,7 +76,15 @@
     return (reports || []).map((report) => {
       const periodSales = (sales || []).filter((row) => row.year === report.year && row.month === report.month);
       const d = computeDerived(report, periodSales, costMap, taxRate);
-      return { year: report.year, month: report.month, sales: report.sales_amount || 0, profit: d.netProfit };
+      const salesAmount = report.sales_amount || 0;
+      const ordersAmount = report.orders_amount || 0;
+      const ads = report.ads_spend || 0;
+      return {
+        year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit,
+        orders: ordersAmount, ads,
+        drrOrders: ordersAmount > 0 ? ads / ordersAmount * 100 : null,
+        drrSales: salesAmount > 0 ? ads / salesAmount * 100 : null,
+      };
     }).reverse();
   }
 
@@ -159,12 +167,18 @@
     const periods = new Map();
     lists.flat().forEach((row) => {
       const key = `${row.year}-${row.month}`;
-      const current = periods.get(key) || { year: row.year, month: row.month, sales: 0, profit: 0 };
+      const current = periods.get(key) || { year: row.year, month: row.month, sales: 0, profit: 0, orders: 0, ads: 0 };
       current.sales += row.sales || 0;
       current.profit += row.profit || 0;
+      current.orders += row.orders || 0;
+      current.ads += row.ads || 0;
       periods.set(key, current);
     });
-    return [...periods.values()].sort((a, b) => a.year - b.year || a.month - b.month).slice(-12);
+    return [...periods.values()].map((row) => ({
+      ...row,
+      drrOrders: row.orders > 0 ? row.ads / row.orders * 100 : null,
+      drrSales: row.sales > 0 ? row.ads / row.sales * 100 : null,
+    })).sort((a, b) => a.year - b.year || a.month - b.month).slice(-12);
   }
 
   function el(html) {
@@ -374,39 +388,46 @@
     });
   }
 
-  function renderTrend(canvas, rows) {
+  function renderTrend(canvas, rows, mode) {
     if (charts.trend) charts.trend.destroy();
+    mode = mode === "drr" ? "drr" : "money";
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isDrr = mode === "drr";
+    const datasets = isDrr ? [
+      {
+        label: "ДРР заказов",
+        data: rows.map((r) => r.drrOrders),
+        borderColor: "#ff9f0a",
+        backgroundColor: "rgba(255,159,10,.10)",
+        borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 14,
+        tension: .38, fill: true, spanGaps: true,
+      },
+      {
+        label: "ДРР выкупа",
+        data: rows.map((r) => r.drrSales),
+        borderColor: "#af52de",
+        backgroundColor: "transparent",
+        borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 14,
+        tension: .38, spanGaps: true,
+      },
+    ] : [
+      {
+        label: "Продажи", data: rows.map((r) => r.sales), borderColor: "#0071e3",
+        backgroundColor: "rgba(0,113,227,.09)", borderWidth: 2.5, pointRadius: 0,
+        pointHoverRadius: 5, pointHitRadius: 14, tension: .38, fill: true,
+      },
+      {
+        label: "Чистая прибыль", data: rows.map((r) => r.profit), borderColor: "#1d1d1f",
+        backgroundColor: "transparent", borderWidth: 2.5, pointRadius: 0,
+        pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
+      },
+    ];
     charts.trend = new Chart(canvas, {
       type: "line",
       data: {
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
-        datasets: [
-          {
-            label: "Продажи",
-            data: rows.map((r) => r.sales),
-            borderColor: "#0071e3",
-            backgroundColor: "rgba(0,113,227,.09)",
-            borderWidth: 2.5,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHitRadius: 14,
-            tension: .38,
-            fill: true,
-          },
-          {
-            label: "Чистая прибыль",
-            data: rows.map((r) => r.profit),
-            borderColor: "#1d1d1f",
-            backgroundColor: "transparent",
-            borderWidth: 2.5,
-            pointRadius: 0,
-            pointHoverRadius: 5,
-            pointHitRadius: 14,
-            tension: .38,
-          },
-        ],
+        datasets,
       },
       options: {
         responsive: true,
@@ -420,7 +441,9 @@
             padding: 12,
             cornerRadius: 10,
             displayColors: true,
-            callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmtMoney.format(Math.round(ctx.parsed.y))} ₽` },
+            callbacks: { label: (ctx) => isDrr
+              ? ` ${ctx.dataset.label}: ${fmtCompact.format(ctx.parsed.y)}%`
+              : ` ${ctx.dataset.label}: ${fmtMoney.format(Math.round(ctx.parsed.y))} ₽` },
           },
         },
         scales: {
@@ -430,9 +453,11 @@
             grid: { color: "rgba(127,127,127,.12)" },
             ticks: {
               color: inkMute,
-              callback: (v) => Math.abs(v) >= 1000000
-                ? `${fmtCompact.format(v / 1000000)} млн ₽`
-                : `${fmtCompact.format(v / 1000)} тыс. ₽`,
+              callback: (v) => isDrr
+                ? `${fmtCompact.format(v)}%`
+                : Math.abs(v) >= 1000000
+                  ? `${fmtCompact.format(v / 1000000)} млн ₽`
+                  : `${fmtCompact.format(v / 1000)} тыс. ₽`,
             },
           },
         },
