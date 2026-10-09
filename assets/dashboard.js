@@ -64,16 +64,19 @@
     const reportsQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).order("year", { ascending: false }).order("month", { ascending: false }).limit(12);
     const salesQuery = sb().from("sku_sales").select("*").eq("shop_id", shopId);
     const costsQuery = sb().from("sku_costs").select("*").eq("shop_id", shopId);
-    const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }] = await Promise.all([
+    const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }, { data: completePeriods, error: periodsError }] = await Promise.all([
       withMarketplace(reportsQuery, marketplace),
       withMarketplace(salesQuery, marketplace),
       costsQuery,
+      sb().rpc("get_complete_periods", { p_shop_id: shopId, p_marketplace: marketplace }),
     ]);
     if (reportError) throw reportError;
     if (salesError) throw salesError;
     if (costsError) throw costsError;
+    if (periodsError) throw periodsError;
     const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
-    return (reports || []).map((report) => {
+    const completeKeys = new Set((completePeriods || []).map((period) => `${period.year}-${period.month}`));
+    return (reports || []).filter((report) => completeKeys.has(`${report.year}-${report.month}`)).map((report) => {
       const periodSales = (sales || []).filter((row) => row.year === report.year && row.month === report.month);
       const d = computeDerived(report, periodSales, costMap, taxRate);
       const salesAmount = report.sales_amount || 0;
