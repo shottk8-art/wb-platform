@@ -54,7 +54,9 @@
       : "API ещё не подключён к этому магазину";
     status.dataset.connected = connection ? "true" : "false";
     el("wbApiPreviewResult").hidden = !(samePeriod && job.status === "complete");
-    el("wbApiPreviewBtn").textContent = samePeriod && job.status !== "complete" ? "Продолжить загрузку" : "Загрузить тестовый отчёт";
+    el("wbApiPreviewBtn").textContent = samePeriod && job.status === "loading" ? "Загрузка в фоне" : samePeriod && job.status === 'error' ? 'Повторить загрузку' : "Загрузить отчёт в фоне";
+    el("wbApiPreviewBtn").disabled = !!(busy || !connection || (samePeriod && job.status === 'loading'));
+    el('wbApiHistoryBtn').disabled = busy || !connection;
     if (job?.status === "complete") {
       const summary = job.summary || { row_count: 0, totals: {}, deductions: [] };
       el("wbApiPreviewCaption").textContent = `${job.date_from} — ${job.date_to} · ${Number(summary.row_count).toLocaleString("ru-RU")} операций · ${date(job.updated_at)}`;
@@ -71,27 +73,31 @@
         : '<li><span>В ответе API нет строк прочих удержаний</span></li>';
     }
   }
-  async function step(ctx, epoch) {
-    if (epoch !== generation || !job || job.status === "complete") return;
-    busy = true;
-    render();
-    message("Получаем финансовые операции из WB…");
+  function jobMessage() {
+    if (!job) return;
+    if (job.status === 'complete') {
+      message(job.summary?.row_count ? 'Отчёт получен. Данные дашборда не изменены.' : 'WB не вернул операции за выбранный период.');
+    } else if (job.status === 'error') {
+      message(job.error_message || 'Загрузка остановлена. Можно повторить.', true);
+    } else {
+      const wait = Math.max(0, Math.ceil((Date.parse(connection?.next_request_at) - Date.now()) / 1000));
+      const readyAt = wait > 90 ? ` WB разрешит следующий запрос ${date(connection.next_request_at)}.` : '';
+      message(`Фоновая загрузка на сервере: сохранено ${Number(job.row_count || 0).toLocaleString('ru-RU')} операций.${readyAt} Можно закрыть страницу — загрузка продолжится автоматически.`);
+    }
+  }
+  async function poll(ctx, epoch) {
+    if (epoch !== generation || !job || job.status !== "loading") return;
     try {
-      const result = await request("preview_step", { job_id: job.id }, ctx);
+      // Read-only progress polling. Closing the tab cannot stop the DB scheduler.
+      const result = await request("status", {}, ctx);
       if (epoch !== generation) return;
       job = result.job;
-      if (job.status === "complete") {
-        message(job.summary?.row_count ? "Тестовый отчёт получен. Данные дашборда не изменены." : "WB не вернул операции за выбранный период. Данные дашборда не изменены.");
-      } else {
-        const seconds = Math.max(1, Number(result.retry_after) || 63);
-        const count = result.row_count;
-        message(`${count !== undefined ? `Получено ${Number(count).toLocaleString("ru-RU")} операций. ` : ""}Следующий запрос через ${seconds} сек. — соблюдаем лимит WB. Не закрывайте страницу для продолжения.`);
-        timer = setTimeout(() => step(ctx, epoch), seconds * 1000);
-      }
+      connection = result.connection;
+      jobMessage();
     } catch (error) {
-      if (epoch === generation) message(error.message, true);
+      if (epoch === generation) message('Статус временно недоступен. Сервер продолжает загрузку; проверим ещё раз.', true);
     } finally {
-      if (epoch === generation) { busy = false; render(); }
+      if (epoch === generation) { render(); if (job?.status === 'loading') timer = setTimeout(() => poll(ctx, epoch), 15000); }
     }
   }
   async function run(action, payload = {}) {
@@ -107,14 +113,11 @@
       if ("connection" in result) connection = result.connection;
       if ("job" in result) job = result.job;
       message(action === "disconnect" ? "API отключён. Загруженные вручную данные не изменены." : action === "preview_start" && result.cached ? "Показан ранее полученный тестовый отчёт. Новый запрос в WB не выполнялся." : "Ключ проверен, доступ к финансам подтверждён.");
-      if (action === "preview_start" && job?.status !== "complete") {
-        busy = false;
-        await step(ctx, epoch);
-      }
+      if (action === 'preview_start') jobMessage();
     } catch (error) {
       if (epoch === generation) message(error.message + (error.retryAfter ? ` Повторите через ${error.retryAfter} сек.` : ""), true);
     } finally {
-      if (epoch === generation) { busy = false; render(); }
+      if (epoch === generation) { busy = false; render(); if (job?.status === 'loading') timer = setTimeout(() => poll(ctx, epoch), 15000); }
     }
   }
   async function setContext(next) {
@@ -142,8 +145,8 @@
         el("wbApiDateFrom").value = job.date_from;
         el("wbApiDateTo").value = job.date_to;
       }
-      if (job?.status === "loading") message("Есть незавершённая тестовая загрузка. Нажмите «Продолжить загрузку».");
-      if (job?.status === "error") message(job.error_message || "Прошлая загрузка прервалась. Можно продолжить.", true);
+      jobMessage();
+      if (job?.status === 'loading') timer = setTimeout(() => poll({ ...next }, epoch), 15000);
     } catch (error) { if (epoch === generation) message(error.message, true); }
     finally { if (epoch === generation) { busy = false; render(); } }
   }
@@ -162,6 +165,12 @@
   });
   el("wbApiPreviewBtn").addEventListener("click", () => run("preview_start", { date_from: el("wbApiDateFrom").value, date_to: el("wbApiDateTo").value }));
   el("wbApiRefreshBtn").addEventListener("click", () => run("preview_start", { date_from: el("wbApiDateFrom").value, date_to: el("wbApiDateTo").value, refresh: true }));
+  el('wbApiHistoryBtn').addEventListener('click', () => {
+    const now = new Date(), last = new Date(now.getFullYear(), now.getMonth(), 0);
+    el('wbApiDateFrom').value = '2024-01-29';
+    el('wbApiDateTo').value = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
+    run('preview_start', { date_from: el('wbApiDateFrom').value, date_to: el('wbApiDateTo').value });
+  });
   const now = new Date(), closed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const y = closed.getFullYear(), m = String(closed.getMonth() + 1).padStart(2, "0");
   el("wbApiDateFrom").value = `${y}-${m}-01`;

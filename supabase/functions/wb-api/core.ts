@@ -26,7 +26,7 @@ export function validatePeriod(from: unknown, to: unknown) {
   };
   const start = parse(from), end = parse(to);
   const today = new Date().toISOString().slice(0, 10);
-  if (start > end || String(from) < "2024-01-29" || String(to) > today || end.getTime() - start.getTime() > 92 * 86400000) throw new ApiError(400, "Для теста выберите период до 93 дней, без будущих дат");
+  if (start > end || String(from) < "2024-01-29" || String(to) > today) throw new ApiError(400, "Выберите период с 29 января 2024 года, без будущих дат");
   return { dateFrom: String(from), dateTo: String(to) };
 }
 export function validateKey(value: unknown) {
@@ -100,5 +100,21 @@ export function summarize(rows: Record<string, unknown>[]) {
     row_count: rows.length,
     totals: Object.fromEntries(Object.entries(totals).map(([key, value]) => [key, rub(value)])),
     deductions: [...deductions].map(([label, value]) => ({ label, amount: rub(value.amount), count: value.count })),
+  };
+}
+
+// Merge page totals in integer kopecks, without retaining the full history in memory.
+export function mergeSummaries(previous: any, page: any) {
+  if (!previous) return page;
+  const keys = new Set([...Object.keys(previous.totals || {}), ...Object.keys(page.totals || {})]);
+  const deductions = new Map<string, { amount: bigint; count: number }>();
+  for (const item of [...(previous.deductions || []), ...(page.deductions || [])]) {
+    const old = deductions.get(item.label) || { amount: 0n, count: 0 };
+    deductions.set(item.label, { amount: old.amount + cents(item.amount), count: old.count + item.count });
+  }
+  return {
+    row_count: (previous.row_count || 0) + (page.row_count || 0),
+    totals: Object.fromEntries([...keys].map((key) => [key, rub(cents(previous.totals?.[key]) + cents(page.totals?.[key]))])),
+    deductions: [...deductions].map(([label, item]) => ({ label, amount: rub(item.amount), count: item.count })),
   };
 }

@@ -164,12 +164,14 @@
           <p id="wbApiConnectionStatus" class="wb-api-status">API ещё не подключён к этому магазину</p>
           <p class="wb-api-message" id="wbApiMessage" role="status" aria-live="polite"></p>
           <div class="wb-api-preview">
-            <h3>Тест финансового отчёта</h3>
-            <p class="wb-api-intro">Получим детализацию из WB для проверки расходов. Пока это отдельный тест: прибыль, отчёты и себестоимость на дашборде не изменятся. Большие отчёты загружаются частями с учётом лимитов WB.</p>
+            <h3>Фоновая загрузка финансовых отчётов</h3>
+            <p class="wb-api-intro">Выберите период или загрузите всю доступную историю с 29 января 2024 года по последний закрытый месяц. Сервер сам получает страницы отчёта и сохраняет прогресс — вкладку можно закрыть. Пока это отдельный тест: данные дашборда не изменятся.</p>
+            <p class="wb-api-intro">Базовый ключ WB может иметь длительные паузы между запросами. Это ограничение WB, загрузка возобновится автоматически. <a href="https://dev.wildberries.ru/knowledge-base/articles/019d49a1-0d73-71e9-be3e-b2c44567470c" target="_blank" rel="noopener noreferrer">О типах ключей и ограничениях</a></p>
             <div class="wb-api-date-row">
               <div><label for="wbApiDateFrom">Начало периода</label><input type="date" id="wbApiDateFrom"></div>
               <div><label for="wbApiDateTo">Конец периода</label><input type="date" id="wbApiDateTo"></div>
-              <button type="button" class="primary" id="wbApiPreviewBtn" disabled>Загрузить тестовый отчёт</button>
+              <button type="button" class="primary" id="wbApiPreviewBtn" disabled>Загрузить отчёт в фоне</button>
+              <button type="button" class="ghost" id="wbApiHistoryBtn" disabled>Загрузить доступную историю</button>
               <button type="button" class="ghost" id="wbApiRefreshBtn" hidden>Обновить из WB</button>
             </div>
             <div id="wbApiPreviewResult" class="wb-api-preview-result" hidden>
@@ -460,7 +462,7 @@
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/dashboard.js?v=20261009-kpi-trend1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
-<script src="/assets/wb-api.js?v=20261009-api2"></script>
+<script src="/assets/wb-api.js?v=20261009-api4"></script>
 <script>
 (function () {
   let shop = null;

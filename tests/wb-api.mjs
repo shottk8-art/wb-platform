@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
 import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+import { processPage } from '../supabase/functions/wb-api/process.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -43,10 +44,10 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
-let dbWrites = [], outbound = [];
+let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null;
 const job = { id: '00000000-0000-4000-8000-000000000001', shop_id: '63175e7a-5b26-425e-893f-68889b32f02f', date_from: '2026-09-01', date_to: '2026-09-30', cursor_id: 0, status: 'loading' };
 const chain = (table) => {
   let operation = 'select', values, count = false;
@@ -78,11 +79,11 @@ const sandbox = {
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
     from: chain,
-    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? 'fake-server-key' : claimWait, error: null }),
+    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? 'fake-server-key' : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null }),
   }),
   fetch: async (url, options) => {
     outbound.push({ url, body: options.body });
-    return new Response(upstreamStatus === 204 ? null : JSON.stringify(upstreamRows || []), { status: upstreamStatus });
+    return new Response(upstreamStatus === 204 ? null : JSON.stringify(upstreamRows || []), { status: upstreamStatus, headers: upstreamRetry ? { 'X-Ratelimit-Retry': upstreamRetry } : {} });
   },
 };
 vm.runInNewContext(stripTypeScriptTypes(source), sandbox);
@@ -100,11 +101,22 @@ assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
 owner = true;
 assert.equal((await invoke({ action: 'status' }, true, 'https://evil.example')).status, 403); assertions++;
 claimWait = 42;
-assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.retry_after, 42); assertions++;
+assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.background, true); assertions++;
 assert.equal(outbound.length, 0); assertions++;
+const worker = async (lease = '00000000-0000-4000-8000-000000000002', origin = null) => {
+  const res = await handler(new Request('https://example.test/wb-api', { method: 'POST', headers: { 'X-WB-Worker-Lease': lease, ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ job_id: job.id }) }));
+  return { status: res.status, body: await res.json() };
+};
+assert.equal((await worker()).body.retry_after, 42); assertions++;
+assert.equal(outbound.length, 0); assertions++;
+assert.equal((await worker('invalid')).status, 400); assertions++;
+assert.equal((await worker(undefined, 'https://wb-platform.netlify.app')).status, 403); assertions++;
+leaseAccepted = false;
+assert.equal((await worker()).status, 403); assertions++;
+leaseAccepted = true;
 claimWait = 0;
-const completed = await invoke({ action: 'preview_step', job_id: job.id });
-assert.equal(completed.body.job.status, 'complete'); assertions++;
+const completed = await worker();
+assert.equal(job.status, 'complete'); assertions++;
 assert.ok(outbound[0].url.includes('/api/finance/v1/sales-reports/detailed')); assertions++;
 assert.equal(JSON.parse(outbound[0].body).dateTo, '2026-09-30T23:59:59'); assertions++;
 assert.ok(dbWrites.every((item) => item.table.startsWith('wb_api_'))); assertions++;
@@ -113,6 +125,8 @@ assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.cac
 assert.equal(outbound.length, before); assertions++;
 job.status = 'loading';
 upstreamStatus = 429;
-assert.ok((await invoke({ action: 'preview_step', job_id: job.id })).body.retry_after >= 63); assertions++;
+upstreamRetry = '43109';
+assert.equal((await worker()).body.retry_after, 43109); assertions++;
+assert.ok(Date.parse(dbWrites.findLast((item) => item.table === 'wb_api_connections').values.next_request_at) > Date.now() + 43100 * 1000); assertions++;
 assert.ok(!JSON.stringify(completed.body).includes('fake-server-key')); assertions++;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);
