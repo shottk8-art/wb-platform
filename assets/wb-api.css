@@ -3,6 +3,14 @@
 .wb-api-key-row, .wb-api-date-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
 .wb-api-key-field { flex:1 1 280px; min-width:0; }
 .wb-api-key-field input { width:100%; }
+.wb-api-card input {
+  min-height:44px; padding:10px 12px; border:1px solid var(--line, #e5e5ea);
+  border-radius:12px; background:var(--surface, #fff); color:var(--ink, #1d1d1f);
+  font-family:inherit; font-size:14px; line-height:1.4; transition:border-color 150ms, box-shadow 150ms;
+}
+.wb-api-card input:focus-visible { outline:2px solid var(--accent, #007aff); outline-offset:2px; }
+.wb-api-card input:disabled { opacity:.55; cursor:wait; }
+.wb-api-card button:not(.collapse-btn) { min-height:44px; }
 .wb-api-actions { display:flex; gap:10px; flex-wrap:wrap; }
 .wb-api-status { margin:16px 0 0; color:var(--ink-soft, #6e6e73); font-size:12.5px; line-height:1.6; overflow-wrap:anywhere; }
 .wb-api-status[data-connected="true"] { color:var(--good, #248a3d); }
