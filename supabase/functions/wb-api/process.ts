@@ -30,9 +30,22 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     const { error } = await admin.from('wb_api_preview_rows').upsert(freshRows.slice(offset, offset + 500).map((row) => ({ job_id: job.id, rrd_id: row.rrdId, payload: row })), { onConflict: 'job_id,rrd_id' });
     if (error) throw new ApiError(500, 'Не удалось сохранить финансовые операции');
   }
-  const summary = mergeSummaries(accumulated, summarize(freshRows));
+  if (job.summary?.pilot) {
+    const cards = new Map();
+    for (const row of freshRows) if (row.vendorCode) cards.set(String(row.vendorCode), { shop_id: shopId, article: String(row.vendorCode), name: String(row.title || '').slice(0, 300), cost_price: 0 });
+    if (cards.size) {
+      const { error } = await admin.from('sku_costs').upsert([...cards.values()], { onConflict: 'shop_id,article', ignoreDuplicates: true });
+      if (error) throw new ApiError(500, 'Не удалось подготовить карточки себестоимости');
+    }
+  }
+  const summary = { ...accumulated, ...mergeSummaries(accumulated, summarize(freshRows)) };
+  const pilot = summary.pilot;
+  if (!rows.length && pilot) {
+    pilot.finance_complete = true;
+    pilot.stage = 'orders';
+  }
   const { error } = await admin.from('wb_api_preview_jobs').update({
-    cursor_id: cursor.toString(), status: rows.length ? 'loading' : 'complete', summary,
+    cursor_id: cursor.toString(), status: rows.length || pilot ? 'loading' : 'complete', summary,
     row_count: summary.row_count, failure_count: 0, error_message: null, updated_at: new Date().toISOString(),
   }).eq('id', job.id).eq('shop_id', shopId);
   if (error) throw new ApiError(500, 'Не удалось сохранить прогресс загрузки');

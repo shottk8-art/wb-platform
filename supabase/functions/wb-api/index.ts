@@ -1,6 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { ApiError, PILOT_USER_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
+import { ApiError, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { processPage } from './process.ts';
+import { cabinetPeriod, processCabinetSource, readCabinet } from './cabinet.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -60,7 +61,9 @@ Deno.serve(async (req) => {
       if (error || !jobs?.[0]) throw new ApiError(403, 'Доступ запрещён');
       const job = jobs[0];
       try {
-        const result = await processPage(admin, job, job.shop_id, wbFetch);
+        const result = job.summary?.pilot && job.summary.pilot.stage !== 'finance'
+          ? await processCabinetSource(admin, job, wbFetch)
+          : await processPage(admin, job, job.shop_id, wbFetch);
         return json({ processed: true, ...result });
       } catch (e) {
         const message = e instanceof ApiError ? e.message : 'Ошибка фоновой загрузки';
@@ -117,6 +120,23 @@ Deno.serve(async (req) => {
       return String(data);
     };
     const connection = await readConnection();
+    if (body.action === 'cabinet' || body.action === 'cabinet_start') {
+      if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
+      const period = cabinetPeriod(body.month);
+      if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period) });
+      if (!connection) throw new ApiError(400, 'Сначала подключите персональный ключ в настройках');
+      const cabinet = await readCabinet(admin, shopId, period);
+      if (cabinet.job?.status === 'loading' || (cabinet.complete && body.refresh !== true)) return json({ cabinet, cached: cabinet.complete });
+      if (cabinet.job?.status === 'error' && body.refresh !== true && cabinet.job.stage !== 'done') {
+        const { error } = await admin.from('wb_api_preview_jobs').update({ status: 'loading', failure_count: 0, error_message: null }).eq('id', cabinet.job.id).eq('shop_id', shopId);
+        if (error) throw new ApiError(500, 'Не удалось возобновить загрузку');
+      } else {
+        const { error } = await admin.from('wb_api_preview_jobs').insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo,
+          summary: { pilot: { version: 1, stage: 'finance', orders_offset: 0 }, api_sources: { ...(cabinet.sources.media.status === 'confirmed_by_user' ? { media: { ...cabinet.sources.media, date_from: period.dateFrom, date_to: period.dateTo, confirmation_source: 'shop_owner_message' } } : {}) } } });
+        if (error && error.code !== '23505') throw new ApiError(500, 'Не удалось начать загрузку');
+      }
+      return json({ cabinet: await readCabinet(admin, shopId, period), background: true });
+    }
     if (body.action === "status") {
       const { data: jobs, error } = await admin.from("wb_api_preview_jobs").select(JOB_COLUMNS).eq("shop_id", shopId).order("created_at", { ascending: false }).limit(1);
       if (error) throw new ApiError(500, "Не удалось прочитать статус загрузки");

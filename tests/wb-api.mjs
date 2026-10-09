@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
-import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
+import { cabinetPeriod, processCabinetSource, readCabinet } from '../supabase/functions/wb-api/cabinet.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -56,7 +57,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, cabinetPeriod, processCabinetSource, readCabinet, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null;

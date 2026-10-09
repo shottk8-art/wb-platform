@@ -40,9 +40,25 @@ errors stop for operator review. Dispatch handles one job per seller at a time.
 The history button requests data since 2024-01-29 through the last closed month;
 this is provider-available history, not a promise of every financial category.
 
-This version intentionally does not synchronize monthly_reports, sku_sales,
-uploads, advertising or profit calculations.
-Compare actual API categories to financial files before promoting the import.
-The UI labels generic deductions as including advertising to avoid double counting.
+Private GREEN FLOW cabinet (`#api`): `cabinet` reads one closed month's staged
+finance, SKU aggregates, orders and advertising; `cabinet_start` enqueues a durable
+monthly job. Both recheck the immutable pilot owner and exact pilot shop ID.
+The monthly worker runs finance -> all-product sales-funnel pages -> advertising
+spend. Conservative shared 63-second scheduling and provider Retry durations
+continue to apply. Errors stop safely; completed finance survives missing scope
+on subsequent sources. Cache reuse avoids another upstream request; explicit
+refresh creates a replacement snapshot, not additive data. Existing snapshots
+remain recoverable. All dates and category provenance are visible in the UI.
+
+Media without confirmed statistics is unknown, not zero. Month-specific owner
+confirmation is preserved during refresh. Advertising cashback remains separate
+from bonuses. Null-dated spend is counted as unallocated. Corrections can change
+money but do not duplicate purchased quantities. New financial SKU cards are
+inserted with ignoreDuplicates; existing cost prices and names are untouched.
+
+The API cabinet never writes monthly_reports, sku_sales or uploads; it remains
+private even when a shop's public showcase is enabled. Net profit and combined
+DRR are withheld until cashback/corrections/price-basis reconciliation is done.
+The original file-based dashboard and manual expenses are preserved.
 
 Run `node tests/wb-api.mjs` for isolated handler and calculation tests.

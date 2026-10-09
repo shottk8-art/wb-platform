@@ -178,5 +178,8 @@
   el("wbApiDateTo").value = `${y}-${m}-${new Date(y, closed.getMonth() + 1, 0).getDate()}`;
   const max = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   for (const id of ["wbApiDateFrom", "wbApiDateTo"]) { el(id).min = "2024-01-29"; el(id).max = max; }
-  window.WBApi = { setContext };
+  window.WBApi = { setContext, cabinet: async (action, month, refresh = false) => {
+    if (!context?.allowed) throw new Error('API-кабинет недоступен');
+    return request(action, { month, refresh }, { ...context });
+  } };
 })();

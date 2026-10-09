@@ -1,9 +1,13 @@
 // The pilot is pinned to an immutable auth ID, not editable user_metadata.
 export const PILOT_USER_ID = "bbb002c4-cd7a-490d-b9c0-72aed5424261";
+export const PILOT_SHOP_ID = "63175e7a-5b26-425e-893f-68889b32f02f";
 export const FINANCE_FIELDS = [
   "rrdId", "reportId", "dateFrom", "dateTo", "currency", "docTypeName", "sellerOperName",
   "saleDt", "rrDate", "retailAmount", "forPay", "deliveryService", "paidStorage", "paidAcceptance", "penalty",
   "deduction", "bonusTypeName", "cashbackAmount", "cashbackDiscount", "cashbackCommissionChange",
+  "nmId", "vendorCode", "title", "quantity", "retailPriceWithDisc", "additionalPayment",
+  "rebillLogisticCost", "ppvzSalesCommission", "ppvzReward", "acquiringFee", "vw", "vwNds",
+  "installmentCofinancingAmount", "paymentSchedule", "reportType",
 ];
 
 export class ApiError extends Error {
@@ -96,13 +100,13 @@ export function pageCursor(rows: Record<string, unknown>[], previous: string) {
   if (last <= BigInt(previous)) throw new ApiError(502, "WB не продвинул страницу отчёта. Проверьте загрузку позже");
   return String(last); // WB contract: ID of the LAST row, not the maximum ID.
 }
-function cents(value: unknown) {
+export function cents(value: unknown) {
   if (value === null || value === undefined || value === "") return 0n;
   const match = String(value).match(/^(-?)(\d+)(?:\.(\d{1,2}))?$/);
   if (!match) throw new ApiError(502, "WB вернул некорректную денежную сумму");
   return (match[1] ? -1n : 1n) * (BigInt(match[2]) * 100n + BigInt((match[3] || "").padEnd(2, "0")));
 }
-function rub(value: bigint) {
+export function rub(value: bigint) {
   const negative = value < 0n, abs = negative ? -value : value;
   return `${negative ? "-" : ""}${abs / 100n}.${String(abs % 100n).padStart(2, "0")}`;
 }
