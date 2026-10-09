@@ -277,6 +277,7 @@
         value: d.rep.wb_media_spend || 0,
         prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
         unit: "₽", lowerIsBetter: true, hideForOzon: true,
+        extra: renderDrrLine(d.rep, d.rep.wb_media_spend || 0),
       },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
     ];
