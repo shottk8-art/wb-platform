@@ -464,8 +464,8 @@
     </section>
 
     <footer class="note">
-      Все расчёты выполняются в браузере на основе данных, которые вы загрузили. Файлы отчётов не сохраняются —
-      сохраняются только посчитанные из них суммы.<br>
+      Файлы отчётов обрабатываются в браузере и не сохраняются — сохраняются рассчитанные данные.
+      Тестовые API-выгрузки обрабатываются и сохраняются на сервере.<br>
       Разработано · <a href="https://t.me/karlshott" target="_blank" rel="noopener">@karlshott</a>
     </footer>
   </main>
@@ -1154,8 +1154,13 @@
     });
 
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {
+      const selectedShopId = e.target.value;
+      window.WBApi?.setContext({ shopId: selectedShopId, allowed: false });
+      window.WBApiCabinet?.setContext({ shopId: selectedShopId, allowed: false });
+      if (activeView === "api") setActiveView("overview");
       const shops = await window.WBAuth.listMyShops();
-      shop = shops.find((s) => s.id === e.target.value);
+      if (e.target.value !== selectedShopId) return;
+      shop = shops.find((s) => s.id === selectedShopId);
       if (!shop) return;
       try { localStorage.setItem("wb-selected-shop:" + session.user.id, shop.id); } catch (_) {}
       overviewScope = "wildberries";
