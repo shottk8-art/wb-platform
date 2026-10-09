@@ -80,6 +80,7 @@ const chain = (table) => {
     select(_columns, options) { count = !!options?.count; return obj; },
     eq() { return obj; }, order() { return obj; }, limit() { return obj; }, range() { return obj; },
     update(v) { operation = 'update'; values = v; return obj; },
+    insert(v) { operation = 'insert'; values = v; return obj; },
     upsert(v) { operation = 'upsert'; values = v; return obj; },
     delete() { operation = 'delete'; return obj; },
     maybeSingle: async () => result(), single: async () => result(),
@@ -150,4 +151,17 @@ upstreamRetry = '43109';
 assert.equal((await worker()).body.retry_after, 43109); assertions++;
 assert.ok(Date.parse(dbWrites.findLast((item) => item.table === 'wb_api_connections').values.next_request_at) > Date.now() + 43100 * 1000); assertions++;
 assert.ok(!JSON.stringify(completed.body).includes(storedKey)); assertions++;
+// A brand new month has no media source. It must enqueue successfully without
+// assuming an existing confirmation, and must never call WB from the browser.
+const beforeCabinet = outbound.length;
+const firstCabinet = await invoke({ action: 'cabinet_start', month: '2026-08' });
+assert.equal(firstCabinet.status, 200); assertions++;
+assert.equal(firstCabinet.body.background, true); assertions++;
+assert.equal(dbWrites.findLast(item => item.operation === 'insert').values.summary.pilot.stage, 'finance'); assertions++;
+assert.equal(JSON.stringify(dbWrites.findLast(item => item.operation === 'insert').values.summary.api_sources), '{}'); assertions++;
+assert.equal(outbound.length, beforeCabinet); assertions++;
+assert.equal((await invoke({ action: 'cabinet', month: '2026-09', shop_id: '00000000-0000-4000-8000-000000000009' })).status, 403); assertions++;
+sandbox.readCabinet = async () => ({ job: { status: 'complete' }, complete: true, sources: {} });
+assert.equal((await invoke({ action: 'cabinet_start', month: '2026-09' })).body.cached, true); assertions++;
+assert.equal(outbound.length, beforeCabinet); assertions++;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);

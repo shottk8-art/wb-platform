@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         if (error) throw new ApiError(500, 'Не удалось возобновить загрузку');
       } else {
         const { error } = await admin.from('wb_api_preview_jobs').insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo,
-          summary: { pilot: { version: 1, stage: 'finance', orders_offset: 0 }, api_sources: { ...(cabinet.sources.media.status === 'confirmed_by_user' ? { media: { ...cabinet.sources.media, date_from: period.dateFrom, date_to: period.dateTo, confirmation_source: 'shop_owner_message' } } : {}) } } });
+          summary: { pilot: { version: 1, stage: 'finance', orders_offset: 0 }, api_sources: { ...(cabinet.sources.media?.status === 'confirmed_by_user' ? { media: { ...cabinet.sources.media, date_from: period.dateFrom, date_to: period.dateTo, confirmation_source: 'shop_owner_message' } } : {}) } } });
         if (error && error.code !== '23505') throw new ApiError(500, 'Не удалось начать загрузку');
       }
       return json({ cabinet: await readCabinet(admin, shopId, period), background: true });
