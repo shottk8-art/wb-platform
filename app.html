@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261009-kpi-trend1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-overview1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-overview2">
 </head>
 <body>
 
@@ -138,9 +138,12 @@
         <a href="#settings" class="api-cabinet-link">Настройки ключа</a>
       </div>
       <p class="api-cabinet-status" id="apiCabinetStatus" role="status" aria-live="polite"></p>
+      <details class="api-data-details">
+      <summary>Источники и формула расчёта</summary>
       <div class="api-cabinet-warning" id="apiCabinetWarning"></div>
       <p class="hint">Wildberries · данные через API. Загрузка идёт на сервере — страницу можно закрыть. Отчёты из файлов доступны отдельно и не смешиваются с API.</p>
       <ul class="api-source-list" id="apiCabinetSources" aria-label="Статусы источников"></ul>
+      </details>
       <div class="api-cabinet-metrics" id="apiCabinetMetrics"></div>
       <div class="api-cabinet-columns">
         <section class="card api-cabinet-panel"><h2>Финансовые начисления</h2><p class="hint">Поля финансовой детализации. Компенсации и удержания не вычитаются повторно как реклама.</p><dl id="apiCabinetFinance"></dl></section>
@@ -165,7 +168,8 @@
           <button type="button" data-metric="profit">Прибыль</button><button type="button" data-metric="drrOrders">ДРР заказов</button><button type="button" data-metric="drrSales">ДРР выкупа</button>
         </div>
         <p id="apiTrendEmpty" class="hint" hidden>Динамика появится после загрузки месяца.</p>
-        <div class="api-trend-chart"><canvas id="apiTrendChart" aria-label="Динамика выбранного показателя API" role="img"></canvas></div>
+        <div class="api-trend-chart"><canvas id="apiTrendChart" aria-label="Динамика выбранного показателя API" aria-describedby="apiTrendValues" role="img"></canvas></div>
+        <div id="apiTrendValues" class="api-trend-values" aria-live="polite"></div>
       </section>
       <section class="card api-cabinet-panel api-cabinet-products"><h2>Товары из API</h2><p class="hint">Заказы — по дате заказа. Выкупы — продажи минус возвраты из финансового отчёта; корректировки не добавляют количество повторно. «К перечислению за товар» — не выручка и не прибыль.</p>
         <div class="table-scroll"><table><thead><tr><th>Товар</th><th>Заказы, шт.</th><th>Сумма заказов</th><th>Выкупили, шт.</th><th>К перечислению за товар</th><th>Себестоимость, ₽/шт.</th></tr></thead><tbody id="apiCabinetProducts"></tbody></table></div>
@@ -490,7 +494,7 @@
 <script src="/assets/dashboard.js?v=20261010-api-overview1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261010-overview1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261010-overview1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261010-overview2"></script>
 <script>
 (function () {
   let shop = null;

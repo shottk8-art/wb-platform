@@ -90,13 +90,15 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   return { retry_after: 63 };
 }
 
-export async function readCabinet(admin: any, shopId: string, period: any) {
+export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string) {
   const { data: shop, error: shopError } = await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
   if (shopError || !shop || shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
   const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses,media_spend').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
   const settings = settingsRows?.[0] || { operational_expenses: '0.00', external_promotion_expenses: '0.00', media_spend: null };
-  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom).eq('date_to', period.dateTo).order('created_at', { ascending: false }).limit(1);
+  let jobQuery = admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom).eq('date_to', period.dateTo);
+  if (completedJobId) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
+  const { data: jobs, error } = await jobQuery.order('created_at', { ascending: false }).limit(1);
   if (error) throw new ApiError(500, 'Не удалось прочитать выгрузку');
   const job = jobs?.[0];
   if (!job) return { job: null, shop, settings, products: [], finance: null, sources: {} };
@@ -167,7 +169,7 @@ export function monthSettings(body: any) {
 
 export async function readCabinetTrend(admin: any, shopId: string) {
   if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
-  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('date_from,date_to,summary').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
+  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,summary').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
   if (error) throw new ApiError(500, 'Не удалось прочитать динамику');
   const byMonth = new Map();
   for (const job of jobs || []) {
@@ -176,7 +178,7 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     try { const period = cabinetPeriod(month); if (period.dateFrom !== job.date_from || period.dateTo !== job.date_to) continue; } catch { continue; }
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
-    const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to});
+    const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id);
     byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), internalAds:Number(c.economy?.internal_ads), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
     if (byMonth.size >= 12) break;
   }

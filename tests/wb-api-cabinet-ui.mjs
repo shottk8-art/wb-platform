@@ -6,7 +6,7 @@ const el=id=>{if(!elements.has(id)) elements.set(id,{value:'',dataset:{},events:
 const calls=[];let deferred;
 const cabinet={complete:true,job:{status:'complete',updated_at:'2026-10-09T18:35:00Z'},settings:{operational_expenses:'0',external_promotion_expenses:'0',media_spend:null},shop:{tax_rate:0},finance:{retailAmount:'100.00',bought_qty:1},missing_costs:['SKU'],
 sources:{orders:{status:'downloaded',amount:'200.00',count:2},ads:{status:'downloaded',totals:{'Баланс':{amount:'10.00'},'Кэшбэк':{amount:'3.00'}}},media:{status:'needs_confirmation',amount:null}},products:[{article:'SKU',name:'<img onerror=bad>',orders_count:2,orders_amount:200,bought_qty:1,for_pay:'80.00',cost_price:0}]};
-const window={WBApi:{cabinet:async (...args)=>{calls.push(args); if(deferred)return new Promise(resolve=>{deferred.resolve=resolve;}); return {cabinet};}}};
+const window={WBApi:{cabinet:async (...args)=>{calls.push(args); if(deferred)return new Promise(resolve=>{deferred.resolve=resolve;}); return {cabinet,trend:[{year:2026,month:9,profit:100,orders:200}]};}}};
 vm.runInNewContext(readFileSync(new URL('../assets/wb-api-cabinet.js',import.meta.url),'utf8'),{window,document:{getElementById:el,querySelectorAll:()=>[]},Date,Intl,clearTimeout,setTimeout});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const css=readFileSync(new URL('../assets/wb-api.css',import.meta.url),'utf8');
@@ -21,6 +21,12 @@ assert.match(el('apiCabinetMetrics').innerHTML,/Нет подтверждённ�
 assert.match(el('apiCabinetProducts').innerHTML,/&lt;img/);
 assert.doesNotMatch(el('apiCabinetProducts').innerHTML,/<img/);
 assert.equal(el('apiSaveExpenses').disabled,true);
+assert.match(el('apiTrendValues').innerHTML,/сентябрь 2026/);
+assert.match(el('apiTrendValues').innerHTML,/100 ₽/);
+const markupBeforeSelection=el('apiCabinetMetrics').innerHTML;
+el('apiCabinetMetrics').events.click({target:{closest:()=>({dataset:{apiMetric:'orders'}})}});
+assert.equal(el('apiCabinetMetrics').innerHTML,markupBeforeSelection,'metric selection must preserve focused DOM nodes');
+assert.match(el('apiTrendValues').innerHTML,/200 ₽/);
 cabinet.shop.tax_rate=5; cabinet.products[0].cost_price=7;
 window.WBApiCabinet.reload(); await tick();
 assert.match(el('apiCabinetReadiness').innerHTML,/5%/,'read-only reload re-reads changed tax');

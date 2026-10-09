@@ -3,7 +3,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value == null ? '—' : Number(value).toLocaleString('ru-RU', {maximumFractionDigits:2}) + ' ₽';
   const number = value => value == null ? '—' : Number(value).toLocaleString('ru-RU');
-  let context = null, epoch = 0, timer = null, busy = false, cabinet = null, trend = [], trendMetric = 'orders', dirty = false, reloadQueued = false;
+  let context = null, epoch = 0, timer = null, busy = false, cabinet = null, trend = [], trendMetric = 'profit', dirty = false, reloadQueued = false;
   const now = new Date(), closed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const defaultMonth = `${closed.getFullYear()}-${String(closed.getMonth() + 1).padStart(2,'0')}`;
   el('apiCabinetMonth').value = defaultMonth;
@@ -33,10 +33,10 @@
     const balance = ads ? e?.internal_ads ?? ads['Баланс']?.amount ?? 0 : null;
     const media = ['confirmed_by_user','downloaded'].includes(sources.media?.status) ? sources.media.amount : null;
     const metrics = [
+      ['Чистая прибыль', money(cabinet?.net_profit), e?.missing?.length ? e.missing.join(' · ') : 'После себестоимости, налога и всех указанных расходов', 'profit'],
       ['Сумма заказов', money(orders?.amount), 'Воронка продаж · по дате заказа', 'orders'],
       ['Продажи по финансовому отчёту', money(f?.retailAmount), 'Продажи минус возвраты · цена из финансовой детализации', 'sales'],
       ['Итого к перечислению (WB)', money(e?.payout), 'После удержаний и компенсаций из финансового отчёта', 'transfer'],
-      ['Чистая прибыль', money(cabinet?.net_profit), e?.missing?.length ? e.missing.join(' · ') : 'После себестоимости, налога и всех указанных расходов', 'profit'],
       ['Внутренняя реклама', money(balance), 'Баланс + счёт · без бонусов и рекламного кэшбэка', 'internalAds'],
       ['WB Media', money(media), media == null ? 'Нет подтверждённой суммы' : sources.media.status === 'confirmed_by_user' ? 'Подтверждено владельцем, не API' : 'Получено из API', 'mediaAds'],
       ['ДРР (заказа)', e?.drr_orders == null ? '—' : number(Number(e.drr_orders.toFixed(1))) + ' %', 'Внутренняя + медийная + внешняя реклама / заказы', 'drrOrders'],
@@ -49,7 +49,9 @@
       ['Налог', money(e?.tax), `Ставка ${number(cabinet?.shop?.tax_rate)}% от продаж финансового отчёта`],
     ];
     if (Number(e?.promo)) metrics.push(['Промобонусы и рекламный кэшбэк', money(e.promo), 'Справочно · не уменьшают прибыль', 'promo']);
+    const focusedMetric = document.activeElement?.dataset?.apiMetric;
     el('apiCabinetMetrics').innerHTML = metrics.map(([title,value,hint,metric])=>`<${metric ? 'button type="button"' : 'div'} class="kpi"${metric ? ` data-api-metric="${metric}" aria-pressed="${metric === trendMetric}" title="Показать динамику: ${title}"` : ''}><span class="api-metric-label">${title}</span><strong class="api-metric-value">${esc(value)}</strong><span class="hint">${hint}</span></${metric ? 'button' : 'div'}>`).join('');
+    if (focusedMetric) el('apiCabinetMetrics').querySelector?.(`[data-api-metric="${focusedMetric}"]`)?.focus({preventScroll:true});
     const pairs = rows => rows.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
     el('apiCabinetFinance').innerHTML = pairs([
       ['К перечислению за товар', money(f?.forPay)], ['Логистика', money(f?.deliveryService)], ['Хранение', money(f?.paidStorage)],
@@ -85,6 +87,14 @@
       button.setAttribute('aria-pressed', String(button.dataset.metric === trendMetric));
     });
     window.WBDashboard?.renderTrend(el('apiTrendChart'), trend, trendMetric, 'wildberries');
+    const metric = window.WBDashboard?.getTrendMetric?.(trendMetric,'wildberries') || {label:trendMetric,unit:'₽'};
+    const rows = trend.map(point => {
+      const month = new Date(point.year, point.month - 1, 1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+      const value = point[trendMetric] == null ? 'Нет данных' : metric.unit === '%' ? number(Number(point[trendMetric].toFixed(1))) + ' %' : money(point[trendMetric]);
+      return `<div><span>${esc(month)}</span><strong>${esc(value)}</strong></div>`;
+    }).join('');
+    el('apiTrendValues').innerHTML = trend.length ? `<p>${esc(metric.label)} по месяцам</p>${rows}` : '';
+    el('apiTrendChart').setAttribute?.('aria-label',`${metric.label}: динамика сохранённых месяцев API`);
   }
   async function load(action = 'cabinet', refresh = false) {
     if (!context?.allowed || busy) return;
@@ -142,7 +152,11 @@
     } catch (error) { if (current === epoch) { el('apiExpensesStatus').textContent = error.message; el('apiExpensesStatus').dataset.error = 'true'; } }
     finally { if (current === epoch) { busy = false; render(); if (reloadQueued) { reloadQueued = false; load(); } else if (cabinet?.job?.status === 'loading') timer = setTimeout(()=>load(),15000); } }
   });
-  const selectMetric = metric => { trendMetric = metric; render(); renderTrend(); };
+  const selectMetric = metric => {
+    trendMetric = metric;
+    document.querySelectorAll('#apiCabinetMetrics [data-api-metric]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.apiMetric === trendMetric)));
+    renderTrend();
+  };
   document.querySelectorAll('#apiTrendControls [data-metric]').forEach(button => button.addEventListener('click',()=>selectMetric(button.dataset.metric)));
   el('apiCabinetMetrics').addEventListener('click',event=>{ const card = event.target.closest('[data-api-metric]'); if (card) selectMetric(card.dataset.apiMetric); });
   window.WBApiCabinet = {setContext, reload:()=>{ if (!context?.allowed) return; if (busy) reloadQueued = true; else load(); }};

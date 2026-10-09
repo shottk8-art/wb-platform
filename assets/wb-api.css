@@ -39,6 +39,14 @@
 .api-trend-controls { width:fit-content; max-width:100%; margin:18px 0; flex-wrap:wrap; }
 .api-trend-controls button { white-space:normal; }
 .api-trend-chart { position:relative; height:300px; min-width:0; }
+.api-data-details { margin:18px 0; font-size:13px; }
+.api-data-details summary { width:fit-content; min-height:44px; padding:12px 0; color:var(--ink-soft); cursor:pointer; }
+.api-data-details summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+.api-data-details .api-cabinet-warning { margin:0; }
+.api-trend-values { margin-top:20px; font-size:13px; }
+.api-trend-values p { font-weight:500; }
+.api-trend-values > div { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-top:1px solid var(--line); }
+.api-trend-values strong { white-space:nowrap; font-weight:500; font-variant-numeric:tabular-nums; }
 .api-cabinet-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:16px; }
 .api-cabinet-toolbar input { min-height:44px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font:inherit; color:var(--ink); background:var(--surface); }
 .api-cabinet-toolbar input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
