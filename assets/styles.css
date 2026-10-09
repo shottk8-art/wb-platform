@@ -655,6 +655,12 @@ table.costs th,table.sku th{font-size:11px;}
 .kpi.kpi--rate{grid-column:span 4;}
 .kpi.kpi--rate-first{grid-column:1 / span 4;}
 .kpi--rate .kpi-extra{line-height:1.5;}
+.kpi--interactive{appearance:none; width:100%; min-width:0; color:var(--ink); text-align:left; font:inherit; cursor:pointer;}
+.kpi--interactive .kpi-label,.kpi--interactive .kpi-value,.kpi--interactive .kpi-extra{display:block;}
+.kpi--interactive.is-selected{border-color:var(--accent); background:#f0f7ff;}
+.kpi--interactive.is-selected .kpi-label{text-decoration:underline; text-underline-offset:4px;}
+.kpi--hero.is-selected{background:#1d1d1f; border-color:#90baff;}
+.kpi--interactive:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
 .kpi--hero .kpi-value{font-size:34px;}
 .kpi-delta,.kpi-extra{font-size:13px;}
 
@@ -740,8 +746,9 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
 .trend-card{padding:18px 22px 16px; overflow:visible;}
 .trend-chart{position:relative; width:100%; height:300px;}
 .trend-toolbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px;}
-.trend-mode{flex:0 0 auto; padding:2px; border-radius:10px;}
-.trend-mode button{min-height:32px; padding:0 12px; font-size:12px; border-radius:7px;}
+.trend-empty{position:absolute; inset:0; display:grid; place-items:center; margin:0; padding:24px; color:var(--ink-mute); font-size:14px; text-align:center; pointer-events:none;}
+.trend-empty[hidden]{display:none;}
+#secTrend{scroll-margin-top:28px;}
 .trend-legend{display:flex; justify-content:flex-end; gap:18px; color:var(--ink-soft); font-size:13px;}
 .trend-legend span{display:inline-flex; align-items:center; gap:7px;}
 .trend-dot{width:8px; height:8px; border-radius:50%; background:#1d1d1f;}
@@ -772,10 +779,10 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
   .trend-card{padding:14px 12px 10px;}
   .trend-chart{height:240px;}
   .trend-toolbar{align-items:flex-start; flex-direction:column; gap:10px; padding:0 4px;}
-  .trend-mode{width:100%;}
-  .trend-mode button{flex:1;}
   .trend-legend{justify-content:flex-start; flex-wrap:wrap; gap:10px 16px;}
 }
+
+@media (max-width:900px){#secTrend{scroll-margin-top:80px;}}
 
 @media (prefers-reduced-motion:reduce){
   .kpi-number.is-counting{animation:none;}

@@ -18,6 +18,26 @@
   let charts = { pie: null, bar: null, trend: null };
   let skuView = { abc: "all", query: "", sort: "qty" };
 
+  const TREND_METRICS = {
+    sales: { label: "Сумма продаж", unit: "₽", color: "#0071e3" },
+    quantity: { label: "Выкупили", unit: "шт.", color: "#0071e3" },
+    transfer: { label: "К выплате после удержаний", unit: "₽", color: "#0071e3" },
+    profit: { label: "Чистая прибыль", unit: "₽", color: "#187a32" },
+    internalAds: { label: "Внутренняя реклама", unit: "₽", color: "#0071e3" },
+    mediaAds: { label: "Медийная реклама", unit: "₽", color: "#af52de" },
+    drrOrders: { label: "ДРР (заказа)", unit: "%", color: "#ff9f0a" },
+    drrSales: { label: "ДРР (выкупа)", unit: "%", color: "#af52de" },
+    promo: { label: "Промобонусы", unit: "₽", color: "#0071e3" },
+  };
+
+  function getTrendMetric(key, marketplace) {
+    const metric = { ...(TREND_METRICS[key] || TREND_METRICS.sales) };
+    if (key === "internalAds" && marketplace === "ozon") metric.label = "Продвижение Ozon";
+    if (key === "transfer" && marketplace === "wildberries") metric.label = "Итого к перечислению (WB)";
+    if (key === "transfer" && marketplace === "ozon") metric.label = "К выплате после удержаний (Ozon)";
+    return metric;
+  }
+
   function lastClosedPeriod(referenceDate = new Date()) {
     const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
     return { year: date.getFullYear(), month: date.getMonth() + 1 };
@@ -96,6 +116,11 @@
       return {
         year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit,
         orders: ordersAmount,
+        quantity: report.bought_qty || 0,
+        transfer: report.transfer_total || 0,
+        internalAds: report.ads_spend || 0,
+        mediaAds: report.wb_media_spend || 0,
+        promo: report.ads_promo_spend || 0,
         ...advertisingRatios(report),
       };
     }).reverse();
@@ -181,11 +206,10 @@
     const periods = new Map();
     lists.flat().forEach((row) => {
       const key = `${row.year}-${row.month}`;
-      const current = periods.get(key) || { year: row.year, month: row.month, sales: 0, profit: 0, orders: 0, ads: 0 };
-      current.sales += row.sales || 0;
-      current.profit += row.profit || 0;
-      current.orders += row.orders || 0;
-      current.ads += row.ads || 0;
+      const current = periods.get(key) || { year: row.year, month: row.month };
+      ["sales", "profit", "orders", "ads", "quantity", "transfer", "internalAds", "mediaAds", "promo"].forEach((field) => {
+        current[field] = (current[field] || 0) + (row[field] || 0);
+      });
       periods.set(key, current);
     });
     return [...periods.values()].map((row) => ({
@@ -257,17 +281,18 @@
     requestAnimationFrame(frame);
   }
 
-  function renderKPI(container, d, prevD, marketplace) {
+  function renderKPI(container, d, prevD, marketplace, interaction) {
     container.innerHTML = "";
     const rates = advertisingRatios(d.rep);
     const prevRates = prevD ? advertisingRatios(prevD.rep) : null;
     const advertisingHint = marketplace === "ozon" ? "Продвижение Ozon + внешняя реклама" : "Внутренняя + медийная + внешняя реклама";
     const cards = [
-      { label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
-      { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
-      { label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
-      { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
+      { metric: "sales", label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
+      { metric: "quantity", label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
+      { metric: "transfer", label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
+      { metric: "profit", label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
       {
+        metric: "internalAds",
         label: marketplace === "ozon" ? "Продвижение Ozon" : "Внутренняя реклама",
         value: d.rep.ads_spend || 0,
         prev: prevD ? prevD.rep.ads_spend || 0 : null,
@@ -275,34 +300,44 @@
         className: marketplace === "ozon" ? " kpi--advertising-wide" : "",
       },
       {
+        metric: "mediaAds",
         label: "Медийная реклама",
         value: d.rep.wb_media_spend || 0,
         prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
         unit: "₽", lowerIsBetter: true, hideForOzon: true,
       },
-      { label: "ДРР (заказа)", value: rates.drrOrders, prev: prevRates ? prevRates.drrOrders : null,
+      { metric: "drrOrders", label: "ДРР (заказа)", value: rates.drrOrders, prev: prevRates ? prevRates.drrOrders : null,
         unit: "%", lowerIsBetter: true, className: " kpi--rate kpi--rate-first",
         extra: `<div class="kpi-extra">${advertisingHint}<br>от суммы заказов</div>` },
-      { label: "ДРР (выкупа)", value: rates.drrSales, prev: prevRates ? prevRates.drrSales : null,
+      { metric: "drrSales", label: "ДРР (выкупа)", value: rates.drrSales, prev: prevRates ? prevRates.drrSales : null,
         unit: "%", lowerIsBetter: true, className: " kpi--rate",
         extra: `<div class="kpi-extra">${advertisingHint}<br>от суммы продаж</div>` },
-      { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
+      { metric: "promo", label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
     ];
-    cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon")).forEach((c) => {
+    const visibleCards = cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon"));
+    const interactive = interaction && typeof interaction.onSelect === "function";
+    const activeMetric = visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
+    visibleCards.forEach((c) => {
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
+      const tag = interactive ? "button" : "div";
+      const block = interactive ? "span" : "div";
+      const asContent = (html) => interactive ? html.replace(/<div\b/g, "<span").replace(/<\/div>/g, "</span>") : html;
       const card = el(`
-        <div class="kpi${heroClass}${c.className || ""}">
-          <div class="kpi-label">${escapeHtml(c.label)}</div>
-          <div class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></div>
-          ${renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral })}
-          ${c.extra || ""}
-        </div>
+        <${tag} class="kpi${heroClass}${c.className || ""}${interactive ? " kpi--interactive" + (c.metric === activeMetric ? " is-selected" : "") : ""}"
+          ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart" title="Показать на графике: ${escapeHtml(c.label)}"` : ""}>
+          <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
+          <${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}>
+          ${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}
+          ${asContent(c.extra || "")}
+        </${tag}>
       `);
+      if (interactive) card.addEventListener("click", () => interaction.onSelect(c.metric));
       container.appendChild(card);
       if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
+    return activeMetric;
   }
 
   function expenseItems(d, marketplace) {
@@ -415,46 +450,35 @@
     });
   }
 
-  function renderTrend(canvas, rows, mode) {
-    if (charts.trend) charts.trend.destroy();
-    mode = mode === "drr" ? "drr" : "money";
+  function renderTrend(canvas, rows, metricKey, marketplace) {
+    metricKey = TREND_METRICS[metricKey] ? metricKey : "sales";
+    const metric = getTrendMetric(metricKey, marketplace);
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isDrr = mode === "drr";
-    const datasets = isDrr ? [
-      {
-        label: "ДРР (заказа)",
-        data: rows.map((r) => r.drrOrders),
-        borderColor: "#ff9f0a",
-        backgroundColor: "rgba(255,159,10,.10)",
-        borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 14,
-        tension: .38, fill: true, spanGaps: true,
-      },
-      {
-        label: "ДРР (выкупа)",
-        data: rows.map((r) => r.drrSales),
-        borderColor: "#af52de",
-        backgroundColor: "transparent",
-        borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHitRadius: 14,
-        tension: .38, spanGaps: true,
-      },
-    ] : [
-      {
-        label: "Продажи", data: rows.map((r) => r.sales), borderColor: "#0071e3",
-        backgroundColor: "rgba(0,113,227,.09)", borderWidth: 2.5, pointRadius: 0,
-        pointHoverRadius: 5, pointHitRadius: 14, tension: .38, fill: true,
-      },
-      {
-        label: "Чистая прибыль", data: rows.map((r) => r.profit), borderColor: "#1d1d1f",
-        backgroundColor: "transparent", borderWidth: 2.5, pointRadius: 0,
-        pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
-      },
-    ];
-    charts.trend = new Chart(canvas, {
+    const formatValue = (value, compact) => {
+      if (value == null) return "нет данных";
+      if (metric.unit === "%") return `${fmtRate.format(value)}%`;
+      if (metric.unit === "шт.") return `${fmtQty.format(Math.round(value))} шт.`;
+      if (compact && Math.abs(value) >= 1000000) return `${fmtCompact.format(value / 1000000)} млн ₽`;
+      if (compact && Math.abs(value) >= 1000) return `${fmtCompact.format(value / 1000)} тыс. ₽`;
+      return `${fmtMoney.format(Math.round(value))} ₽`;
+    };
+    canvas.setAttribute("aria-label", `${metric.label}: динамика за последние 12 месяцев`);
+    const config = {
       type: "line",
       data: {
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
-        datasets,
+        datasets: [{
+          label: metric.label, data: rows.map((row) => row[metricKey] ?? null),
+          borderColor: metric.color, backgroundColor: `${metric.color}14`,
+          borderWidth: 2.5,
+          pointRadius: rows.map((row, index) => Number.isFinite(row[metricKey])
+            && !Number.isFinite(rows[index - 1]?.[metricKey])
+            && !Number.isFinite(rows[index + 1]?.[metricKey]) ? 4 : 0),
+          pointBackgroundColor: metric.color,
+          pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
+          fill: true, spanGaps: false,
+        }],
       },
       options: {
         responsive: true,
@@ -468,28 +492,32 @@
             padding: 12,
             cornerRadius: 10,
             displayColors: true,
-            callbacks: { label: (ctx) => isDrr
-              ? ` ${ctx.dataset.label}: ${fmtCompact.format(ctx.parsed.y)}%`
-              : ` ${ctx.dataset.label}: ${fmtMoney.format(Math.round(ctx.parsed.y))} ₽` },
+            callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${formatValue(ctx.parsed.y, false)}` },
           },
         },
         scales: {
           x: { grid: { display: false }, border: { display: false }, ticks: { color: inkMute, maxRotation: 0 } },
           y: {
+            beginAtZero: metric.unit === "шт.",
             border: { display: false },
             grid: { color: "rgba(127,127,127,.12)" },
             ticks: {
               color: inkMute,
-              callback: (v) => isDrr
-                ? `${fmtCompact.format(v)}%`
-                : Math.abs(v) >= 1000000
-                  ? `${fmtCompact.format(v / 1000000)} млн ₽`
-                  : `${fmtCompact.format(v / 1000)} тыс. ₽`,
+              precision: metric.unit === "шт." ? 0 : undefined,
+              callback: (v) => formatValue(v, true),
             },
           },
         },
       },
-    });
+    };
+    if (charts.trend && charts.trend.canvas === canvas) {
+      charts.trend.data = config.data;
+      charts.trend.options = config.options;
+      charts.trend.update(reduceMotion ? "none" : undefined);
+    } else {
+      if (charts.trend) charts.trend.destroy();
+      charts.trend = new Chart(canvas, config);
+    }
   }
 
   const ABC_TITLE = {
@@ -636,5 +664,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
+  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
 })();

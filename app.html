@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261009-compact-drr1">
+<link rel="stylesheet" href="/assets/styles.css?v=20261009-kpi-trend1">
 </head>
 <body>
 
@@ -312,20 +312,15 @@
     <section class="section app-view" id="secTrend" data-view="overview">
       <div class="section-head">
         <h2>Динамика магазина</h2>
-        <span class="hint" id="trendHint">продажи и чистая прибыль за последние 12 месяцев</span>
+        <span class="hint" id="trendHint" aria-live="polite">Нажмите на карточку показателя, чтобы увидеть его динамику</span>
       </div>
       <div class="card trend-card">
         <div class="trend-toolbar">
-          <div class="segmented-control trend-mode" id="trendMode" aria-label="Показатели графика">
-            <button type="button" class="active" data-trend-mode="money" aria-pressed="true">Финансы</button>
-            <button type="button" data-trend-mode="drr" aria-pressed="false">ДРР</button>
-          </div>
           <div class="trend-legend" id="trendLegend" aria-hidden="true">
-            <span><i class="trend-dot trend-dot--sales"></i>Продажи</span>
-            <span><i class="trend-dot trend-dot--profit"></i>Чистая прибыль</span>
+            <span><i class="trend-dot trend-dot--sales"></i>Сумма продаж</span>
           </div>
         </div>
-        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев"></canvas></div>
+        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div>
       </div>
     </section>
 
@@ -420,7 +415,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
-<script src="/assets/dashboard.js?v=20261009-total-drr1"></script>
+<script src="/assets/dashboard.js?v=20261009-kpi-trend1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script>
 (function () {
@@ -432,7 +427,7 @@
   let reportMarketplace = "wildberries";
   let dashboardRequest = 0;
   let aiAllowed = false;
-  let trendMode = "money";
+  let trendMetric = "sales";
   let currentTrend = [];
 
   const VIEW_META = {
@@ -643,19 +638,60 @@
       : window.WBDashboard.defaultPeriodValue(periods);
   }
 
+  function refreshTrendChart() {
+    const metric = window.WBDashboard.getTrendMetric(trendMetric, overviewScope);
+    document.getElementById("trendHint").textContent = `${metric.label} · последние 12 месяцев. Выберите другой показатель на карточке`;
+    const legend = document.getElementById("trendLegend");
+    const item = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.className = "trend-dot";
+    dot.style.backgroundColor = metric.color;
+    item.append(dot, document.createTextNode(metric.label));
+    legend.replaceChildren(item);
+    const empty = document.getElementById("trendEmpty");
+    empty.hidden = currentTrend.some((row) => Number.isFinite(row[trendMetric]));
+    empty.textContent = currentTrend.length
+      ? "Нет данных для расчёта выбранного показателя"
+      : "Загрузите отчёты, чтобы увидеть динамику";
+    window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMetric, overviewScope);
+  }
+
+  function selectTrendMetric(metric) {
+    trendMetric = metric;
+    document.querySelectorAll("#kpiRow [data-trend-metric]").forEach((card) => {
+      const selected = card.dataset.trendMetric === metric;
+      card.classList.toggle("is-selected", selected);
+      card.setAttribute("aria-pressed", String(selected));
+    });
+    refreshTrendChart();
+    document.getElementById("secTrend").scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    });
+  }
+
+  function renderDashboardKpis(derived, previous, marketplace) {
+    trendMetric = window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, previous, marketplace, {
+      activeMetric: trendMetric,
+      onSelect: selectTrendMetric,
+    });
+  }
+
   async function renderCurrentPeriod() {
     window.WBAnalysis.reset();
     const request = ++dashboardRequest;
     const sel = document.getElementById("periodSelect");
     const marketplaces = overviewMarketplaces();
     const displayMarketplace = overviewScope;
+    // Не оставляем график предыдущего магазина/площадки во время загрузки.
+    currentTrend = [];
+    refreshTrendChart();
     if (!sel.value) {
       // магазин без единого загруженного периода — явно сбрасываем панель,
       // иначе остаются данные, отрисованные для предыдущего магазина
       const empty = window.WBDashboard.computeDerived(null, [], new Map());
-      window.WBDashboard.renderKPI(document.getElementById("kpiRow"), empty, null, displayMarketplace);
-      currentTrend = [];
-      window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMode);
+      renderDashboardKpis(empty, null, displayMarketplace);
+      refreshTrendChart();
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace, null);
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty, null);
       showManualExpenses(empty, false);
@@ -683,12 +719,13 @@
       if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
     } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
 
-    window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, prevDerived, displayMarketplace);
+    if (request !== dashboardRequest) return;
+    renderDashboardKpis(derived, prevDerived, displayMarketplace);
     const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(shop.id, shop.tax_rate, marketplace)));
     if (request !== dashboardRequest) return;
     const trend = window.WBDashboard.combineTrend(trends);
     currentTrend = trend;
-    window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMode);
+    refreshTrendChart();
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
   }
@@ -1071,25 +1108,6 @@
     });
 
     document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
-
-    document.querySelectorAll("#trendMode [data-trend-mode]").forEach((button) => {
-      button.addEventListener("click", () => {
-        trendMode = button.dataset.trendMode;
-        document.querySelectorAll("#trendMode [data-trend-mode]").forEach((item) => {
-          const active = item.dataset.trendMode === trendMode;
-          item.classList.toggle("active", active);
-          item.setAttribute("aria-pressed", String(active));
-        });
-        const isDrr = trendMode === "drr";
-        document.getElementById("trendHint").textContent = isDrr
-          ? "все денежные расходы на рекламу / сумма заказов или продаж за последние 12 месяцев"
-          : "продажи и чистая прибыль за последние 12 месяцев";
-        document.getElementById("trendLegend").innerHTML = isDrr
-          ? `<span><i class="trend-dot trend-dot--drr-orders"></i>ДРР (заказа)</span><span><i class="trend-dot trend-dot--drr-sales"></i>ДРР (выкупа)</span>`
-          : `<span><i class="trend-dot trend-dot--sales"></i>Продажи</span><span><i class="trend-dot trend-dot--profit"></i>Чистая прибыль</span>`;
-        window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMode);
-      });
-    });
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
       if (!aiAllowed) return;
