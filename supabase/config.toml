@@ -416,3 +416,8 @@ enabled = true
 [functions.telegram-auth]
 # Публичный эндпоинт: сам проверяет подпись Telegram, отдельный Supabase JWT не нужен.
 verify_jwt = false
+
+[functions.wb-api]
+# Custom authentication via auth.getUser() plus immutable pilot-user/owner checks.
+# Required for asymmetric JWTs; the gateway must not treat a publishable key as JWT.
+verify_jwt = false

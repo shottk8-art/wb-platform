@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261009-kpi-trend1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261009-api1">
 </head>
 <body>
 
@@ -139,6 +140,47 @@
           <svg class="icon icon-sm"><use href="#icon-trash"/></svg> Удалить магазин
         </button>
       </div>
+    </section>
+
+    <section class="section app-view" id="secWbApi" data-view="settings" hidden>
+      <div class="section-head">
+        <h2>API Wildberries</h2><span class="hint">тестовое подключение · пока только для @karlshott</span>
+        <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
+      </div>
+      <div class="collapsible-body"><div>
+        <div class="card wb-api-card">
+          <p class="wb-api-intro">Подключение для магазина <strong id="wbApiShopName"></strong>. Вставьте ключ именно этого продавца WB с доступом к категории «Финансы», желательно только на чтение. Ключ хранится зашифрованным на сервере и не показывается после сохранения.</p>
+          <div class="wb-api-key-row">
+            <div class="wb-api-key-field">
+              <label for="wbApiKey">API-ключ Wildberries</label>
+              <input id="wbApiKey" type="password" placeholder="Вставьте API-ключ WB" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="10000">
+            </div>
+            <div class="wb-api-actions">
+              <button class="primary" type="button" id="wbApiConnectBtn" disabled>Сохранить и проверить</button>
+              <button class="ghost" type="button" id="wbApiCheckBtn" hidden>Проверить подключение</button>
+              <button class="ghost" type="button" id="wbApiDisconnectBtn" hidden>Отключить</button>
+            </div>
+          </div>
+          <p id="wbApiConnectionStatus" class="wb-api-status">API ещё не подключён к этому магазину</p>
+          <p class="wb-api-message" id="wbApiMessage" role="status" aria-live="polite"></p>
+          <div class="wb-api-preview">
+            <h3>Тест финансового отчёта</h3>
+            <p class="wb-api-intro">Получим детализацию из WB для проверки расходов. Пока это отдельный тест: прибыль, отчёты и себестоимость на дашборде не изменятся. Большие отчёты загружаются частями с учётом лимитов WB.</p>
+            <div class="wb-api-date-row">
+              <div><label for="wbApiDateFrom">Начало периода</label><input type="date" id="wbApiDateFrom"></div>
+              <div><label for="wbApiDateTo">Конец периода</label><input type="date" id="wbApiDateTo"></div>
+              <button type="button" class="primary" id="wbApiPreviewBtn" disabled>Загрузить тестовый отчёт</button>
+            </div>
+            <div id="wbApiPreviewResult" class="wb-api-preview-result" hidden>
+              <p class="wb-api-preview-caption" id="wbApiPreviewCaption"></p>
+              <div class="wb-api-totals" id="wbApiPreviewTotals"></div>
+              <h3>Расшифровка прочих удержаний</h3>
+              <ul class="wb-api-deductions" id="wbApiDeductions"></ul>
+              <p class="wb-api-intro">Это финансовые начисления WB, не расчёт чистой прибыли. Удержания могут включать рекламу и возвраты авансов; их нельзя повторно вычитать поверх уже импортированных расходов. Полноту баллов за отзывы и медийной рекламы проверим по файлам.</p>
+            </div>
+          </div>
+        </div>
+      </div></div>
     </section>
 
     <section class="section app-view" id="secTax" data-view="settings">
@@ -417,6 +459,7 @@
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/dashboard.js?v=20261009-kpi-trend1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
+<script src="/assets/wb-api.js?v=20261009-api1"></script>
 <script>
 (function () {
   let shop = null;
@@ -573,6 +616,7 @@
     // владелец: RLS всё равно отклонит эти действия от участника, поэтому
     // прячем элементы управления, чтобы не показывать ложные ошибки.
     const owner = isOwner();
+    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: owner && session.user.id === "bbb002c4-cd7a-490d-b9c0-72aed5424261" });
     document.getElementById("deleteShopBtn").hidden = !owner;
     document.getElementById("shareToggle").disabled = !owner;
     document.getElementById("saveTaxBtn").disabled = !owner;
@@ -875,6 +919,13 @@
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
     shop = await window.WBAuth.ensureShop();
+    try {
+      const selectedId = localStorage.getItem("wb-selected-shop:" + session.user.id);
+      if (selectedId) {
+        const shops = await window.WBAuth.listMyShops();
+        shop = shops.find((s) => s.id === selectedId) || shop;
+      }
+    } catch (_) { /* storage may be unavailable */ }
     overviewScope = "wildberries";
     reportMarketplace = "wildberries";
     await refreshShopSwitch();
@@ -888,6 +939,7 @@
     await refreshCostsTable();
     await refreshUploadsLog();
     wireCollapsible("secTax");
+    wireCollapsible("secWbApi");
     wireCollapsible("secMembers");
     wireCollapsible("secUploadForms");
     wireCollapsible("secUploadsLog");
@@ -1069,6 +1121,8 @@
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {
       const shops = await window.WBAuth.listMyShops();
       shop = shops.find((s) => s.id === e.target.value);
+      if (!shop) return;
+      try { localStorage.setItem("wb-selected-shop:" + session.user.id, shop.id); } catch (_) {}
       overviewScope = "wildberries";
       reportMarketplace = "wildberries";
       updateShareBox();

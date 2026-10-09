@@ -1,0 +1,36 @@
+.wb-api-card { padding:24px; }
+.wb-api-intro { margin:0 0 18px; color:var(--ink-soft, #6e6e73); font-size:13px; line-height:1.6; }
+.wb-api-key-row, .wb-api-date-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+.wb-api-key-field { flex:1 1 280px; min-width:0; }
+.wb-api-key-field input { width:100%; }
+.wb-api-actions { display:flex; gap:10px; flex-wrap:wrap; }
+.wb-api-status { margin:16px 0 0; color:var(--ink-soft, #6e6e73); font-size:12.5px; line-height:1.6; overflow-wrap:anywhere; }
+.wb-api-status[data-connected="true"] { color:var(--good, #248a3d); }
+.wb-api-message { margin:12px 0 0; font-size:13px; line-height:1.6; }
+.wb-api-message:empty { display:none; }
+.wb-api-message[data-tone="error"] { color:var(--bad, #d63031); }
+.wb-api-preview { border-top:1px solid var(--line, #e5e5ea); margin-top:24px; padding-top:24px; }
+.wb-api-preview h3 { margin:0 0 8px; font-size:15px; font-weight:600; }
+.wb-api-date-row > div { flex:0 1 180px; min-width:0; }
+.wb-api-date-row input { width:100%; }
+.wb-api-preview-result { margin-top:20px; }
+.wb-api-preview-caption { color:var(--ink-soft, #6e6e73); font-size:12px; line-height:1.6; }
+.wb-api-totals { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:16px 0 20px; }
+.wb-api-total { padding:14px 16px; border-radius:14px; background:var(--surface-2, #f5f5f7); min-width:0; }
+.wb-api-total span { display:block; color:var(--ink-soft, #6e6e73); font-size:12px; line-height:1.5; margin-bottom:8px; }
+.wb-api-total strong { font-size:17px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.wb-api-deductions { list-style:none; padding:0; margin:0; }
+.wb-api-deductions li { display:flex; justify-content:space-between; gap:18px; padding:12px 0; border-bottom:1px solid var(--line, #e5e5ea); font-size:12px; line-height:1.6; }
+.wb-api-deductions span { min-width:0; overflow-wrap:anywhere; }
+.wb-api-deductions strong { flex-shrink:0; font-weight:500; font-variant-numeric:tabular-nums; white-space:nowrap; }
+#secWbApi [hidden], #secWbApi[hidden] { display:none !important; }
+@media(max-width:600px) {
+  .wb-api-card { padding:18px; }
+  .wb-api-key-field { flex-basis:100%; }
+  .wb-api-actions { width:100%; }
+  .wb-api-actions button { flex:1 1 140px; }
+  .wb-api-date-row > div { flex:1 1 120px; }
+  .wb-api-date-row > button { width:100%; }
+  .wb-api-totals { grid-template-columns:1fr; }
+  .wb-api-deductions li { flex-direction:column; gap:4px; }
+}

@@ -1,0 +1,117 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import vm from 'node:vm';
+import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+
+let assertions = 0;
+const check = (fn) => { fn(); assertions++; };
+check(() => assert.equal(validateShopId('63175e7a-5b26-425e-893f-68889b32f02f'), '63175e7a-5b26-425e-893f-68889b32f02f'));
+check(() => assert.throws(() => validateShopId('../toplash'), ApiError));
+check(() => assert.deepEqual(validatePeriod('2026-09-01', '2026-09-30'), { dateFrom: '2026-09-01', dateTo: '2026-09-30' }));
+check(() => assert.throws(() => validatePeriod('2026-02-30', '2026-03-01'), ApiError));
+check(() => assert.throws(() => validatePeriod('2026-09-30', '2026-09-01'), ApiError));
+check(() => assert.throws(() => validatePeriod('2024-01-01', '2026-09-01'), ApiError));
+check(() => assert.throws(() => validateKey('invalid'), ApiError));
+const token = (payload) => `e30.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.${'x'.repeat(100)}`;
+check(() => assert.throws(() => validateKey(token({ exp: 1 })), /истёк/));
+check(() => assert.throws(() => validateKey(token({ t: true })), /песочницы/));
+check(() => assert.equal(validateKey(token({ exp: 4102444800 })).expiresAt, '2100-01-01T00:00:00.000Z'));
+const rows = sanitizeRows([
+  { rrdId: 1, docTypeName: 'Продажа', retailAmount: '100.10', forPay: '80.05', cashbackAmount: '10.00', cashbackCommissionChange: '1.00', cashbackDiscount: '2.10', token: 'must-not-survive', customer: 'PII' },
+  { rrdId: 2, docTypeName: 'Возврат', retailAmount: '20.00', forPay: '16.00', cashbackAmount: '2.00', cashbackCommissionChange: '0.20', cashbackDiscount: '0.10' },
+  { rrdId: 3, deduction: '100.00', bonusTypeName: 'Джем', paidAcceptance: '17.65', deliveryService: '30.25' },
+  { rrdId: 4, deduction: '-20.00', bonusTypeName: 'Возврат аванса' },
+  { rrdId: 4, deduction: '-20.00', bonusTypeName: 'Возврат аванса' },
+]);
+const summary = summarize(rows);
+check(() => assert.equal(rows.length, 4));
+check(() => assert.ok(!('token' in rows[0]) && !('customer' in rows[0])));
+check(() => assert.equal(summary.totals.retailAmount, '80.10'));
+check(() => assert.equal(summary.totals.forPay, '64.05'));
+check(() => assert.equal(summary.totals.cashbackAmount, '8.00'));
+check(() => assert.equal(summary.totals.cashbackCommissionChange, '0.80'));
+check(() => assert.equal(summary.totals.cashbackDiscount, '2.00'));
+check(() => assert.equal(summary.totals.deduction, '80.00'));
+check(() => assert.equal(summary.totals.deliveryService, '30.25'));
+check(() => assert.equal(summary.totals.paidAcceptance, '17.65'));
+check(() => assert.throws(() => sanitizeRows([{ rrdId: 9007199254740992 }]), /ID/));
+check(() => assert.throws(() => sanitizeRows([{ rrdId: 1, currency: 'USD' }]), /рублях/));
+check(() => assert.throws(() => summarize([{ rrdId: 1, deduction: '1.005' }]), /сумму/));
+check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
+
+// Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
+// no real API calls, and no mutations of the user's shops.
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId };
+const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
+let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
+let dbWrites = [], outbound = [];
+const job = { id: '00000000-0000-4000-8000-000000000001', shop_id: '63175e7a-5b26-425e-893f-68889b32f02f', date_from: '2026-09-01', date_to: '2026-09-30', cursor_id: 0, status: 'loading' };
+const chain = (table) => {
+  let operation = 'select', values, count = false;
+  const result = () => {
+    if (operation !== 'select') dbWrites.push({ table, operation, values });
+    if (table === 'shops') return { data: owner ? { id: job.shop_id, owner_id: authenticatedId } : null, error: null };
+    if (table === 'wb_api_connections') return { data: { seller_id: 'seller-test', seller_name: 'Test', next_request_at: new Date().toISOString() }, error: null };
+    if (table === 'wb_api_preview_jobs') {
+      if (operation === 'update') Object.assign(job, values);
+      return { data: job, error: null };
+    }
+    if (table === 'wb_api_preview_rows') return { data: [], error: null, count: 0 };
+    throw new Error('Unexpected table ' + table);
+  };
+  const obj = {
+    select(_columns, options) { count = !!options?.count; return obj; },
+    eq() { return obj; }, order() { return obj; }, limit() { return obj; }, range() { return obj; },
+    update(v) { operation = 'update'; values = v; return obj; },
+    upsert(v) { operation = 'upsert'; values = v; return obj; },
+    delete() { operation = 'delete'; return obj; },
+    maybeSingle: async () => result(), single: async () => result(),
+    then(resolve, reject) { return Promise.resolve(result()).then(resolve, reject); },
+  };
+  return obj;
+};
+const sandbox = {
+  ...core, Response, Request, AbortSignal, Set, Date, BigInt,
+  Deno: { env: { get: () => 'mock' }, serve: (fn) => { handler = fn; } },
+  createClient: () => ({
+    auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
+    from: chain,
+    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? 'fake-server-key' : claimWait, error: null }),
+  }),
+  fetch: async (url, options) => {
+    outbound.push({ url, body: options.body });
+    return new Response(upstreamStatus === 204 ? null : JSON.stringify(upstreamRows || []), { status: upstreamStatus });
+  },
+};
+vm.runInNewContext(stripTypeScriptTypes(source), sandbox);
+const invoke = async (payload, auth = true, origin = 'https://wb-platform.netlify.app') => {
+  const res = await handler(new Request('https://example.test/wb-api', { method: 'POST', headers: { ...(auth ? { Authorization: 'Bearer mock-session' } : {}), Origin: origin }, body: JSON.stringify({ shop_id: job.shop_id, ...payload }) }));
+  return { status: res.status, body: await res.json() };
+};
+check(() => assert.equal(outbound.length, 0));
+assert.equal((await invoke({ action: 'status' }, false)).status, 401); assertions++;
+authenticatedId = 'different-user';
+assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
+assert.equal(outbound.length, 0); assertions++;
+authenticatedId = PILOT_USER_ID; owner = false;
+assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
+owner = true;
+assert.equal((await invoke({ action: 'status' }, true, 'https://evil.example')).status, 403); assertions++;
+claimWait = 42;
+assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.retry_after, 42); assertions++;
+assert.equal(outbound.length, 0); assertions++;
+claimWait = 0;
+const completed = await invoke({ action: 'preview_step', job_id: job.id });
+assert.equal(completed.body.job.status, 'complete'); assertions++;
+assert.ok(outbound[0].url.includes('/api/finance/v1/sales-reports/detailed')); assertions++;
+assert.equal(JSON.parse(outbound[0].body).dateTo, '2026-09-30T23:59:59'); assertions++;
+assert.ok(dbWrites.every((item) => item.table.startsWith('wb_api_'))); assertions++;
+const before = outbound.length;
+assert.equal((await invoke({ action: 'preview_step', job_id: job.id })).body.cached, true); assertions++;
+assert.equal(outbound.length, before); assertions++;
+job.status = 'loading';
+upstreamStatus = 429;
+assert.ok((await invoke({ action: 'preview_step', job_id: job.id })).body.retry_after >= 63); assertions++;
+assert.ok(!JSON.stringify(completed.body).includes('fake-server-key')); assertions++;
+console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);
