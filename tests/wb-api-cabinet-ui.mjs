@@ -9,6 +9,9 @@ sources:{orders:{status:'downloaded',amount:'200.00',count:2},ads:{status:'downl
 const window={WBApi:{cabinet:async (...args)=>{calls.push(args); if(deferred)return new Promise(resolve=>{deferred.resolve=resolve;}); return {cabinet};}}};
 vm.runInNewContext(readFileSync(new URL('../assets/wb-api-cabinet.js',import.meta.url),'utf8'),{window,document:{getElementById:el},Date,Intl,clearTimeout,setTimeout});
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+const css=readFileSync(new URL('../assets/wb-api.css',import.meta.url),'utf8');
+assert.match(css,/\.api-cabinet-metrics \.kpi\s*\{[^}]*grid-column:auto/,'API cards must not inherit the file dashboard grid spans');
+assert.match(css,/\.api-cabinet-status\[data-error="true"\]\s*\{[^}]*var\(--bad\)/,'errors use the established error token');
 window.WBApiCabinet.setContext({shopId:'green',allowed:true});await tick();
 assert.equal(el('secApiCabinet').hidden,false);
 assert.equal(el('apiCabinetMonth').value,'2026-09');
