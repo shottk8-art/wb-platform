@@ -405,6 +405,29 @@
 
     for (const sheetName of wb.SheetNames) {
       const aoa = window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: null, raw: true });
+      const transactionHeaderIdx = detectHeaderRow(aoa, ["Дата списания", "Источник списания", "Сумма"]);
+      if (transactionHeaderIdx >= 0) {
+        recognized = true;
+        const header = aoa[transactionHeaderIdx].map((value) => String(value ?? ""));
+        const dateIdx = colIndex(header, "Дата списания");
+        const sourceIdx = colIndex(header, "Источник списания");
+        const amountIdx = colIndex(header, "Сумма");
+        for (let r = transactionHeaderIdx + 1; r < aoa.length; r++) {
+          const row = aoa[r];
+          const date = row && parseSheetDate(row[dateIdx]);
+          if (!date) continue;
+          const amount = Math.abs(num(row[amountIdx]));
+          if (amount < 0.00001) continue;
+          const year = date.getFullYear(), month = date.getMonth() + 1;
+          const key = `${year}-${month}`;
+          if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0 });
+          const source = String(row[sourceIdx] ?? "").trim().toLowerCase();
+          if (source.includes("промо")) byMonth.get(key).promo += amount;
+          else byMonth.get(key).amount += amount;
+          transactionCount++;
+        }
+        continue;
+      }
       let headerIdx = -1, dateIdx = -1, spendIdx = -1;
       for (let r = 0; r < Math.min(15, aoa.length); r++) {
         const header = aoa[r] || [];
@@ -428,7 +451,7 @@
         const month = date ? date.getMonth() + 1 : Number(fallbackMonth);
         if (!year || !month) continue;
         const key = `${year}-${month}`;
-        if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0 });
+        if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0 });
         byMonth.get(key).amount += Math.abs(amount);
         transactionCount++;
       }
@@ -448,6 +471,8 @@
     const text = String(value ?? "").trim();
     const ru = /^(\d{2})\.(\d{2})\.(\d{4})/.exec(text);
     if (ru) return new Date(Number(ru[3]), Number(ru[2]) - 1, Number(ru[1]));
+    const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+    if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
     const parsed = new Date(text);
     return isNaN(parsed) ? null : parsed;
   }
