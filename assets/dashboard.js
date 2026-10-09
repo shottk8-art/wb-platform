@@ -231,7 +231,7 @@
     const sales = rep.sales_amount || 0;
     const drrZ = orders > 0 ? `${((ads / orders) * 100).toFixed(1)}%` : "—";
     const drrV = sales > 0 ? `${((ads / sales) * 100).toFixed(1)}%` : "—";
-    return `<div class="kpi-extra">ДРР(з) ${drrZ} · ДРР(в) ${drrV}</div>`;
+    return `<div class="kpi-extra">ДРР внутренней рекламы: заказы ${drrZ} · продажи ${drrV}</div>`;
   }
 
   function animateKpiNumber(element, fromValue, toValue, unit) {
@@ -415,7 +415,7 @@
     const isDrr = mode === "drr";
     const datasets = isDrr ? [
       {
-        label: "ДРР заказов",
+        label: "ДРР внутренней рекламы по заказам",
         data: rows.map((r) => r.drrOrders),
         borderColor: "#ff9f0a",
         backgroundColor: "rgba(255,159,10,.10)",
@@ -423,7 +423,7 @@
         tension: .38, fill: true, spanGaps: true,
       },
       {
-        label: "ДРР выкупа",
+        label: "ДРР внутренней рекламы по продажам",
         data: rows.map((r) => r.drrSales),
         borderColor: "#af52de",
         backgroundColor: "transparent",
