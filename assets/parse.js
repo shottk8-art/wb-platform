@@ -306,82 +306,6 @@
     return { periods, transactionCount };
   }
 
-  // ---- Детализированный финансовый отчёт WB ----
-  // Баллы и комиссия уже удержаны в «Итого к перечислению». Эти суммы
-  // сохраняются только для прозрачной расшифровки расходов и повторно из
-  // прибыли не вычитаются. Возвраты WB отдаёт отрицательными значениями —
-  // знак сохраняем, чтобы итог за месяц был корректным.
-  async function parseWbFinancialDetails(file) {
-    if (!window.fflate) throw new Error("Не загрузился модуль чтения XLSX. Обновите страницу и попробуйте снова.");
-    const files = window.fflate.unzipSync(new Uint8Array(await file.arrayBuffer()), {
-      filter: (entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry.name),
-    });
-    const sheetPath = Object.keys(files).sort()[0];
-    if (!sheetPath) throw new Error("В XLSX не найден лист с детализацией.");
-    const xml = new TextDecoder("utf-8").decode(files[sheetPath]);
-    const decodeXml = (value) => String(value || "")
-      .replace(/<[^>]+>/g, "")
-      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'").replace(/&amp;/g, "&")
-      .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
-      .trim();
-    const cellValue = (body) => {
-      const inline = /<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/.exec(body || "");
-      if (inline) return decodeXml(inline[1]);
-      const value = /<v>([\s\S]*?)<\/v>/.exec(body || "");
-      return value ? decodeXml(value[1]) : "";
-    };
-    const firstRow = /<row\b[^>]*>([\s\S]*?)<\/row>/.exec(xml);
-    if (!firstRow) throw new Error("В детализированном отчёте нет строк.");
-    const columns = new Map();
-    const headerCells = /<c\b[^>]*\br="([A-Z]+)1"[^>]*>([\s\S]*?)<\/c>/g;
-    let headerCell;
-    while ((headerCell = headerCells.exec(firstRow[1]))) columns.set(cellValue(headerCell[2]), headerCell[1]);
-    const findColumn = (needle) => [...columns.entries()].find(([name]) => name.includes(needle))?.[1];
-    const col = {
-      saleDate: findColumn("Дата продажи"),
-      orderDate: findColumn("Дата заказа покупателем"),
-      points: findColumn("Сумма баллов, удержанных"),
-      fee: findColumn("Стоимость участия в программе лояльности"),
-    };
-    if (!col.points || !col.fee || (!col.saleDate && !col.orderDate)) {
-      throw new Error("Не удалось распознать детализированный финансовый отчёт WB.");
-    }
-    const readColumn = (rowXml, column) => {
-      if (!column) return "";
-      const match = new RegExp(`<c\\b[^>]*\\br="${column}\\d+"[^>]*>([\\s\\S]*?)<\\/c>`).exec(rowXml);
-      return match ? cellValue(match[1]) : "";
-    };
-    const byMonth = new Map();
-    let transactionCount = 0;
-    const rows = /<row\b[^>]*\br="(\d+)"[^>]*>([\s\S]*?)<\/row>/g;
-    let rowMatch, scanned = 0;
-    while ((rowMatch = rows.exec(xml))) {
-      if (Number(rowMatch[1]) === 1) continue;
-      scanned++;
-      if (scanned % 2000 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
-      const row = rowMatch[2];
-      const points = num(readColumn(row, col.points));
-      const fee = num(readColumn(row, col.fee));
-      if (Math.abs(points) < 0.00001 && Math.abs(fee) < 0.00001) continue;
-      const date = parseSheetDate(readColumn(row, col.saleDate)) || parseSheetDate(readColumn(row, col.orderDate));
-      if (!date) continue;
-      const year = date.getFullYear(), month = date.getMonth() + 1;
-      const key = `${year}-${month}`;
-      if (!byMonth.has(key)) byMonth.set(key, { year, month, points: 0, fee: 0 });
-      const period = byMonth.get(key);
-      period.points += points;
-      period.fee += fee;
-      transactionCount++;
-    }
-    const periods = [...byMonth.values()].sort((a, b) => a.year - b.year || a.month - b.month);
-    if (!periods.length) {
-      throw new Error("В файле не найдено удержаний по программам лояльности.");
-    }
-    return { periods, transactionCount };
-  }
-
   function normalizedHeader(value) {
     return String(value ?? "").trim().toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ");
   }
@@ -567,6 +491,6 @@
 
   window.WBParse = {
     parseSummaryReport, parseSalesReport, parseCostsFile, parseAdsSpendFile,
-    parseWbFinancialDetails, parseWbMedia, parseOzonAccruals,
+    parseWbMedia, parseOzonAccruals,
   };
 })();

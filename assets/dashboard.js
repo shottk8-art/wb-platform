@@ -81,7 +81,9 @@
       const d = computeDerived(report, periodSales, costMap, taxRate);
       const salesAmount = report.sales_amount || 0;
       const ordersAmount = report.orders_amount || 0;
-      const ads = (report.ads_spend || 0) + (report.wb_media_spend || 0);
+      // ДРР считаем только по внутреннему продвижению: медийная реклама
+      // вынесена в отдельную статью и не смешивается с аукционными расходами.
+      const ads = report.ads_spend || 0;
       return {
         year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit,
         orders: ordersAmount, ads,
@@ -223,8 +225,8 @@
 
   // ДРР — доля рекламных расходов. (з) — от суммы заказов, (в) — от
   // суммы продаж (обе берутся из сводного отчёта). Прочерк, если делить не на что.
-  function renderDrrLine(rep) {
-    const ads = (rep.ads_spend || 0) + (rep.wb_media_spend || 0);
+  function renderDrrLine(rep, adsAmount) {
+    const ads = adsAmount == null ? (rep.ads_spend || 0) : adsAmount;
     const orders = rep.orders_amount || 0;
     const sales = rep.sales_amount || 0;
     const drrZ = orders > 0 ? `${((ads / orders) * 100).toFixed(1)}%` : "—";
@@ -263,10 +265,22 @@
       { label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
       { label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
       { label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
-      { label: "Расход на рекламу", value: d.ads, prev: prevD ? prevD.ads : null, unit: "₽", lowerIsBetter: true, extra: renderDrrLine(d.rep) },
+      {
+        label: marketplace === "ozon" ? "Продвижение Ozon" : "Внутренняя реклама",
+        value: d.rep.ads_spend || 0,
+        prev: prevD ? prevD.rep.ads_spend || 0 : null,
+        unit: "₽", lowerIsBetter: true,
+        extra: renderDrrLine(d.rep, d.rep.ads_spend || 0),
+      },
+      {
+        label: "Медийная реклама",
+        value: d.rep.wb_media_spend || 0,
+        prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
+        unit: "₽", lowerIsBetter: true, hideForOzon: true,
+      },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
     ];
-    cards.filter((c) => !c.hideWhenZero || Math.abs(c.value || 0) > 0.005).forEach((c) => {
+    cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon")).forEach((c) => {
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
@@ -295,8 +309,6 @@
       ["Прочие доплаты", d.rep.other_fees],
       [marketplace === "ozon" ? "Продвижение Ozon" : marketplace === "all" ? "Продвижение внутри площадок" : "WB Продвижение", d.rep.ads_spend || 0],
       ["WB Media", d.rep.wb_media_spend || 0],
-      ["Баллы за отзывы и лояльность", d.rep.loyalty_points_spend || 0],
-      ["Комиссия программ лояльности", d.rep.loyalty_program_fee || 0],
       ["Операционные расходы", d.rep.operational_expenses || 0],
       ["Внешнее продвижение", d.rep.external_promotion_expenses || 0],
       ["Налог", d.tax],

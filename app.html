@@ -235,13 +235,6 @@
           <div class="dz-status" id="dzAdsStatus"></div>
           <input type="file" id="fileAds" accept=".xlsx,.xls">
         </div>
-        <div class="dropzone" id="dzFinancialDetails" role="button" tabindex="0" aria-label="Загрузить детализированный финансовый отчёт Wildberries">
-          <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Детализированный финансовый отчёт</div>
-          <div class="dz-hint">Добавляет отдельные расходы на баллы за отзывы и комиссии программ лояльности. Эти удержания уже входят в выплату WB и повторно из прибыли не вычитаются.</div>
-          <a class="dz-link" href="https://seller.wildberries.ru/suppliers-mutual-settlements/reports-implementations/reports-weekly-new" target="_blank" rel="noopener" onclick="event.stopPropagation()">Открыть финансовые отчёты <svg class="icon icon-sm"><use href="#icon-external"/></svg></a>
-          <div class="dz-status" id="dzFinancialDetailsStatus"></div>
-          <input type="file" id="fileFinancialDetails" accept=".xlsx,.xls">
-        </div>
         <div class="dropzone" id="dzWbMedia" role="button" tabindex="0" aria-label="Загрузить расходы WB Media">
           <div class="dz-title"><svg class="icon"><use href="#icon-upload"/></svg> Расходы WB Media</div>
           <div class="dz-period-row" onclick="event.stopPropagation()">
@@ -429,9 +422,9 @@
 <script src="/assets/auth.js"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
-<script src="/assets/parse.js?v=20261009-wb-expenses2"></script>
-<script src="/assets/upload.js?v=20261009-wb-expenses2"></script>
-<script src="/assets/dashboard.js?v=20261009-wb-expenses1"></script>
+<script src="/assets/parse.js?v=20261009-wb-expenses3"></script>
+<script src="/assets/upload.js?v=20261009-wb-expenses3"></script>
+<script src="/assets/dashboard.js?v=20261009-wb-expenses3"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script>
 (function () {
@@ -1183,20 +1176,6 @@
         const cur = sel.value ? sel.value.split("-").map(Number) : [null, null];
         await refreshPeriods(cur[0], cur[1]);
         if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
-        await renderCurrentPeriod();
-        await refreshUploadsLog();
-      } catch (e) {
-        status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
-      }
-    });
-
-    wireDropzone("dzFinancialDetails", "fileFinancialDetails", async (file) => {
-      const status = document.getElementById("dzFinancialDetailsStatus");
-      status.textContent = "Разбираем удержания…"; status.className = "dz-status";
-      try {
-        const n = await window.WBUpload.uploadWbFinancialDetails(shop.id, file);
-        status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
-        await refreshPeriods();
         await renderCurrentPeriod();
         await refreshUploadsLog();
       } catch (e) {

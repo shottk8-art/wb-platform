@@ -67,33 +67,6 @@
     return periods.length;
   }
 
-  async function uploadWbFinancialDetails(shopId, file) {
-    const duplicate = await sb().from("uploads").select("id").eq("shop_id", shopId)
-      .eq("kind", "wb_financial_details").eq("filename", file.name).maybeSingle();
-    if (duplicate.error) throw duplicate.error;
-    if (duplicate.data) throw new Error("Этот детализированный отчёт уже загружен.");
-    const { periods, transactionCount } = await window.WBParse.parseWbFinancialDetails(file);
-    const payload = [];
-    for (const p of periods) {
-      const { data: current, error: readError } = await sb().from("monthly_reports")
-        .select("loyalty_points_spend,loyalty_program_fee")
-        .eq("shop_id", shopId).eq("marketplace", "wildberries").eq("year", p.year).eq("month", p.month).maybeSingle();
-      if (readError) throw readError;
-      payload.push({
-        shop_id: shopId, marketplace: "wildberries", year: p.year, month: p.month,
-        loyalty_points_spend: (current?.loyalty_points_spend || 0) + p.points,
-        loyalty_program_fee: (current?.loyalty_program_fee || 0) + p.fee,
-      });
-    }
-    const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
-    if (error) throw error;
-    await logUpload(shopId, "wildberries", "wb_financial_details", file.name, {
-      periods: periods.map((p) => ({ year: p.year, month: p.month, points: p.points, fee: p.fee })),
-      row_count: transactionCount,
-    });
-    return periods.length;
-  }
-
   async function uploadWbMedia(shopId, file, year, month) {
     const duplicate = await sb().from("uploads").select("id").eq("shop_id", shopId)
       .eq("kind", "wb_media").eq("filename", file.name).maybeSingle();
@@ -279,7 +252,7 @@
   }
 
   window.WBUpload = {
-    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadWbFinancialDetails, uploadWbMedia,
+    uploadSummaryReport, uploadSalesReport, uploadAdsSpend, uploadWbMedia,
     uploadOzonAccruals, saveCostPrice, listCosts, importCosts,
     listUploads, deleteUpload, saveManualExpenses,
   };
