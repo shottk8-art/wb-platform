@@ -323,6 +323,7 @@
     const wb = await readWorkbook(file);
     const dateAliases = ["дата", "день", "период"];
     const spendAliases = ["затраты, ₽", "затраты, руб", "затраты (руб", "расходы, ₽", "расходы, руб", "расход, ₽", "потрачено", "сумма затрат"];
+    const orderAliases = ["заказы, ₽", "заказы, руб", "сумма заказов", "заказов на сумму"];
     const byMonth = new Map();
     let transactionCount = 0;
     let recognized = false;
@@ -344,7 +345,7 @@
           if (amount < 0.00001) continue;
           const year = date.getFullYear(), month = date.getMonth() + 1;
           const key = `${year}-${month}`;
-          if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0 });
+          if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0, orders: 0 });
           const source = String(row[sourceIdx] ?? "").trim().toLowerCase();
           if (source.includes("промо")) byMonth.get(key).promo += amount;
           else byMonth.get(key).amount += amount;
@@ -352,7 +353,7 @@
         }
         continue;
       }
-      let headerIdx = -1, dateIdx = -1, spendIdx = -1;
+      let headerIdx = -1, dateIdx = -1, spendIdx = -1, ordersIdx = -1;
       for (let r = 0; r < Math.min(15, aoa.length); r++) {
         const header = aoa[r] || [];
         const candidateSpend = findHeaderByAliases(header, spendAliases);
@@ -360,6 +361,7 @@
           headerIdx = r;
           spendIdx = candidateSpend;
           dateIdx = findHeaderByAliases(header, dateAliases);
+          ordersIdx = findHeaderByAliases(header, orderAliases);
           break;
         }
       }
@@ -375,8 +377,9 @@
         const month = date ? date.getMonth() + 1 : Number(fallbackMonth);
         if (!year || !month) continue;
         const key = `${year}-${month}`;
-        if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0 });
+        if (!byMonth.has(key)) byMonth.set(key, { year, month, amount: 0, promo: 0, orders: 0 });
         byMonth.get(key).amount += Math.abs(amount);
+        if (ordersIdx >= 0) byMonth.get(key).orders += Math.abs(num(row[ordersIdx]));
         transactionCount++;
       }
     }

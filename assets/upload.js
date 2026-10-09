@@ -76,19 +76,20 @@
     const payload = [];
     for (const p of periods) {
       const { data: current, error: readError } = await sb().from("monthly_reports")
-        .select("wb_media_spend,ads_promo_spend")
+        .select("wb_media_spend,wb_media_orders_amount,ads_promo_spend")
         .eq("shop_id", shopId).eq("marketplace", "wildberries").eq("year", p.year).eq("month", p.month).maybeSingle();
       if (readError) throw readError;
       payload.push({
         shop_id: shopId, marketplace: "wildberries", year: p.year, month: p.month,
         wb_media_spend: (current?.wb_media_spend || 0) + p.amount,
+        wb_media_orders_amount: (current?.wb_media_orders_amount || 0) + (p.orders || 0),
         ads_promo_spend: (current?.ads_promo_spend || 0) + (p.promo || 0),
       });
     }
     const { error } = await sb().from("monthly_reports").upsert(payload, { onConflict: "shop_id,marketplace,year,month" });
     if (error) throw error;
     await logUpload(shopId, "wildberries", "wb_media", file.name, {
-      periods: periods.map((p) => ({ year: p.year, month: p.month, amount: p.amount, promo: p.promo || 0 })),
+      periods: periods.map((p) => ({ year: p.year, month: p.month, amount: p.amount, promo: p.promo || 0, orders: p.orders || 0 })),
       row_count: transactionCount,
     });
     return periods.length;
@@ -222,11 +223,12 @@
       }
     } else if (upload.kind === "wb_media") {
       for (const p of upload.periods || []) {
-        const { data: current, error: readError } = await sb().from("monthly_reports").select("wb_media_spend,ads_promo_spend")
+        const { data: current, error: readError } = await sb().from("monthly_reports").select("wb_media_spend,wb_media_orders_amount,ads_promo_spend")
           .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month).maybeSingle();
         if (readError) throw readError;
         const { error } = await sb().from("monthly_reports").update({
           wb_media_spend: Math.max(0, (current?.wb_media_spend || 0) - (p.amount || 0)),
+          wb_media_orders_amount: Math.max(0, (current?.wb_media_orders_amount || 0) - (p.orders || 0)),
           ads_promo_spend: Math.max(0, (current?.ads_promo_spend || 0) - (p.promo || 0)),
         })
           .eq("shop_id", shopId).eq("marketplace", marketplace).eq("year", p.year).eq("month", p.month);

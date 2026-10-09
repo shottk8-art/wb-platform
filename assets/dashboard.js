@@ -100,7 +100,7 @@
       sales_amount: 0, orders_amount: 0, bought_qty: 0, transfer_total: 0, transfer_goods: 0,
       delivery_cost: 0, storage_cost: 0, fines: 0, acceptance_ops: 0,
       damage_comp: 0, return_comp: 0, other_fees: 0, ads_spend: 0, ads_promo_spend: 0,
-      wb_media_spend: 0, loyalty_points_spend: 0, loyalty_program_fee: 0,
+      wb_media_spend: 0, wb_media_orders_amount: 0, loyalty_points_spend: 0, loyalty_program_fee: 0,
       operational_expenses: 0, external_promotion_expenses: 0,
     };
     const commission = (rep.sales_amount || 0) - (rep.transfer_goods || 0);
@@ -234,6 +234,14 @@
     return `<div class="kpi-extra">ДРР(з) ${drrZ} · ДРР(в) ${drrV}</div>`;
   }
 
+  function renderMediaDrrLine(rep) {
+    const spend = rep.wb_media_spend || 0;
+    const mediaOrders = rep.wb_media_orders_amount || 0;
+    const drr = mediaOrders > 0 ? `${((spend / mediaOrders) * 100).toFixed(1)}%` : "—";
+    const help = "ДРР медийной рекламы = расходы WB Media ÷ сумма заказов, атрибутированных WB Media × 100%. Выписка расходов содержит только списания, поэтому для расчёта нужна статистика WB Media с суммой заказов.";
+    return `<div class="kpi-extra media-drr">ДРР медиа ${drr}<span class="metric-help" tabindex="0" title="${help}" aria-label="${help}">?</span></div>`;
+  }
+
   function animateKpiNumber(element, fromValue, toValue, unit) {
     const format = unit === "шт." ? fmtQty : fmtMoney;
     const target = Number(toValue) || 0;
@@ -277,7 +285,7 @@
         value: d.rep.wb_media_spend || 0,
         prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
         unit: "₽", lowerIsBetter: true, hideForOzon: true,
-        extra: renderDrrLine(d.rep, d.rep.wb_media_spend || 0),
+        extra: renderMediaDrrLine(d.rep),
       },
       { label: "Промобонусы", value: d.rep.ads_promo_spend, prev: prevD ? prevD.rep.ads_promo_spend : null, unit: "₽", neutral: true, hideWhenZero: true },
     ];

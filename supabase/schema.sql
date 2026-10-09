@@ -53,6 +53,7 @@ create table if not exists monthly_reports (
   ads_spend       numeric not null default 0,   -- Расход на рекламу с баланса — уменьшает прибыль
   ads_promo_spend numeric not null default 0,   -- Расход промобонусами — справочно, прибыль не уменьшает
   wb_media_spend  numeric not null default 0,   -- WB Media: оплачивается отдельно и уменьшает прибыль
+  wb_media_orders_amount numeric not null default 0, -- Сумма заказов, атрибутированных WB Media (знаменатель ДРР медиа)
   loyalty_points_spend numeric not null default 0, -- Баллы, удержанные по программам лояльности (уже внутри transfer_total)
   loyalty_program_fee numeric not null default 0,  -- Стоимость участия/комиссия программы лояльности (уже внутри transfer_total)
   operational_expenses numeric not null default 0, -- Операционные расходы, ручной ввод
