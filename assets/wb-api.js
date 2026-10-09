@@ -40,6 +40,8 @@
     el("wbApiCheckBtn").disabled = busy || !connection;
     el("wbApiDisconnectBtn").disabled = busy || !connection;
     el("wbApiPreviewBtn").disabled = busy || !connection;
+    el("wbApiRefreshBtn").disabled = busy || !connection;
+    el("wbApiRefreshBtn").hidden = !(samePeriod && job.status === "complete");
     el("wbApiKey").disabled = busy;
     el("wbApiDateFrom").disabled = busy;
     el("wbApiDateTo").disabled = busy;
@@ -159,6 +161,7 @@
     if (confirm(`Отключить API от магазина «${context.name}»? Ключ и тестовые выгрузки будут удалены. Данные дашборда и загруженные файлы останутся.`)) run("disconnect");
   });
   el("wbApiPreviewBtn").addEventListener("click", () => run("preview_start", { date_from: el("wbApiDateFrom").value, date_to: el("wbApiDateTo").value }));
+  el("wbApiRefreshBtn").addEventListener("click", () => run("preview_start", { date_from: el("wbApiDateFrom").value, date_to: el("wbApiDateTo").value, refresh: true }));
   const now = new Date(), closed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const y = closed.getFullYear(), m = String(closed.getMonth() + 1).padStart(2, "0");
   el("wbApiDateFrom").value = `${y}-${m}-01`;

@@ -61,7 +61,7 @@ export function sanitizeRows(rows: unknown) {
     if (!row || typeof row !== "object") throw new ApiError(502, "WB вернул некорректную строку");
     // Do not silently round financial row IDs; otherwise pagination/dedup breaks.
     const id = row.rrdId;
-    if ((typeof id === "number" && !Number.isSafeInteger(id)) || !/^\d+$/.test(String(id)) || BigInt(id) <= 0n) throw new ApiError(502, "Не удалось прочитать ID финансовой операции WB");
+    if ((typeof id === "number" && !Number.isSafeInteger(id)) || !/^\d+$/.test(String(id)) || BigInt(id) <= 0n || BigInt(id) > BigInt(Number.MAX_SAFE_INTEGER)) throw new ApiError(502, "Не удалось прочитать ID финансовой операции WB");
     if (row.currency && row.currency !== "RUB" && row.currency !== "руб") throw new ApiError(502, "В тесте поддерживаются только отчёты в рублях");
     const safe: Record<string, unknown> = {};
     for (const key of FINANCE_FIELDS) if (key in row) safe[key] = row[key];

@@ -36,6 +36,7 @@ check(() => assert.equal(summary.totals.deduction, '80.00'));
 check(() => assert.equal(summary.totals.deliveryService, '30.25'));
 check(() => assert.equal(summary.totals.paidAcceptance, '17.65'));
 check(() => assert.throws(() => sanitizeRows([{ rrdId: 9007199254740992 }]), /ID/));
+check(() => assert.throws(() => sanitizeRows([{ rrdId: '9007199254740992' }]), /ID/));
 check(() => assert.throws(() => sanitizeRows([{ rrdId: 1, currency: 'USD' }]), /рублях/));
 check(() => assert.throws(() => summarize([{ rrdId: 1, deduction: '1.005' }]), /сумму/));
 check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));

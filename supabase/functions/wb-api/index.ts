@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       const { data: existing, error: existingError } = await admin.from("wb_api_preview_jobs").select(JOB_COLUMNS)
         .eq("shop_id", shopId).eq("date_from", period.dateFrom).eq("date_to", period.dateTo).order("created_at", { ascending: false }).limit(1);
       if (existingError) throw new ApiError(500, "Не удалось проверить прошлую загрузку");
-      if (existing?.[0]) return json({ job: existing[0], cached: existing[0].status === "complete" });
+      if (existing?.[0] && !(body.refresh === true && existing[0].status === "complete")) return json({ job: existing[0], cached: existing[0].status === "complete" });
       const { data, error } = await admin.from("wb_api_preview_jobs").insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo }).select(JOB_COLUMNS).single();
       if (error) throw new ApiError(500, "Не удалось создать тестовую загрузку");
       return json({ job: data });

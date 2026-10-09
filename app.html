@@ -170,6 +170,7 @@
               <div><label for="wbApiDateFrom">Начало периода</label><input type="date" id="wbApiDateFrom"></div>
               <div><label for="wbApiDateTo">Конец периода</label><input type="date" id="wbApiDateTo"></div>
               <button type="button" class="primary" id="wbApiPreviewBtn" disabled>Загрузить тестовый отчёт</button>
+              <button type="button" class="ghost" id="wbApiRefreshBtn" hidden>Обновить из WB</button>
             </div>
             <div id="wbApiPreviewResult" class="wb-api-preview-result" hidden>
               <p class="wb-api-preview-caption" id="wbApiPreviewCaption"></p>
@@ -459,7 +460,7 @@
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/dashboard.js?v=20261009-kpi-trend1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
-<script src="/assets/wb-api.js?v=20261009-api1"></script>
+<script src="/assets/wb-api.js?v=20261009-api2"></script>
 <script>
 (function () {
   let shop = null;
