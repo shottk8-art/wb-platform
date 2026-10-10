@@ -416,8 +416,9 @@
     const palette = ["#5e5ce6", "#0a84ff", "#30b0c7", "#34c759", "#ff9f0a", "#ff6b5f", "#bf5af2", "#64d2ff", "#ac8e68", "#ff375f", "#8e8e93", "#af52de", "#00a6a6"];
     const items = expenseItems(d, marketplace);
     const prevItems = prevD ? new Map(expenseItems(prevD, marketplace)) : null;
-    const total = items.reduce((s, it) => s + Math.abs(it[1]), 0);
-    const prevTotal = prevItems ? [...prevItems.values()].reduce((sum, value) => sum + Math.abs(value), 0) : null;
+    const chartTotal = items.reduce((s,it)=>s+Math.abs(it[1] || 0),0);
+    const total = d.isApi ? items.some(([,value])=>value==null) ? null : items.reduce((sum,[,value])=>sum+value,0) : chartTotal;
+    const prevTotal = prevItems ? prevD.isApi ? [...prevItems.values()].some(value=>value==null) ? null : [...prevItems.values()].reduce((sum,value)=>sum+value,0) : [...prevItems.values()].reduce((sum,value)=>sum+Math.abs(value),0) : null;
     const visibleItems = items.map(([label, value]) => ({ label, value }))
       .filter((item) => Math.abs(item.value) > 0.005)
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
@@ -432,20 +433,20 @@
           },
         ]
       : visibleItems;
-    const salesShare = (d.rep.sales_amount || 0) > 0 ? (total / d.rep.sales_amount) * 100 : null;
-    const totalText = `${fmtMoney.format(Math.round(total))} ₽`;
+    const salesShare = total != null && (d.rep.sales_amount || 0) > 0 ? (total / d.rep.sales_amount) * 100 : null;
+    const totalText = total == null ? '—' : `${fmtMoney.format(Math.round(total))} ₽`;
 
     const heroTotal = document.getElementById("expHeroTotal");
     const shareEl = document.getElementById("expSalesShare");
     const centerValue = document.getElementById("expCenterValue");
     if (heroTotal) heroTotal.textContent = totalText;
     if (shareEl) shareEl.textContent = salesShare == null ? "—" : `${salesShare.toFixed(1)}%`;
-    if (centerValue) centerValue.textContent = fmtShort.format(Math.round(total));
+    if (centerValue) centerValue.textContent = total == null ? '—' : fmtShort.format(Math.round(total));
     const heroDelta = document.getElementById("expHeroDelta");
-    if (heroDelta) heroDelta.innerHTML = renderExpenseDelta(total, prevTotal, "expense-delta--summary");
+    if (heroDelta) heroDelta.innerHTML = total == null ? '' : renderExpenseDelta(total, prevTotal, "expense-delta--summary");
 
     listEl.innerHTML = visibleItems.length ? visibleItems.map(({ label, value, color }) => {
-      const pct = total > 0 ? Math.abs(value / total) * 100 : 0;
+      const pct = chartTotal > 0 ? Math.abs(value / chartTotal) * 100 : 0;
       return `
         <div class="exp-row">
           <div class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></div>
@@ -481,7 +482,7 @@
         animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 760, easing: "easeOutQuart" },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0}%` } },
+          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${chartTotal > 0 ? ((ctx.parsed / chartTotal) * 100).toFixed(1) : 0}%` } },
         },
         cutout: "78%",
         radius: "88%",
