@@ -1087,7 +1087,8 @@
       if(!usesApiData()) return;
       const button = document.getElementById('overviewRefresh');
       if(button.disabled) return;
-      const selectedShop=shop.id, period=document.getElementById('periodSelect').value;
+      const selectedShop=shop.id, selectedScope=overviewScope, period=document.getElementById('periodSelect').value;
+      const stillSelected=()=>shop.id===selectedShop && usesApiData() && overviewScope===selectedScope && document.getElementById('periodSelect').value===period;
       const [year,month]=period.split('-').map(Number);
       const key=year && month ? `${year}-${String(month).padStart(2,'0')}` : window.WBApiCabinet.currentMonth;
       let queued=false;
@@ -1095,11 +1096,11 @@
       try {
         const result=await window.WBApiCabinet.refreshOverview(key);
         queued=(result?.refresh_job || result?.job)?.status==='loading';
-        if(shop.id!==selectedShop || !usesApiData()) return;
+        if(!stillSelected()) return;
         await refreshPeriods(Number(key.slice(0,4)),Number(key.slice(5))); await renderCurrentPeriod();
         toast('Обновление идёт на сервере. Можно закрыть страницу.');
-      } catch(error) { if(shop.id===selectedShop && usesApiData()) toast(error.message,true); }
-      finally { if(shop.id===selectedShop && usesApiData() && !queued) { button.disabled=false; button.textContent='Обновить'; } }
+      } catch(error) { if(stillSelected()) toast(error.message,true); }
+      finally { if(stillSelected() && !queued) { button.disabled=false; button.textContent='Обновить'; } }
     });
     window.WBApiCabinet.subscribe(async()=>{
       if(!usesApiData()) return;

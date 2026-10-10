@@ -128,8 +128,9 @@
       const result = await window.WBApi.cabinet('cabinet_start',month,true);
       if (current !== epoch || !context?.allowed) return null;
       invalidate(); cache.set(month,Promise.resolve(result.cabinet));
-      el('apiCabinetMonth').value = month;
-      cabinet = result.cabinet; if(!dirty) fillExpenses(); render();
+      if (month === el('apiCabinetMonth').value) {
+        cabinet = result.cabinet; if(!dirty) fillExpenses(); render();
+      }
       // Poll saved status only. Closing the tab cannot stop the queue.
       if (busy) reloadQueued=true; else load();
       return result.cabinet;

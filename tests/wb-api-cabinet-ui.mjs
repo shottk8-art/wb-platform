@@ -36,7 +36,7 @@ assert.equal(calls.at(-1)[0],'cabinet','calculation refresh does not enqueue ano
 const beforeRefresh=calls.length;
 await window.WBApiCabinet.refreshOverview('2026-10');await tick();
 assert.deepEqual(calls[beforeRefresh].slice(0,3),['cabinet_start','2026-10',true]);
-assert.equal(el('apiCabinetMonth').value,'2026-10');
+assert.equal(el('apiCabinetMonth').value,'2026-09','overview refresh does not discard another Settings month or its unsaved fields');
 el('apiCabinetMonth').value='2026-09';el('apiCabinetMonth').events.change();await tick();
 el('apiOperationalExpenses').value='12.34';el('apiOperationalExpenses').events.input();
 assert.equal(el('apiSaveExpenses').disabled,false);
