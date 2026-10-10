@@ -30,7 +30,7 @@ assert.ok(body.innerHTML.includes('colspan="5"'));
 assert.equal(foot.innerHTML,'');
 for (const page of ['app.html','index.html','admin.html']) {
   const html = fs.readFileSync(path.join(root,page),'utf8');
-  assert.ok(html.includes('/assets/responsive.css?v=20261010-mobile1'),`${page}: shared responsive styles`);
+  assert.ok(html.includes('/assets/responsive.css?v=20261010-settings2'),`${page}: shared responsive styles`);
   assert.ok(html.includes('viewport-fit=cover'),`${page}: safe-area support`);
 }
 console.log('Mobile renderer regression: PASS (labels, totals, comparisons, long chart labels, empty state, shared surfaces).');

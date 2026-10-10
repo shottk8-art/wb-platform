@@ -23,6 +23,24 @@ if(byId('kpiRow')) WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries');
 if(byId('shopSwitch')) byId('shopSwitch').innerHTML='<option>Тестовый магазин · длинное название</option>';
 if(byId('periodSelect')) byId('periodSelect').innerHTML='<option>сентябрь 2026</option>';
 if(byId('shareUrl')) byId('shareUrl').textContent='https://wb-platform.netlify.app/s/very-long-store-name';
+// Connected API settings must be tested too, not only the empty/disconnected form.
+if(byId('wbApiCheckBtn')) {
+  const disconnected=location.search.includes('disconnected');
+  byId('wbApiConnectBtn').textContent=disconnected?'Сохранить и проверить':'Заменить ключ и проверить';
+  byId('wbApiCheckBtn').hidden=disconnected;
+  byId('wbApiDisconnectBtn').hidden=disconnected;
+  byId('wbApiConnectionStatus').textContent=disconnected?'API ещё не подключён к этому магазину':'Подключён продавец WB: Тестовый магазин. Проверено: 10.10.2026, 19:00:00. Ключ действует до 10.04.2027, 07:23:04';
+  byId('apiCabinetMonth').value='2026-09';
+  byId('apiCabinetSync').textContent=disconnected?'Загрузить данные':'Обновить расчёт';
+  byId('apiCabinetRefresh').hidden=disconnected;
+  byId('apiCabinetStatus').textContent=disconnected?'Подключите API магазина':'Выгрузка готова · сентябрь 2026 · данные загружены по 30.09.2026';
+  byId('apiCabinetSources').innerHTML='<li><strong>Финансовый отчёт</strong><span>Загружен · 30.09.2026</span></li><li><strong>Внутренняя реклама</strong><span>Загружена · 30.09.2026</span></li><li><strong>Медийная реклама</strong><span>Расходов за этот месяц нет</span></li>';
+  byId('apiCabinetFinance').innerHTML='<div><dt>Итого к перечислению после удержаний маркетплейса</dt><dd>999 999 999,99 ₽</dd></div><div><dt>Корректировки вознаграждения и компенсации</dt><dd>−123 456 789,99 ₽</dd></div>';
+  byId('apiCabinetAds').innerHTML='<div><dt>Расходы на внутреннюю рекламу</dt><dd>226 553 ₽</dd></div><div><dt>Промобонусы (не уменьшают чистую прибыль)</dt><dd>77 511 ₽</dd></div>';
+  byId('apiOperationalExpenses').value='10000';
+  byId('apiExternalExpenses').value='5000';
+  byId('taxRateInput').value='5';
+}
 if(byId('costsBody')) byId('costsBody').innerHTML=rows.map(r=>'<tr><td class="mono">'+r.article+'</td><td>'+r.name+'</td><td data-label="Себестоимость за шт., ₽"><input class="cost-input" type="number" aria-label="Себестоимость" value="398"></td><td><button class="ghost small save-cost-btn" disabled>Сохранить</button></td></tr>').join('');
 if(byId('membersBody')) byId('membersBody').innerHTML='<tr><td>@very_long_username_for_test</td><td>Ожидает входа</td><td><button class="ghost small">Убрать</button></td></tr>';
 if(byId('uploadsBody')) byId('uploadsBody').innerHTML='<tr><td>Длинное название загруженного отчета за сентябрь 2026.xlsx</td><td>Wildberries</td><td>Сводный отчет</td><td>сентябрь 2026</td><td>10.10.2026</td><td><button class="ghost small">Отменить</button></td></tr>';

@@ -7,6 +7,12 @@
 .qty-num{flex:none;}
 .mobile-toolbar,.menu-scrim{display:none;}
 .modal-card{max-height:calc(100dvh - 40px); overflow-y:auto; overscroll-behavior:contain;}
+.settings-share-card{padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+.settings-share-toggle{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-soft); margin:0;}
+#deleteShopBtn{margin-left:auto; color:var(--red);}
+.settings-tax-card{padding:14px 18px; display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;}
+.tax-rate-field{max-width:160px; min-width:0;}
+.api-finance-details dt{overflow-wrap:anywhere;}
 
 @media(max-width:900px){
   html{scroll-padding-top:calc(80px + env(safe-area-inset-top));}
@@ -77,8 +83,26 @@
   .trend-chart{height:250px;}
   .share-box{width:100%; font-size:13px;}
   .share-box #shareUrl{width:100%;}
-  #copyShareBtn{min-height:44px;}
-  #deleteShopBtn{margin-left:0!important;}
+  /* Settings: one clear action per row, including the connected API state. */
+  .settings-share-card,.settings-tax-card{display:grid; grid-template-columns:minmax(0,1fr); gap:16px; padding:18px; align-items:stretch;}
+  .settings-share-card .share-box{min-width:0; gap:12px;}
+  #copyShareBtn,#deleteShopBtn,#saveTaxBtn{width:100%; min-height:48px; margin:0;}
+  .settings-share-toggle{min-height:44px; font-size:14px; padding-bottom:16px; border-bottom:1px solid var(--line);}
+  .tax-rate-field{max-width:none; width:100%;}
+  #taxRateInput{width:100%; min-height:48px;}
+  .settings-tax-card .save-hint:empty{display:none;}
+  #secWbApi .wb-api-key-row,#secApiCabinet .api-cabinet-toolbar{display:grid; grid-template-columns:minmax(0,1fr); gap:12px; align-items:stretch;}
+  #secWbApi .wb-api-actions{display:grid; grid-template-columns:minmax(0,1fr); gap:10px; min-width:0;}
+  #secWbApi .wb-api-actions button,#secApiCabinet .api-cabinet-toolbar button,#apiSaveExpenses{width:100%; min-height:48px; margin:0; padding:12px; line-height:1.4;}
+  #secApiCabinet .api-source-field{max-width:none;}
+  #secWbApi .wb-api-key-field,#secApiCabinet .api-cabinet-toolbar > div,#secApiCabinet .api-expenses-grid > div{min-width:0;}
+  #secApiCabinet input,#secWbApi input{min-height:48px;}
+  #secApiCabinet .api-finance-details > div{display:grid; grid-template-columns:minmax(0,1fr); gap:6px; padding:14px 0;}
+  #secApiCabinet .api-finance-details dd{min-width:0; font-size:16px; white-space:normal; overflow-wrap:anywhere;}
+  #secApiCabinet .api-source-list{display:grid; grid-template-columns:minmax(0,1fr); gap:14px;}
+  #secApiCabinet .api-source-list li{min-width:0; overflow-wrap:anywhere;}
+  #secApiCabinet .api-data-details summary{width:100%; padding:14px 0;}
+  #secApiCabinet .api-cabinet-status,#secApiCabinet .api-cabinet-warning{overflow-wrap:anywhere;}
   #memberAddRow{align-items:stretch!important;}
   #memberAddRow > div{max-width:none!important; flex-basis:100%!important;}
   #addMemberBtn{width:100%;}
