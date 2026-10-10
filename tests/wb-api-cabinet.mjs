@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabinet, monthSettings, readCabinetTrend } from '../supabase/functions/wb-api/cabinet.ts';
+import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabinet, monthSettings, readCabinetTrend, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
 import { PILOT_SHOP_ID, PILOT_USER_ID } from '../supabase/functions/wb-api/core.ts';
 const from = '2026-09-01', to = '2026-09-30';
 assert.deepEqual(cabinetPeriod('2026-09'), {dateFrom:from,dateTo:to});
@@ -51,7 +51,7 @@ const data={shops:{id:PILOT_SHOP_ID,name:'GREEN FLOW',tax_rate:0},wb_api_preview
 wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,forPay:80,retailAmount:100}},
 {payload:{vendorCode:'SKU',sellerOperName:'Коррекция продаж',docTypeName:'Продажа',quantity:1,forPay:5}},
 {payload:{vendorCode:'SKU',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
-const reader={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},range(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
+const reader={rpc:async()=>({data:aggregateFinanceRows(data.wb_api_preview_rows.map(r=>r.payload)),error:null}),from(table){assert.notEqual(table,'wb_api_preview_rows','cabinet must serve aggregates, not raw operations');const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
 const result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(result.products[0].bought_qty,0);
 assert.equal(result.products[0].for_pay,'5.00');
@@ -64,7 +64,7 @@ await assert.rejects(()=>readCabinet(reader,'another-shop',{dateFrom:from,dateTo
 assert.deepEqual(monthSettings({operational_expenses:'10.10',external_promotion_expenses:0}),{operational_expenses:'10.10',external_promotion_expenses:'0.00'});
 assert.throws(()=>monthSettings({operational_expenses:0,external_promotion_expenses:0,media_spend:0}),/только через API/);
 for (const v of [-1,'bad','1.001',true,1000000001]) assert.throws(()=>monthSettings({operational_expenses:v,external_promotion_expenses:0}));
-data.wb_api_month_settings=[{operational_expenses:'25.10',external_promotion_expenses:'10.00',media_spend:'0.00'}];
+data.wb_api_month_settings=[{month:from,operational_expenses:'25.10',external_promotion_expenses:'10.00',media_spend:'0.00'}];
 data.wb_api_preview_rows.pop();
 const saved = await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(saved.cogs,'7.00','correction is not another unit of cost');

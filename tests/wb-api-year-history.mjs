@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {cabinetPeriod,readCabinet} from '../supabase/functions/wb-api/cabinet.ts';
+import {cabinetPeriod,readCabinet,aggregateFinanceRows} from '../supabase/functions/wb-api/cabinet.ts';
 import {PILOT_SHOP_ID} from '../supabase/functions/wb-api/core.ts';
 import {processPage} from '../supabase/functions/wb-api/process.ts';
 
@@ -29,7 +29,7 @@ assert.equal(request.period,'weekly');
 // its own end date; no new partial rows may leak into the old total.
 const saved={id:'saved',date_from:'2026-10-01',date_to:'2026-10-09',status:'complete',row_count:0,summary:{pilot:{stage:'done',finance_complete:true},api_sources:{orders:{status:'downloaded',orders_amount:'0',rows:[]},internal_ads:{status:'downloaded',period_totals:{}},media:{status:'downloaded',date_from:'2026-10-01',date_to:'2026-10-09',amount:'0.00'}}}};
 const loading={id:'loading',date_from:'2026-10-01',date_to:'2026-10-10',status:'loading',row_count:12,summary:{pilot:{stage:'finance'}}};
-const reader={from(table){const filters={};let size;
+const reader={rpc:async()=>({data:aggregateFinanceRows([]),error:null}),from(table){const filters={};let size;
   const q={select(){return q;},eq(k,v){filters[k]=v;return q;},order(){return q;},limit(v){size=v;return q;},range(){return q;},single:async()=>({data:{id:PILOT_SHOP_ID,name:'Test',tax_rate:0}}),then(resolve){
     let data=table==='wb_api_preview_jobs'?[loading,saved].filter(j=>Object.entries(filters).every(([k,v])=>k==='shop_id'||j[k]===v)):[];
     if(size)data=data.slice(0,size);return Promise.resolve({data,error:null}).then(resolve);

@@ -1,7 +1,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { ApiError, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { processPage } from './process.ts';
-import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from './cabinet.ts';
+import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, readCabinetStatus, monthSettings } from './cabinet.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -119,12 +119,7 @@ Deno.serve(async (req) => {
       if (error || !data) throw new ApiError(400, "Сначала подключите API магазина");
       return String(data);
     };
-    const connection = await readConnection();
-    const historyLoading = async () => {
-      const {data,error} = await admin.from('wb_api_preview_jobs').select('id').eq('shop_id',shopId).eq('status','loading').limit(1);
-      if (error) throw new ApiError(500,'Не удалось прочитать очередь загрузки');
-      return !!data?.length;
-    };
+    if (body.action === 'cabinet_status') return json(await readCabinetStatus(admin,shopId));
     if (body.action === 'cabinet_trend') {
       return json({ trend: await readCabinetTrend(admin, shopId) });
     }
@@ -135,10 +130,12 @@ Deno.serve(async (req) => {
       if (error) throw new ApiError(500, 'Не удалось сохранить расходы месяца');
       return json({ cabinet: await readCabinet(admin, shopId, period) });
     }
+    // Pure reads never decrypt the WB key or call an upstream API.
+    const connection = body.action === 'cabinet' ? null : await readConnection();
     if (body.action === 'cabinet' || body.action === 'cabinet_start') {
       if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
       const period = cabinetPeriod(body.month);
-      if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period), history_loading: await historyLoading() });
+      if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period), ...await readCabinetStatus(admin,shopId) });
       if (!connection) throw new ApiError(400, 'Сначала подключите персональный ключ в настройках');
       const cabinet = await readCabinet(admin, shopId, period);
       if (cabinet.refresh_job?.status === 'loading' || cabinet.job?.status === 'loading' || (cabinet.complete && body.refresh !== true)) return json({ cabinet, cached: cabinet.complete });

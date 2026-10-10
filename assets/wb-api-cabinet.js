@@ -4,7 +4,7 @@
   const money = value => value == null ? '—' : Number(value).toLocaleString('ru-RU', {maximumFractionDigits:2}) + ' ₽';
   const number = value => value == null ? '—' : Number(value).toLocaleString('ru-RU');
   let context = null, epoch = 0, requestId = 0, timer = null, busy = false, cabinet = null, dirty = false, reloadQueued = false;
-  let cache = new Map(), historyPromise = null, refreshing = false, historyLoading = false;
+  let cache = new Map(), historyPromise = null, refreshing = false, historyLoading = false, revision = null;
   const listeners = new Set();
   const now = new Date(), closed = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const defaultMonth = `${closed.getFullYear()}-${String(closed.getMonth() + 1).padStart(2,'0')}`;
@@ -84,6 +84,13 @@
       let result = await window.WBApi.cabinet(action,month,refresh);
       if (current !== epoch || ticket !== requestId) return;
       if (month !== el('apiCabinetMonth').value) { reloadQueued=true; return; }
+      if (action === 'cabinet_status') {
+        historyLoading = !!result.history_loading;
+        if ((result.revision ?? null) === revision) return;
+        result = await window.WBApi.cabinet('cabinet',month);
+        if (current !== epoch || ticket !== requestId) return;
+        if (month !== el('apiCabinetMonth').value) {reloadQueued=true;return;}
+      }
       const saved = result.cabinet;
       // Upgrade an already downloaded month once; do not restart its financial
       // history or require the owner to confirm WB Media manually.
@@ -91,7 +98,7 @@
         result = await window.WBApi.cabinet('cabinet_start',month);
       }
       if (current !== epoch || ticket !== requestId) return;
-      cabinet = result.cabinet; historyLoading = !!result.history_loading; invalidate(); cache.set(month,Promise.resolve(cabinet));
+      cabinet = result.cabinet; historyLoading = !!result.history_loading; revision=result.revision ?? null; invalidate(); cache.set(month,Promise.resolve(cabinet));
       if (!dirty) fillExpenses();
       const job = cabinet.refresh_job || cabinet.job;
       if (!job) status('История за 12 месяцев будет загружена автоматически после подключения API.');
@@ -103,9 +110,17 @@
       changed();
     } catch (error) { if (current === epoch && ticket === requestId) status(error.message,true); }
     finally {
-      if (current === epoch && ticket === requestId) { busy = false; render(); if (reloadQueued) { reloadQueued=false; load(); } else if (historyLoading || (cabinet?.refresh_job || cabinet?.job)?.status==='loading') timer=setTimeout(()=>load(),30000); }
+      if (current === epoch && ticket === requestId) { busy = false; render(); if (reloadQueued) { reloadQueued=false; load(); } else schedulePoll(); }
     }
   }
+  function schedulePoll() {
+    clearTimeout(timer);
+    if (!document.hidden && (historyLoading || (cabinet?.refresh_job || cabinet?.job)?.status==='loading')) timer=setTimeout(()=>load('cabinet_status'),30000);
+  }
+  document.addEventListener?.('visibilitychange',()=>{
+    clearTimeout(timer);
+    if (!document.hidden && context?.allowed && historyLoading) load('cabinet_status');
+  });
   async function saveExpenses(month, operational, external) {
     if (!context?.allowed) throw new Error('Подключение недоступно');
     const current = epoch;
@@ -138,7 +153,7 @@
   }
   function setContext(next) {
     if (context?.shopId === next.shopId && context?.allowed === next.allowed) return;
-    context = {...next}; ++epoch; ++requestId; clearTimeout(timer); busy=false; cabinet=null; dirty=false; reloadQueued=false; refreshing=false; historyLoading=false; invalidate();
+    context = {...next}; ++epoch; ++requestId; clearTimeout(timer); busy=false; cabinet=null; dirty=false; reloadQueued=false; refreshing=false; historyLoading=false; revision=null; invalidate();
     el('secApiCabinet').hidden = !next.allowed;
     el('apiCabinetMonth').value = defaultMonth;
     el('apiExpensesStatus').textContent = ''; status(''); fillExpenses(); render();
@@ -157,7 +172,7 @@
       if(current!==epoch || !result)return;
       cabinet=result;fillExpenses();el('apiExpensesStatus').textContent='Расходы сохранены';el('apiExpensesStatus').dataset.error='false';
     } catch(error) {if(current===epoch){el('apiExpensesStatus').textContent=error.message;el('apiExpensesStatus').dataset.error='true';}}
-    finally {if(current===epoch){busy=false;render();if(reloadQueued){reloadQueued=false;load();}else if(cabinet?.job?.status==='loading')timer=setTimeout(()=>load(),15000);}}
+    finally {if(current===epoch){busy=false;render();if(reloadQueued){reloadQueued=false;load();}else schedulePoll();}}
   });
   window.WBApiCabinet = {setContext,overview,refreshOverview,currentMonth,saveOverviewExpenses,subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);},reload:()=>{if(!context?.allowed)return;invalidate();if(busy)reloadQueued=true;else load();}};
 })();

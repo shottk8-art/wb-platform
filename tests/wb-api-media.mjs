@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from '../supabase/functions/wb-api/media.ts';
-import { processCabinetSource, readCabinet, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
+import { processCabinetSource, readCabinet, monthSettings, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
 import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
 const from='2026-09-01',to='2026-09-30';
 const block=(expenses)=>[{interval:{begin:from,end:to},stats:expenses.map(expenses=>({expenses,price:999999,daily_stats:[{expenses:888888}]}))}];
@@ -45,7 +45,7 @@ assert.ok(requests.every(x=>x.url.startsWith('https://advert-media-api.wildberri
 
 // A saved month must prefer API media even if a legacy manual setting exists.
 const data={shops:{id:PILOT_SHOP_ID,tax_rate:0},wb_api_month_settings:[{operational_expenses:0,external_promotion_expenses:0,media_spend:'999.00'}],wb_api_preview_jobs:[{...job,summary:{...job.summary,api_sources:{...job.summary.api_sources,orders:{status:'downloaded',orders_amount:'200'},internal_ads:{status:'downloaded',period_totals:{Баланс:{amount:'10.00'}}}}}}],wb_api_preview_rows:[{payload:{vendorCode:'SKU',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,retailAmount:100,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
-const reader={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},range(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
+const reader={rpc:async()=>({data:aggregateFinanceRows(data.wb_api_preview_rows.map(r=>r.payload)),error:null}),from(table){assert.notEqual(table,'wb_api_preview_rows');const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
 let result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(result.net_profit,'32.70');assert.equal(result.economy.advertising_total,'40.30');assert.ok(Math.abs(result.economy.drr_orders-20.15)<1e-10);
 assert.equal(result.sources.media.status,'downloaded');assert.equal(result.settings.media_spend,undefined);

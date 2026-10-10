@@ -151,15 +151,38 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   return { retry_after: 63 };
 }
 
-export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string) {
-  const { data: shop, error: shopError } = await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
+// Reference reducer for regression/differential tests of the persisted SQL model.
+// Serving the cabinet never fetches raw operation pages.
+export function aggregateFinanceRows(rows: any[], cursor = '0') {
+  const totals = summarize(rows).totals, products = new Map<string, any>();
+  let additional = 0n, advertisingDeductions = 0n, bought = 0;
+  for (const p of rows) {
+    additional += cents(p.additionalPayment);
+    const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
+    if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) advertisingDeductions += cents(p.deduction);
+    const article = String(p.vendorCode || p.nmId || '');
+    if (!article) continue;
+    const row = products.get(article) || {article,name:text(p.title),bought_qty:0,for_pay:0n,revenue:0n};
+    if (!row.name) row.name = text(p.title);
+    const sign = p.docTypeName === 'Возврат' ? -1 : 1;
+    if (['Продажа','Возврат'].includes(p.sellerOperName)) {row.bought_qty += sign*Number(p.quantity || 0);bought += sign*Number(p.quantity || 0);}
+    row.for_pay += BigInt(sign)*cents(p.forPay); row.revenue += BigInt(sign)*cents(p.retailAmount);
+    products.set(article,row);
+  }
+  return {version:1,cursor_id:cursor,row_count:rows.length,bought_qty:bought,
+    totals:{...totals,additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions)},
+    products:[...products.values()].map(p=>({...p,for_pay:rub(p.for_pay),revenue:rub(p.revenue)}))};
+}
+
+export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string, catalog?: any) {
+  const { data: shop, error: shopError } = catalog ? {data:catalog.shop,error:null} : await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
   if (shopError || !shop || shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
-  const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
+  const { data: settingsRows, error: settingsError } = catalog ? {data:catalog.settings.filter((s:any)=>s.month===period.dateFrom),error:null} : await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
   const settings = { operational_expenses: settingsRows?.[0]?.operational_expenses ?? '0.00', external_promotion_expenses: settingsRows?.[0]?.external_promotion_expenses ?? '0.00' };
-  let jobQuery = admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom);
-  if (completedJobId) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
-  const { data: jobs, error } = await jobQuery.order('created_at', { ascending: false }).limit(1);
+  let jobQuery = catalog ? null : admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,cursor_id,finance_model,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom);
+  if (completedJobId && jobQuery) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
+  const { data: jobs, error } = catalog ? {data:[catalog.job],error:null} : await jobQuery.order('created_at', { ascending: false }).limit(1);
   if (error) throw new ApiError(500, 'Не удалось прочитать выгрузку');
   const job = jobs?.[0];
   if (!job) return { job: null, shop, settings, products: [], finance: null, sources: {} };
@@ -182,34 +205,17 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
     products.set(article, { article, name: text(p.title) || old?.name || '', orders_count: (old?.orders_count || 0) + Number(p.orders_count),
       orders_amount: rub(cents(old?.orders_amount) + cents(p.orders_amount)), bought_qty: 0, for_pay: 0n, revenue: 0n });
   }
-  let bought = 0, rowsCount = 0;
-  const financialTotals: Record<string, bigint> = {};
-  for (let offset = 0; ; offset += 1000) {
-    const { data: rows, error } = await admin.from('wb_api_preview_rows').select('payload').eq('job_id', job.id).order('rrd_id').range(offset, offset + 999);
-    if (error) throw new ApiError(500, 'Не удалось прочитать товары');
-    rowsCount += rows.length;
-    const page = summarize(rows.map((r: any) => r.payload));
-    for (const [key, value] of Object.entries(page.totals)) financialTotals[key] = (financialTotals[key] || 0n) + cents(value);
-    for (const { payload: p } of rows) {
-      financialTotals.additionalPayment = (financialTotals.additionalPayment || 0n) + cents(p.additionalPayment);
-      // Advertising charged to the seller balance can also appear in deductions.
-      // Add back only explicit WB advertising charges before applying spend once.
-      const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
-      if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) financialTotals.advertisingDeductions = (financialTotals.advertisingDeductions || 0n) + cents(p.deduction);
-      const article = String(p.vendorCode || p.nmId || '');
-      if (!article) continue;
-      const row = products.get(article) || { article, name: text(p.title), orders_count: null, orders_amount: null, bought_qty: 0, for_pay: 0n, revenue: 0n };
-      if (!row.name) row.name = text(p.title);
-      const sign = p.docTypeName === 'Возврат' ? -1 : 1;
-      // Corrections can have quantity=1 without a new sale: never double count them.
-      if (['Продажа','Возврат'].includes(p.sellerOperName)) { row.bought_qty += sign * Number(p.quantity || 0); bought += sign * Number(p.quantity || 0); }
-      row.for_pay += BigInt(sign) * cents(p.forPay);
-      row.revenue += BigInt(sign) * cents(p.retailAmount);
-      products.set(article, row);
-    }
-    if (rows.length < 1000) break;
+  let model = job.finance_model;
+  if (model?.version !== 1 || Number(model.row_count) !== Number(job.row_count) || model.cursor_id !== String(job.cursor_id)) {
+    const {data,error} = await admin.rpc('wb_api_finance_read_model',{p_job_id:job.id});
+    if (error || !data) throw new ApiError(500,'Не удалось прочитать финансовые итоги');
+    model = data;
   }
-  const { data: costs, error: costError } = await admin.from('sku_costs').select('article,cost_price').eq('shop_id', shopId);
+  for (const p of model.products) {
+    const row = products.get(p.article) || {article:p.article,name:p.name,orders_count:null,orders_amount:null};
+    products.set(p.article,{...row,name:row.name || p.name,bought_qty:p.bought_qty,for_pay:cents(p.for_pay),revenue:cents(p.revenue)});
+  }
+  const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await admin.from('sku_costs').select('article,cost_price').eq('shop_id', shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
   const prices = new Map((costs || []).map((c: any) => [c.article, c.cost_price]));
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(p.article) ?? null }));
@@ -218,10 +224,10 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
-  const finance = financialComplete ? { ...Object.fromEntries(Object.entries(financialTotals).map(([k,v])=>[k,rub(v)])), bought_qty: bought } : null;
+  const finance = financialComplete ? {...model.totals,bought_qty:model.bought_qty} : null;
   const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);
   // Return aggregates only, never full upstream advertising rows or private leases.
-  return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: rowsCount, updated_at: job.updated_at, error_message: job.error_message },
+  return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: model.row_count, updated_at: job.updated_at, error_message: job.error_message },
     complete, period, settings, cogs, finance, products: safeProducts,
     missing_costs: missing,
     sources: { finance: { status: financialComplete ? 'downloaded' : 'loading' },
@@ -243,10 +249,29 @@ export function monthSettings(body: any) {
   return { operational_expenses: amount(body.operational_expenses), external_promotion_expenses: amount(body.external_promotion_expenses) };
 }
 
+// Poll metadata only: no summary/order arrays, finance model or raw operations.
+export async function readCabinetStatus(admin: any, shopId: string) {
+  if (shopId !== PILOT_SHOP_ID) throw new ApiError(403,'API-кабинет недоступен');
+  const {data,error} = await admin.from('wb_api_preview_jobs')
+    .select('id,date_from,date_to,status,row_count,stage:summary->pilot->>stage')
+    .eq('shop_id',shopId).order('created_at',{ascending:false});
+  if (error) throw new ApiError(500,'Не удалось прочитать статус истории');
+  const jobs = data || [];
+  return {history_loading:jobs.some((j:any)=>j.status==='loading'),
+    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.row_count,j.stage])
+      .sort((a:any,b:any)=>a[0].localeCompare(b[0])))};
+}
+
 export async function readCabinetTrend(admin: any, shopId: string) {
   if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
-  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,summary').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
+  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,summary,row_count,cursor_id,finance_model,updated_at,error_message').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
   if (error) throw new ApiError(500, 'Не удалось прочитать динамику');
+  const [shopResult,settingsResult,costsResult] = await Promise.all([
+    admin.from('shops').select('id,name,tax_rate').eq('id',shopId).eq('owner_id',PILOT_USER_ID).single(),
+    admin.from('wb_api_month_settings').select('month,operational_expenses,external_promotion_expenses').eq('shop_id',shopId),
+    admin.from('sku_costs').select('article,cost_price').eq('shop_id',shopId),
+  ]);
+  if (shopResult.error || settingsResult.error || costsResult.error) throw new ApiError(500,'Не удалось прочитать настройки динамики');
   const byMonth = new Map();
   for (const job of jobs || []) {
     const month = job.date_from.slice(0,7);
@@ -258,7 +283,8 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     } catch { continue; }
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
-    const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id);
+    const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id,
+      {shop:shopResult.data,settings:settingsResult.data || [],costs:costsResult.data || [],job});
     if (!c.complete) continue;
     byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
     if (byMonth.size >= 12) break;
