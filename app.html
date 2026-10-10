@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Панель продавца — WB и Ozon</title>
 <meta name="robots" content="noindex">
 
@@ -18,6 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261010-expense-fit1">
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261010-history1">
+<link rel="stylesheet" href="/assets/responsive.css?v=20261010-mobile1">
 </head>
 <body>
 
@@ -47,7 +48,7 @@
 <div id="loadingScreen" class="auth-shell"><span class="spinner"></span></div>
 
 <div id="appScreen" hidden>
-  <header class="topnav">
+  <header class="topnav" id="mobileSidebar">
     <div class="sidebar-inner">
       <div class="sidebar-brand">
         <div class="brandmark brandmark--logo"><img src="/assets/icons/icon.svg?v=20261007-logo1" alt=""></div>
@@ -77,7 +78,8 @@
     </div>
   </header>
 
-  <button class="mobile-menu-button" id="mobileMenuBtn" aria-label="Открыть меню" aria-expanded="false"><span></span><span></span><span></span></button>
+  <div class="mobile-toolbar"><button class="mobile-menu-button" id="mobileMenuBtn" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobileSidebar"><span></span><span></span><span></span></button><strong>Панель продавца</strong></div>
+  <button class="menu-scrim" id="menuScrim" aria-label="Закрыть меню" type="button"></button>
 
   <div class="modal-backdrop" id="questionModal" hidden>
     <div class="modal-card">
@@ -474,7 +476,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
-<script src="/assets/dashboard.js?v=20261010-familiar2"></script>
+<script src="/assets/dashboard.js?v=20261010-mobile1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261010-overview1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261010-history1"></script>
@@ -927,10 +929,10 @@
       return `
         <tr data-id="${u.id}">
           <td>${escapeHtml(u.filename)}</td>
-          <td>${u.marketplace === "ozon" ? "Ozon" : "Wildberries"}</td>
-          <td>${kindLabel[u.kind] || u.kind}</td>
-          <td>${escapeHtml(period)}</td>
-          <td class="mono">${when}</td>
+          <td data-label="Площадка">${u.marketplace === "ozon" ? "Ozon" : "Wildberries"}</td>
+          <td data-label="Тип отчёта">${kindLabel[u.kind] || u.kind}</td>
+          <td data-label="Период">${escapeHtml(period)}</td>
+          <td class="mono" data-label="Загружен">${when}</td>
           <td><button class="ghost small delete-upload-btn" title="Отменить загрузку"><svg class="icon icon-sm"><use href="#icon-trash"/></svg></button></td>
         </tr>`;
     }).join("");
@@ -972,7 +974,7 @@
       <tr data-article="${escapeHtml(c.article)}">
         <td class="mono">${escapeHtml(c.article)}</td>
         <td>${escapeHtml(c.name || "")}</td>
-        <td><input type="number" min="0" step="1" value="${c.cost_price || 0}" class="cost-input"></td>
+        <td data-label="Себестоимость за шт., ₽"><input type="number" min="0" step="1" inputmode="decimal" aria-label="Себестоимость ${escapeHtml(c.article)}" value="${c.cost_price || 0}" class="cost-input"></td>
         <td><button class="ghost small save-cost-btn" disabled>Сохранить</button></td>
       </tr>`).join("");
     tbody.querySelectorAll("tr").forEach((row) => {
@@ -1079,6 +1081,11 @@
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
 
     const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    const mobileSidebar = document.getElementById("mobileSidebar");
+    const mobileLayout = window.matchMedia("(max-width:900px)");
+    const syncMobileSidebar = () => { mobileSidebar.inert = mobileLayout.matches && !appScreen.classList.contains("menu-open"); };
+    syncMobileSidebar();
+    mobileLayout.addEventListener("change", syncMobileSidebar);
     document.getElementById('overviewDataSource').addEventListener('change',async event=>{
       overviewSource=event.target.value; ++dashboardRequest; updateOverviewSource();
       await refreshPeriods(); await renderCurrentPeriod();
@@ -1128,13 +1135,25 @@
     mobileMenuBtn.addEventListener("click", () => {
       const opened = appScreen.classList.toggle("menu-open");
       mobileMenuBtn.setAttribute("aria-expanded", String(opened));
+      mobileMenuBtn.setAttribute("aria-label", opened ? "Закрыть меню" : "Открыть меню");
+      syncMobileSidebar();
+      if (opened) mobileSidebar.querySelector(".side-menu a.active")?.focus();
     });
+    const closeMobileMenu = () => {
+      if (!appScreen.classList.contains("menu-open")) return;
+      appScreen.classList.remove("menu-open");
+      mobileMenuBtn.setAttribute("aria-expanded", "false");
+      mobileMenuBtn.setAttribute("aria-label", "Открыть меню");
+      syncMobileSidebar();
+      if (mobileLayout.matches) mobileMenuBtn.focus();
+    };
+    document.getElementById("menuScrim").addEventListener("click", closeMobileMenu);
+    document.addEventListener("keydown", event => { if (event.key === "Escape") closeMobileMenu(); });
     document.querySelectorAll(".side-menu [data-view]").forEach((link) => {
       link.addEventListener("click", (event) => {
         event.preventDefault();
         setActiveView(link.dataset.view);
-        appScreen.classList.remove("menu-open");
-        mobileMenuBtn.setAttribute("aria-expanded", "false");
+        closeMobileMenu();
       });
     });
 
@@ -1179,7 +1198,7 @@
       if (existingImg) existingImg.remove();
       if (questionPhotoUrl) { URL.revokeObjectURL(questionPhotoUrl); questionPhotoUrl = null; }
     };
-    const openQuestionModal = () => { questionText.value = ""; resetQuestionPhoto(); questionModal.hidden = false; questionText.focus(); };
+    const openQuestionModal = () => { closeMobileMenu(); questionText.value = ""; resetQuestionPhoto(); questionModal.hidden = false; questionText.focus(); };
     const closeQuestionModal = () => { questionModal.hidden = true; };
     document.getElementById("askQuestionBtn").addEventListener("click", openQuestionModal);
     document.getElementById("questionCancelBtn").addEventListener("click", closeQuestionModal);

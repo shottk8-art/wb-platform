@@ -646,10 +646,10 @@
         return `
           <tr style="--row-index:${Math.min(index, 12)}">
             <td>${abcBadge}${newBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
-            <td class="num"><div class="sku-metric"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div>${prev ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
-            <td class="num mono"><div class="sku-metric"><strong>${s.revenue == null ? '—' : fmtMoney.format(Math.round(s.revenue))}</strong>${prev && s.revenue != null ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
-            <td class="num mono">${costCell}</td>
-            <td class="num ${profitClass}"><div class="sku-metric"><strong>${s.profit == null ? '—' : fmtMoney.format(Math.round(s.profit))}</strong>${prev && s.profit != null ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
+            <td class="num" data-label="Выкупили, шт."><div class="sku-metric"><div class="qty-cell"><div class="qty-track" aria-hidden="true"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div>${prev ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
+            <td class="num mono" data-label="Выручка, ₽"><div class="sku-metric"><strong>${s.revenue == null ? '—' : fmtMoney.format(Math.round(s.revenue))}</strong>${prev && s.revenue != null ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
+            <td class="num mono" data-label="Себестоимость, ₽">${costCell}</td>
+            <td class="num ${profitClass}" data-label="Валовая прибыль, ₽"><div class="sku-metric"><strong>${s.profit == null ? '—' : fmtMoney.format(Math.round(s.profit))}</strong>${prev && s.profit != null ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
           </tr>`;
       }).join("");
 
@@ -659,10 +659,10 @@
       tfoot.innerHTML = `
         <tr>
           <td>Итого</td>
-          <td class="num mono">${fmtQty.format(tot.qty)}</td>
-          <td class="num mono">${tot.rev == null ? '—' : fmtMoney.format(Math.round(tot.rev))}</td>
-          <td class="num mono">${tot.cost == null ? '—' : fmtMoney.format(Math.round(tot.cost))}</td>
-          <td class="num mono">${tot.profit == null ? '—' : fmtMoney.format(Math.round(tot.profit))}</td>
+          <td class="num mono" data-label="Выкупили, шт.">${fmtQty.format(tot.qty)}</td>
+          <td class="num mono" data-label="Выручка, ₽">${tot.rev == null ? '—' : fmtMoney.format(Math.round(tot.rev))}</td>
+          <td class="num mono" data-label="Себестоимость, ₽">${tot.cost == null ? '—' : fmtMoney.format(Math.round(tot.cost))}</td>
+          <td class="num mono" data-label="Валовая прибыль, ₽">${tot.profit == null ? '—' : fmtMoney.format(Math.round(tot.profit))}</td>
         </tr>`;
     }
 
@@ -694,7 +694,7 @@
         },
         scales: {
           x: { grid: { color: "rgba(127,127,127,.15)" }, ticks: { color: getComputedStyle(document.body).getPropertyValue("--ink-mute") } },
-          y: { grid: { display: false }, ticks: { color: getComputedStyle(document.body).getPropertyValue("--ink-soft"), font: { size: 11 } } },
+          y: { grid: { display: false }, ticks: { color: getComputedStyle(document.body).getPropertyValue("--ink-soft"), font: { size: 11 }, callback: function(value) { const label = this.getLabelForValue(value); const limit = canvas.clientWidth < 480 ? 17 : 30; return label.length > limit ? label.slice(0, limit - 1) + '…' : label; } } },
         },
       },
     });

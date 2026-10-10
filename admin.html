@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Панель продавца WB — админка</title>
 <meta name="robots" content="noindex">
 
@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261007-type1">
+<link rel="stylesheet" href="/assets/responsive.css?v=20261010-mobile1">
 </head>
 <body>
 
@@ -143,8 +144,8 @@
           ${escapeHtml(q.message)}
           ${q.attachment_path ? `<div class="q-thumb-slot" data-path="${escapeHtml(q.attachment_path)}"></div>` : ""}
         </td>
-        <td class="mono">${fmtDate(q.created_at)}</td>
-        <td><span class="badge badge--${q.status}">${statusLabel[q.status] || q.status}</span></td>
+        <td class="mono" data-label="Когда">${fmtDate(q.created_at)}</td>
+        <td data-label="Статус"><span class="badge badge--${q.status}">${statusLabel[q.status] || q.status}</span></td>
         <td>${q.status !== "answered" ? `<button class="ghost small mark-answered-btn">Отметить отвеченным</button>` : ""}</td>
       </tr>`).join("");
     tbody.querySelectorAll(".mark-answered-btn").forEach((btn) => {
@@ -188,9 +189,9 @@
     document.getElementById("usersBody").innerHTML = (overview.users || []).map((u) => `
       <tr>
         <td>${escapeHtml(u.full_name || (u.telegram_username ? "@" + u.telegram_username : "—"))}</td>
-        <td class="mono">${escapeHtml(u.email || "—")}</td>
-        <td class="mono">${fmtDate(u.created_at)}</td>
-        <td class="mono">${fmtDate(u.last_sign_in_at)}</td>
+        <td class="mono" data-label="Email">${escapeHtml(u.email || "—")}</td>
+        <td class="mono" data-label="Регистрация">${fmtDate(u.created_at)}</td>
+        <td class="mono" data-label="Последний вход">${fmtDate(u.last_sign_in_at)}</td>
       </tr>`).join("") || `<tr><td colspan="4" class="empty">Пусто</td></tr>`;
 
     document.getElementById("shopsBody").innerHTML = (overview.shops || []).map((s) => {
@@ -199,12 +200,12 @@
       return `
       <tr>
         <td>${escapeHtml(s.name)}</td>
-        <td><span class="badge">${s.marketplace === "ozon" ? "Ozon" : "Wildberries"}</span></td>
-        <td>${escapeHtml(ownerLabel)}</td>
-        <td class="mono">${s.member_count}</td>
-        <td class="mono">${s.upload_count}</td>
-        <td class="mono">${fmtDate(s.last_upload_at)}</td>
-        <td>${s.share_enabled ? `<span class="badge badge--answered">включена</span>` : `<span class="badge badge--read">выключена</span>`}</td>
+        <td data-label="Площадка"><span class="badge">${s.marketplace === "ozon" ? "Ozon" : "Wildberries"}</span></td>
+        <td data-label="Владелец">${escapeHtml(ownerLabel)}</td>
+        <td class="mono" data-label="Участников">${s.member_count}</td>
+        <td class="mono" data-label="Загрузок">${s.upload_count}</td>
+        <td class="mono" data-label="Последняя загрузка">${fmtDate(s.last_upload_at)}</td>
+        <td data-label="Витрина">${s.share_enabled ? `<span class="badge badge--answered">включена</span>` : `<span class="badge badge--read">выключена</span>`}</td>
       </tr>`;
     }).join("") || `<tr><td colspan="7" class="empty">Пусто</td></tr>`;
 
