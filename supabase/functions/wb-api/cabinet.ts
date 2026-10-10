@@ -1,6 +1,6 @@
 import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
 import { advertising, economy } from './economy.ts';
-import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from './media.ts';
+import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaSource } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -50,7 +50,9 @@ async function commit(admin: any, job: any, summary: any, status = 'loading') {
   const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status, failure_count: 0, error_message: null, updated_at: new Date().toISOString() }).eq('id', job.id).eq('shop_id', job.shop_id);
   if (error) throw new ApiError(500, 'Не удалось сохранить загрузку источника');
 }
-// A durable, bounded request per cron tick; no browser-owned continuation.
+// Durable, bounded work per cron tick; no browser-owned continuation. Media
+// permits a personal-token burst of 10; inspect at most five declined campaigns
+// (and one statistics request) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   if (job.shop_id !== PILOT_SHOP_ID) throw new ApiError(400, 'API-кабинет доступен только для GREEN FLOW');
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
@@ -89,16 +91,24 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   } else if (pilot.stage === 'media_list' || pilot.stage === 'media_stats') {
     summary.api_sources ||= {};
     const media = summary.api_sources.media ||= { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
+    // Old jobs discarded campaign lifetimes and can poll a past campaign
+    // forever. Re-read only the media list, retaining all financial sources.
+    if (pilot.stage === 'media_stats' && media.selection_version !== 2 && media.list_offset > 0) {
+      pilot.stage = 'media_list';
+      Object.assign(media, { campaign_ids: [], campaign_records: [], list_offset: 0, stats_offset: 0, partial_amount: '0.00', pending_count: 0 });
+    }
     Object.assign(media, { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null });
     const fetchMedia = async (url: string, body?: any) => {
       try { return await wbFetch(token, url, body); }
       catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Нет доступа к WB Медиа. Проверьте категорию «Продвижение» в персональном ключе'); throw e; }
     };
     if (pilot.stage === 'media_list') {
-      const page = mediaCampaignPage(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/adverts?limit=100&offset=${media.list_offset || 0}&order=id&direction=asc`));
-      const previous: number[] = media.campaign_ids || [], seen = new Set(previous);
-      if (page.some(id => seen.has(id))) throw new ApiError(502, 'WB Медиа повторил кампании между страницами');
-      media.campaign_ids = [...previous, ...page];
+      const page = mediaCampaignSelection(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/adverts?limit=100&offset=${media.list_offset || 0}&order=id&direction=asc`), job.date_from, job.date_to);
+      const previous = media.campaign_records || [], seen = new Set(previous.map((row: any) => row.id));
+      if (page.some(row => seen.has(row.id))) throw new ApiError(502, 'WB Медиа повторил кампании между страницами');
+      media.campaign_records = [...previous, ...page];
+      media.campaign_ids = media.campaign_records.filter((row: any) => !row.excluded_reason).map((row: any) => row.id);
+      media.selection_version = 2;
       media.list_offset = (media.list_offset || 0) + page.length;
       if (page.length < 100) {
         media.stats_offset = 0; media.partial_amount = '0.00';
@@ -106,34 +116,31 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
         if (!media.campaign_ids.length) Object.assign(media, { status: 'downloaded', amount: '0.00', fetched_at: new Date().toISOString(), source: 'wb_media_interval_stats' });
       }
     } else {
-      const id = media.campaign_ids?.[media.stats_offset || 0];
-      if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(502, 'Не удалось продолжить загрузку WB Медиа');
-      const response = await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]);
-      let amount;
-      try { amount = mediaIntervalAmount(response, job.date_from, job.date_to); }
-      catch (error) {
-        // Store schema diagnostics only, never upstream bodies/names/credentials.
-        const first = Array.isArray(response) ? response[0] : null;
-        media.format_issue = { blocks: Array.isArray(response) ? response.length : null, has_error: !!first?.error,
-          error_summary: typeof first?.error === 'string' && first.error.length <= 150 && /^[А-Яа-яЁёA-Za-z\s.,!?()-]+$/.test(first.error) && !/[A-Za-z]{40}/.test(first.error) ? first.error : null,
-          fields: ['interval','stats','dates','advert_id','error','id'].filter(k=>first && Object.hasOwn(first,k)),
-          begin: /^\d{4}-\d{2}-\d{2}$/.test(first?.interval?.begin) ? first.interval.begin : null,
-          end: /^\d{4}-\d{2}-\d{2}$/.test(first?.interval?.end) ? first.interval.end : null,
-          stats_count: Array.isArray(first?.stats) ? first.stats.length : null };
-        const { error: writeError } = await admin.from('wb_api_preview_jobs').update({summary}).eq('id',job.id).eq('shop_id',job.shop_id);
-        if (writeError) throw new ApiError(500, 'Не удалось сохранить диагностику WB Медиа');
-        throw error;
-      }
-      delete media.format_issue;
-      if (amount === null) {
-        await commit(admin, job, summary);
-        return { retry_after: 63 };
-      }
-      media.partial_amount = rub(cents(media.partial_amount) + cents(amount));
-      media.stats_offset = (media.stats_offset || 0) + 1;
-      if (media.stats_offset === media.campaign_ids.length) {
-        Object.assign(media, { status: 'downloaded', amount: media.partial_amount, fetched_at: new Date().toISOString(), source: 'wb_media_interval_stats' });
-        pilot.stage = 'done';
+      for (let checked = 0; checked < 5; checked++) {
+        const id = media.campaign_ids?.[media.stats_offset || 0];
+        if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(502, 'Не удалось продолжить загрузку WB Медиа');
+        const record = media.campaign_records?.find((row: any) => row.id === id);
+        if (record?.status === 8 && !record.evidence) {
+          record.evidence = mediaCampaignEvidence(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/advert?id=${id}`), id, job.date_from, job.date_to);
+        }
+        const provedZero = record?.evidence?.no_spend_in_month === true;
+        const amount = provedZero ? '0.00' : mediaIntervalAmount(await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]), job.date_from, job.date_to);
+        delete media.format_issue;
+        if (amount === null) {
+          media.pending_count = (media.pending_count || 0) + 1;
+          await commit(admin, job, summary);
+          if (media.pending_count >= 8) throw new ApiError(400, 'WB Медиа пока не отдаёт статистику. Данные сохранены; попробуйте продолжить загрузку позже');
+          return { retry_after: 63 };
+        }
+        media.pending_count = 0;
+        media.partial_amount = rub(cents(media.partial_amount) + cents(amount));
+        media.stats_offset = (media.stats_offset || 0) + 1;
+        if (media.stats_offset === media.campaign_ids.length) {
+          Object.assign(media, { status: 'downloaded', amount: media.partial_amount, fetched_at: new Date().toISOString(), source: 'wb_media_interval_stats' });
+          pilot.stage = 'done';
+          break;
+        }
+        if (!provedZero) break;
       }
     }
     // Cursor and totals are committed together: retries cannot duplicate spend.

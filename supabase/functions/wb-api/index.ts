@@ -147,7 +147,11 @@ Deno.serve(async (req) => {
         const { error } = await admin.from('wb_api_preview_jobs').update({summary,status:'loading',failure_count:0,error_message:null,updated_at:new Date().toISOString()}).eq('id',cabinet.job.id).eq('shop_id',shopId).eq('status','complete');
         if (error) throw new ApiError(500, 'Не удалось начать загрузку WB Медиа');
       } else if (cabinet.job?.status === 'error' && body.refresh !== true && cabinet.job.stage !== 'done') {
-        const { error } = await admin.from('wb_api_preview_jobs').update({ status: 'loading', failure_count: 0, error_message: null }).eq('id', cabinet.job.id).eq('shop_id', shopId);
+        const { data: oldJob, error: readError } = await admin.from('wb_api_preview_jobs').select('summary').eq('id', cabinet.job.id).eq('shop_id', shopId).single();
+        if (readError || !oldJob) throw new ApiError(500, 'Не удалось продолжить загрузку месяца');
+        const summary = structuredClone(oldJob.summary);
+        if (summary?.api_sources?.media) summary.api_sources.media.pending_count = 0;
+        const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status: 'loading', failure_count: 0, error_message: null }).eq('id', cabinet.job.id).eq('shop_id', shopId);
         if (error) throw new ApiError(500, 'Не удалось возобновить загрузку');
       } else {
         const { error } = await admin.from('wb_api_preview_jobs').insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo,

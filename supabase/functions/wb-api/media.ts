@@ -15,6 +15,42 @@ export function mediaCampaignPage(response: any) {
   });
 }
 
+export function mediaCampaignSelection(response: any, from: string, to: string) {
+  const ids = mediaCampaignPage(response);
+  const begin = Date.parse(`${from}T00:00:00+03:00`);
+  const end = Date.parse(`${to}T00:00:00+03:00`) + 86400000;
+  const timestamp = (value: unknown) => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) return null;
+    const day = value.slice(0,10), calendar = new Date(`${day}T00:00:00Z`);
+    return Number.isFinite(calendar.getTime()) && calendar.toISOString().slice(0,10) === day ? value : null;
+  };
+  return ids.map((id: number, index: number) => {
+    const row = response[index], created_at = timestamp(row.createTime), ended_at = timestamp(row.endTime);
+    const status = Number.isSafeInteger(row.status) ? row.status : null;
+    // Only exclude provably disjoint lifetimes. A paused/declined/unknown
+    // campaign without a reliable end date may still have spent in the month.
+    const reason = created_at && Date.parse(created_at) >= end ? 'created_after_month'
+      : status === 7 && ended_at && Date.parse(ended_at) < begin && (!created_at || Date.parse(ended_at) >= Date.parse(created_at)) ? 'completed_before_month' : null;
+    return { id, status, created_at, ended_at, excluded_reason: reason };
+  });
+}
+
+export function mediaCampaignEvidence(response: any, id: number, from: string, to: string) {
+  if (response === null) return { no_spend_in_month: false, lifetime_expenses: null };
+  if (response?.advertId !== id) throw new ApiError(502, 'WB Медиа вернул сведения о другой кампании');
+  const value = response.extended?.expenses;
+  const amount = value == null ? null : cents(value);
+  if (amount !== null && amount < 0n) throw new ApiError(502, 'Некорректные расходы кампании WB Медиа');
+  // A genuine lifetime total of zero proves zero for any closed subperiod.
+  // Missing expenses, missing items and a declined status alone do not.
+  let outside = false;
+  if (Array.isArray(response.items) && response.items.length > 0) {
+    const items = mediaCampaignSelection(response.items.map((item: any) => ({advertId:item?.id,status:item?.status,createTime:item?.date_from,endTime:item?.date_to})),from,to);
+    outside = items.every(item => item.excluded_reason !== null);
+  }
+  return { no_spend_in_month: amount === 0n || outside, lifetime_expenses: amount === null ? null : rub(amount) };
+}
+
 export function mediaIntervalAmount(response: any, from: string, to: string) {
   // One campaign/interval per request makes coverage unambiguous. Empty/missing
   // wrappers, missing expenses and "campaign not found" are NOT proof of zero.
