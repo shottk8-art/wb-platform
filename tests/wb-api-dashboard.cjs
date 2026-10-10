@@ -35,3 +35,7 @@ const unknownRows=[];api.renderKPI({innerHTML:'',appendChild:card=>unknownRows.p
 assert.ok(unknownRows.find(row=>row.html.includes('Медийная реклама')).html.includes('—'));
 assert.equal(api.fromApiCabinet(null).netProfit,null);
 console.log('API → familiar dashboard: passed (exact server totals, signed expenses, true SKU revenue, missing data, incumbent cards).');
+const css=fs.readFileSync(require('node:path').join(__dirname,'../assets/styles.css'),'utf8');
+assert.match(css,/\.expense-card\{container-type:inline-size;/);
+assert.match(css,/@container \(max-width:460px\)/,'expense rows adapt to card width, not just phone viewport');
+assert.match(css,/#secAnalytics \.expense-section-head\{display:block;/,'heading does not reserve an empty hint column');

@@ -819,7 +819,7 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
 .exp-chart-center{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; pointer-events:none;}
 .exp-chart-center strong{max-width:132px; overflow:hidden; color:var(--ink); font-family:var(--font-data); font-size:20px; font-weight:700; line-height:1.1; letter-spacing:-.03em; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums lining-nums;}
 .exp-chart-center span{margin-top:5px; color:var(--ink-mute); font-size:11px; letter-spacing:.01em;}
-.expense-card .exp-row{grid-template-columns:minmax(130px,1.25fr) minmax(64px,.8fr) 146px; gap:12px; padding:9px 0;}
+.expense-card .exp-row{grid-template-columns:minmax(0,1.25fr) minmax(24px,.8fr) max-content; gap:12px; padding:9px 0;}
 .expense-card .exp-name{display:flex; align-items:center; gap:9px; min-width:0; color:var(--ink-soft); font-size:12px;}
 .expense-card .exp-name i{width:8px; height:8px; flex:0 0 auto; border-radius:50%; background:var(--expense-color);}
 .expense-card .exp-name span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -891,6 +891,19 @@ input::placeholder,textarea::placeholder{color:#8e8e93;}
 
 @media (prefers-reduced-motion:reduce){
   .expense-card .exp-fill,.sku-card table.sku tbody tr{animation:none;}
+}
+
+/* Fit the expense component itself, including the narrow desktop column. */
+.expense-card{container-type:inline-size;}
+#secAnalytics .expense-section-head{display:block;}
+.expense-section-head h2{display:flex; align-items:center; gap:6px;}
+.expense-section-head .metric-help{flex:none;}
+@container (max-width:460px){
+  .expense-card .exp-row{grid-template-columns:minmax(0,1fr) max-content; gap:8px 12px;}
+  .expense-card .exp-name{grid-column:1; grid-row:1;}
+  .expense-card .exp-name span{white-space:normal; overflow-wrap:anywhere;}
+  .expense-card .exp-meta{grid-column:2; grid-row:1; min-width:0;}
+  .expense-card .exp-track{grid-column:1 / -1; grid-row:2;}
 }
 
 /* ---------- финальный UI-аудит: типографика, фокус и адаптивность ---------- */
