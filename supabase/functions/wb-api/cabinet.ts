@@ -109,7 +109,26 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
       const id = media.campaign_ids?.[media.stats_offset || 0];
       if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(502, 'Не удалось продолжить загрузку WB Медиа');
       const response = await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]);
-      const amount = mediaIntervalAmount(response, job.date_from, job.date_to);
+      let amount;
+      try { amount = mediaIntervalAmount(response, job.date_from, job.date_to); }
+      catch (error) {
+        // Store schema diagnostics only, never upstream bodies/names/credentials.
+        const first = Array.isArray(response) ? response[0] : null;
+        media.format_issue = { blocks: Array.isArray(response) ? response.length : null, has_error: !!first?.error,
+          error_summary: typeof first?.error === 'string' && first.error.length <= 150 && /^[А-Яа-яЁёA-Za-z\s.,!?()-]+$/.test(first.error) && !/[A-Za-z]{40}/.test(first.error) ? first.error : null,
+          fields: ['interval','stats','dates','advert_id','error','id'].filter(k=>first && Object.hasOwn(first,k)),
+          begin: /^\d{4}-\d{2}-\d{2}$/.test(first?.interval?.begin) ? first.interval.begin : null,
+          end: /^\d{4}-\d{2}-\d{2}$/.test(first?.interval?.end) ? first.interval.end : null,
+          stats_count: Array.isArray(first?.stats) ? first.stats.length : null };
+        const { error: writeError } = await admin.from('wb_api_preview_jobs').update({summary}).eq('id',job.id).eq('shop_id',job.shop_id);
+        if (writeError) throw new ApiError(500, 'Не удалось сохранить диагностику WB Медиа');
+        throw error;
+      }
+      delete media.format_issue;
+      if (amount === null) {
+        await commit(admin, job, summary);
+        return { retry_after: 63 };
+      }
       media.partial_amount = rub(cents(media.partial_amount) + cents(amount));
       media.stats_offset = (media.stats_offset || 0) + 1;
       if (media.stats_offset === media.campaign_ids.length) {

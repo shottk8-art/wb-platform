@@ -20,6 +20,10 @@ export function mediaIntervalAmount(response: any, from: string, to: string) {
   // wrappers, missing expenses and "campaign not found" are NOT proof of zero.
   if (!Array.isArray(response) || response.length !== 1) throw new ApiError(502, 'WB Медиа не вернул статистику за месяц');
   const block = response[0];
+  const error = typeof block?.error === 'string' ? block.error.trim().toLowerCase() : '';
+  // Observed WB response: statistics are prepared asynchronously. This is
+  // neither a failed request nor evidence of zero spend; keep the same cursor.
+  if (error === 'статистика в процессе получения' && block?.interval?.begin === from && block?.interval?.end === to) return null;
   if (block?.error || block?.interval?.begin !== from || block?.interval?.end !== to || !Array.isArray(block.stats)) {
     throw new ApiError(502, 'Не удалось проверить период расходов WB Медиа');
   }
