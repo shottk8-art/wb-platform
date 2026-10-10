@@ -18,7 +18,7 @@ begin
     (j,3,'{"vendorCode":"SKU","sellerOperName":"Коррекция продаж","docTypeName":"Продажа","quantity":1,"forPay":5}'),
     (j,4,'{"sellerOperName":"Удержание","bonusTypeName":"WB.Медиа","deduction":9}'),
     (j,5,'{"vendorCode":"RETURN","sellerOperName":"Возврат","docTypeName":"Возврат","quantity":2,"retailAmount":"2.22","forPay":"1.11"}'),
-    (j,6,'{"sellerOperName":"Продажа","docTypeName":"Продажа","quantity":50,"retailAmount":"0.01","forPay":"0.01"}'),
+    (j,6,'{"nmId":0,"sellerOperName":"Продажа","docTypeName":"Продажа","quantity":50,"retailAmount":"0.01","forPay":"0.01"}'),
     (j,7,'{"retailAmount":1000}'); -- uncommitted worker tail, must be ignored
   m=public.wb_api_finance_read_model(j);
   assert m->>'row_count'='6'; assert m->>'bought_qty'='-1';
@@ -32,6 +32,11 @@ begin
   update public.wb_api_preview_jobs set cursor_id=7,row_count=7 where id=j;
   m=public.wb_api_finance_read_model(j);
   assert m->>'row_count'='7'; assert m->'totals'->>'retailAmount'='1077.79';
+  insert into public.wb_api_preview_rows(job_id,rrd_id,payload)
+    values(j,8,'{"vendorCode":"0","nmId":0,"sellerOperName":"Продажа","docTypeName":"Продажа","quantity":1,"retailAmount":3,"forPay":2}');
+  update public.wb_api_preview_jobs set cursor_id=8,row_count=8 where id=j;
+  m=public.wb_api_finance_read_model(j);
+  assert exists (select 1 from jsonb_array_elements(m->'products') p where p->>'article'='0' and p->>'bought_qty'='1');
   insert into public.wb_api_preview_jobs(shop_id,date_from,date_to)
     values(s,'2026-08-01','2026-08-31') returning id into empty_job;
   m=public.wb_api_finance_read_model(empty_job);
