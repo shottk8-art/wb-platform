@@ -31,7 +31,7 @@ export function economy(finance: any, cogs: string | null, settings: any, media:
   const reasons: string[] = [];
   if (!complete) reasons.push('Не все источники загружены');
   if (cogs == null) reasons.push('Не заполнена себестоимость');
-  if (media == null) reasons.push('Укажите расходы WB Media или 0, если их не было');
+  if (media == null) reasons.push('Расходы WB Медиа ещё не получены из API');
   if (ads.unknown.length || undated) reasons.push('Есть неизвестные типы или даты рекламных списаний');
   const profit = reasons.length ? null : rub(payout + advertisingDeductions - cents(cogs) - tax - advertisingTotal! - cents(settings.operational_expenses));
   return { payout: rub(payout), tax: rub(tax), internal_ads: ads.paid, promo: ads.bonus,

@@ -20,7 +20,7 @@
 #secWbApi [hidden], #secWbApi[hidden], #secApiCabinet[hidden], #secApiCabinet [hidden], .app-view[hidden], #overviewHelp[hidden] { display:none !important; }
 .api-source-field { max-width:320px; margin-bottom:24px; }
 .api-source-field select { width:100%; }
-.api-expenses-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:20px 0; }
+.api-expenses-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin:20px 0; }
 .api-expenses-grid input { width:100%; font-size:16px; }
 .api-data-details { margin:18px 0 0; font-size:13px; line-height:1.6; }
 .api-data-details summary { width:fit-content; min-height:44px; padding:12px 0; color:var(--ink-soft); cursor:pointer; }

@@ -90,7 +90,7 @@ const chain = (table) => {
   return obj;
 };
 const sandbox = {
-  ...core, Response, Request, AbortSignal, Set, Date, BigInt,
+  ...core, Response, Request, AbortSignal, Set, Date, BigInt, structuredClone,
   Deno: { env: { get: () => 'mock' }, serve: (fn) => { handler = fn; } },
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
@@ -152,8 +152,7 @@ upstreamRetry = '43109';
 assert.equal((await worker()).body.retry_after, 43109); assertions++;
 assert.ok(Date.parse(dbWrites.findLast((item) => item.table === 'wb_api_connections').values.next_request_at) > Date.now() + 43100 * 1000); assertions++;
 assert.ok(!JSON.stringify(completed.body).includes(storedKey)); assertions++;
-// A brand new month has no media source. It must enqueue successfully without
-// assuming an existing confirmation, and must never call WB from the browser.
+// A brand new month has no media source and never calls WB from the browser.
 const beforeCabinet = outbound.length;
 const firstCabinet = await invoke({ action: 'cabinet_start', month: '2026-08' });
 assert.equal(firstCabinet.status, 200); assertions++;
@@ -161,15 +160,28 @@ assert.equal(firstCabinet.body.background, true); assertions++;
 assert.equal(dbWrites.findLast(item => item.operation === 'insert').values.summary.pilot.stage, 'finance'); assertions++;
 assert.equal(JSON.stringify(dbWrites.findLast(item => item.operation === 'insert').values.summary.api_sources), '{}'); assertions++;
 assert.equal(outbound.length, beforeCabinet); assertions++;
+const originalReadCabinet=sandbox.readCabinet;
+job.summary={pilot:{stage:'done'},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{status:'confirmed_by_user',amount:'0.00'}}};
+sandbox.readCabinet=async()=>({job:{id:job.id,status:'complete'},complete:false,finance:{forPay:'80'},sources:{orders:{status:'downloaded'},ads:{status:'downloaded'},media:{status:'pending',amount:null}}});
+assert.equal((await invoke({action:'cabinet_start',month:'2026-09'})).status,200); assertions++;
+assert.equal(job.summary.pilot.stage,'media_list'); assertions++;
+assert.equal(job.summary.pilot.finance_complete,true); assertions++;
+assert.equal(job.summary.api_sources.media.amount,null); assertions++;
+assert.equal(job.summary.api_sources.orders.status,'downloaded'); assertions++;
+assert.equal(outbound.length,beforeCabinet); assertions++;
+sandbox.readCabinet=originalReadCabinet;
 assert.equal((await invoke({ action: 'cabinet', month: '2026-09', shop_id: '00000000-0000-4000-8000-000000000009' })).status, 403); assertions++;
 sandbox.readCabinet = async () => ({ job: { status: 'complete' }, complete: true, sources: {} });
 assert.equal((await invoke({ action: 'cabinet_start', month: '2026-09' })).body.cached, true); assertions++;
 assert.equal(outbound.length, beforeCabinet); assertions++;
-const settingsWrite = await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:'10.01',external_promotion_expenses:'0',media_spend:'0'});
+const settingsWrite = await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:'10.01',external_promotion_expenses:'0'});
 assert.equal(settingsWrite.status,200); assertions++;
 assert.equal(dbWrites.at(-1).table,'wb_api_month_settings'); assertions++;
 assert.equal(dbWrites.at(-1).values.operational_expenses,'10.01'); assertions++;
-assert.equal(dbWrites.at(-1).values.media_spend,'0.00'); assertions++;
+assert.equal(Object.hasOwn(dbWrites.at(-1).values,'media_spend'),false); assertions++;
+const writesBeforeMedia=dbWrites.length;
+assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:0,external_promotion_expenses:0,media_spend:0})).status,400); assertions++;
+assert.equal(dbWrites.length,writesBeforeMedia); assertions++;
 assert.equal(dbWrites.at(-1).values.shop_id,PILOT_SHOP_ID); assertions++;
 assert.equal(dbWrites.at(-1).values.month,'2026-09-01'); assertions++;
 assert.equal(outbound.length,beforeCabinet); assertions++;

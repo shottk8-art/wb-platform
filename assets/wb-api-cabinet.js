@@ -23,10 +23,10 @@
     el('apiCabinetRefresh').hidden = !cabinet?.complete;
     el('apiCabinetMonth').disabled = busy;
     el('apiCabinetSync').textContent = loading ? 'Загрузка на сервере' : cabinet?.job?.status === 'error' ? 'Повторить загрузку' : cabinet?.complete ? 'Обновить расчёт' : 'Загрузить данные';
-    for (const id of ['apiOperationalExpenses','apiExternalExpenses','apiMediaExpenses']) el(id).disabled = busy || !context?.allowed;
+    for (const id of ['apiOperationalExpenses','apiExternalExpenses']) el(id).disabled = busy || !context?.allowed;
     el('apiSaveExpenses').disabled = busy || !context?.allowed || !dirty;
     const sources = cabinet?.sources || {}, f = cabinet?.finance;
-    const labels = {downloaded:'Получено из API',loading:'Загружается',pending:'Ожидает загрузки',confirmed_by_user:'Подтверждено владельцем',needs_confirmation:'Нужно подтверждение'};
+    const labels = {downloaded:'Получено из API',loading:'Загружается',pending:'Ожидает загрузки'};
     el('apiCabinetSources').innerHTML = [['finance','Финансы'],['orders','Заказы'],['ads','Внутренняя реклама'],['media','WB Media']].map(([key,label]) => {
       const state = sources[key]?.status || 'pending';
       return `<li><span>${label}</span><strong data-state="${esc(state)}">${esc(labels[state] || 'Требует проверки')}</strong></li>`;
@@ -45,15 +45,14 @@
       f ? missing ? `Себестоимость не заполнена: ${missing} товаров с выкупами.` : 'Себестоимость заполнена для товаров с выкупами.' : 'Себестоимость проверим после загрузки финансов.',
       `Ставка налога: ${number(cabinet?.shop?.tax_rate)}%.`, `Себестоимость выкупов: ${money(cabinet?.cogs)}.`,
       sources.ads?.undated ? `Списания без даты: ${sources.ads.undated}. Не распределены по месяцам.` : 'Реклама распределяется по дате списания, время Москвы.',
+      sources.media?.status === 'downloaded' ? `WB Медиа: ${money(sources.media.amount)} — получено автоматически за выбранный месяц.` : 'WB Медиа получим автоматически через API. Неполная загрузка не считается нулём.',
     ].map(s=>`<li>${esc(s)}</li>`).join('');
-    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Прибыль = к перечислению после удержаний − себестоимость − налог − денежная реклама − операционные расходы − внешнее продвижение. Реклама в удержаниях не вычитается повторно. Бонусы — справочно. Данные API не публикуются в витрине.' : 'Загрузите закрытый месяц. Сервер последовательно получит финансы, заказы и внутреннюю рекламу; данные других магазинов не изменятся.';
+    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Прибыль = к перечислению после удержаний − себестоимость − налог − денежная реклама − операционные расходы − внешнее продвижение. Внутренняя реклама и WB Медиа получены из API. Реклама в удержаниях не вычитается повторно. Бонусы — справочно. Данные API не публикуются в витрине.' : 'Загрузите закрытый месяц. Сервер последовательно получит финансы, заказы, внутреннюю рекламу и WB Медиа; данные других магазинов не изменятся.';
   }
   function fillExpenses() {
     const settings = cabinet?.settings || {};
     el('apiOperationalExpenses').value = settings.operational_expenses ?? 0;
     el('apiExternalExpenses').value = settings.external_promotion_expenses ?? 0;
-    const media = cabinet?.sources?.media;
-    el('apiMediaExpenses').value = settings.media_spend ?? (media?.status === 'confirmed_by_user' ? media.amount : '') ?? '';
     dirty = false;
   }
   async function overview(month = defaultMonth) {
@@ -80,14 +79,21 @@
     clearTimeout(timer); busy = true; render();
     status(action === 'cabinet_start' ? 'Ставим загрузку в очередь сервера…' : 'Читаем сохранённые данные…');
     try {
-      const result = await window.WBApi.cabinet(action,month,refresh);
+      let result = await window.WBApi.cabinet(action,month,refresh);
+      if (current !== epoch || ticket !== requestId) return;
+      const saved = result.cabinet;
+      // Upgrade an already downloaded month once; do not restart its financial
+      // history or require the owner to confirm WB Media manually.
+      if (action === 'cabinet' && saved?.job?.status === 'complete' && saved.finance && saved.sources?.orders?.status === 'downloaded' && saved.sources?.ads?.status === 'downloaded' && saved.sources?.media?.status !== 'downloaded') {
+        result = await window.WBApi.cabinet('cabinet_start',month);
+      }
       if (current !== epoch || ticket !== requestId) return;
       cabinet = result.cabinet; invalidate(); cache.set(month,Promise.resolve(cabinet));
       if (!dirty) fillExpenses();
       const job = cabinet.job;
       if (!job) status('За этот месяц выгрузки нет. Нажмите «Загрузить данные».');
       else if (job.status === 'loading') {
-        const stage = {finance:'финансы',orders:'заказы',ads:'внутренняя реклама'}[job.stage] || 'финансы';
+        const stage = {finance:'финансы',orders:'заказы',ads:'внутренняя реклама',media_list:'кампании WB Медиа',media_stats:'расходы WB Медиа'}[job.stage] || 'финансы';
         status(`Загружаются ${stage}. Сохранено ${number(job.row_count)} финансовых операций. Можно закрыть страницу.${job.error_message ? ' Последняя попытка: '+job.error_message : ''}`);
       } else if (job.status === 'error') status(job.error_message || 'Загрузка остановлена. Проверьте ключ и повторите.',true);
       else status(`${cabinet.complete ? 'Выгрузка готова' : 'Получена часть источников'} · ${new Date(job.updated_at).toLocaleString('ru-RU')}.`);
@@ -97,10 +103,10 @@
       if (current === epoch && ticket === requestId) { busy = false; render(); if (reloadQueued) { reloadQueued=false; load(); } else if (cabinet?.job?.status==='loading') timer=setTimeout(()=>load(),15000); }
     }
   }
-  async function saveExpenses(month, operational, external, media) {
+  async function saveExpenses(month, operational, external) {
     if (!context?.allowed) throw new Error('Подключение недоступно');
     const current = epoch;
-    const result = await window.WBApi.cabinet('cabinet_settings',month,false,{operational_expenses:operational,external_promotion_expenses:external,media_spend:media});
+    const result = await window.WBApi.cabinet('cabinet_settings',month,false,{operational_expenses:operational,external_promotion_expenses:external});
     if (current !== epoch || !context?.allowed) return null;
     invalidate(); cache.set(month,Promise.resolve(result.cabinet));
     if (month === el('apiCabinetMonth').value) { cabinet=result.cabinet; if(!dirty) fillExpenses(); render(); }
@@ -109,8 +115,7 @@
   async function saveOverviewExpenses(month, operational, external) {
     const snapshot = await overview(month);
     if (!snapshot?.cabinet?.complete) throw new Error('Сначала загрузите месяц в настройках');
-    const data = snapshot.cabinet, media = data.sources?.media;
-    return saveExpenses(month,operational,external,data.settings?.media_spend ?? (media?.status==='confirmed_by_user' || media?.status==='downloaded' ? media.amount : null));
+    return saveExpenses(month,operational,external);
   }
   function setContext(next) {
     if (context?.shopId === next.shopId && context?.allowed === next.allowed) return;
@@ -123,13 +128,13 @@
   el('apiCabinetMonth').addEventListener('change',()=>{cabinet=null;dirty=false;fillExpenses();el('apiExpensesStatus').textContent='';render();load();});
   el('apiCabinetSync').addEventListener('click',()=>load(cabinet?.complete ? 'cabinet' : 'cabinet_start'));
   el('apiCabinetRefresh').addEventListener('click',()=>load('cabinet_start',true));
-  for (const id of ['apiOperationalExpenses','apiExternalExpenses','apiMediaExpenses']) el(id).addEventListener('input',()=>{dirty=true;el('apiSaveExpenses').disabled=busy || !context?.allowed;});
+  for (const id of ['apiOperationalExpenses','apiExternalExpenses']) el(id).addEventListener('input',()=>{dirty=true;el('apiSaveExpenses').disabled=busy || !context?.allowed;});
   el('apiCabinetExpensesForm').addEventListener('submit',async event=>{
     event.preventDefault(); if (!context?.allowed || busy || !dirty) return;
     const current=epoch, month=el('apiCabinetMonth').value;
     clearTimeout(timer);busy=true;render();
     try {
-      const result=await saveExpenses(month,el('apiOperationalExpenses').value,el('apiExternalExpenses').value,el('apiMediaExpenses').value || null);
+      const result=await saveExpenses(month,el('apiOperationalExpenses').value,el('apiExternalExpenses').value);
       if(current!==epoch || !result)return;
       cabinet=result;fillExpenses();el('apiExpensesStatus').textContent='Расходы сохранены';el('apiExpensesStatus').dataset.error='false';
     } catch(error) {if(current===epoch){el('apiExpensesStatus').textContent=error.message;el('apiExpensesStatus').dataset.error='true';}}

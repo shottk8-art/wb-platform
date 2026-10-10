@@ -137,12 +137,21 @@ Deno.serve(async (req) => {
       if (!connection) throw new ApiError(400, 'Сначала подключите персональный ключ в настройках');
       const cabinet = await readCabinet(admin, shopId, period);
       if (cabinet.job?.status === 'loading' || (cabinet.complete && body.refresh !== true)) return json({ cabinet, cached: cabinet.complete });
-      if (cabinet.job?.status === 'error' && body.refresh !== true && cabinet.job.stage !== 'done') {
+      if (cabinet.job?.status === 'complete' && cabinet.finance && cabinet.sources.orders?.status === 'downloaded' && cabinet.sources.ads?.status === 'downloaded' && cabinet.sources.media?.status !== 'downloaded' && body.refresh !== true) {
+        // Upgrade a saved month without downloading finance/orders/ads again.
+        const { data: oldJob, error: readError } = await admin.from('wb_api_preview_jobs').select('summary').eq('id', cabinet.job.id).eq('shop_id', shopId).single();
+        if (readError) throw new ApiError(500, 'Не удалось продолжить загрузку месяца');
+        const summary = structuredClone(oldJob.summary);
+        summary.pilot = { ...summary.pilot, stage: 'media_list', finance_complete: true };
+        summary.api_sources = { ...summary.api_sources, media: { status: 'loading', date_from: period.dateFrom, date_to: period.dateTo, amount: null, campaign_ids: [], list_offset: 0 } };
+        const { error } = await admin.from('wb_api_preview_jobs').update({summary,status:'loading',failure_count:0,error_message:null,updated_at:new Date().toISOString()}).eq('id',cabinet.job.id).eq('shop_id',shopId).eq('status','complete');
+        if (error) throw new ApiError(500, 'Не удалось начать загрузку WB Медиа');
+      } else if (cabinet.job?.status === 'error' && body.refresh !== true && cabinet.job.stage !== 'done') {
         const { error } = await admin.from('wb_api_preview_jobs').update({ status: 'loading', failure_count: 0, error_message: null }).eq('id', cabinet.job.id).eq('shop_id', shopId);
         if (error) throw new ApiError(500, 'Не удалось возобновить загрузку');
       } else {
         const { error } = await admin.from('wb_api_preview_jobs').insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo,
-          summary: { pilot: { version: 1, stage: 'finance', orders_offset: 0 }, api_sources: { ...(cabinet.sources.media?.status === 'confirmed_by_user' ? { media: { ...cabinet.sources.media, date_from: period.dateFrom, date_to: period.dateTo, confirmation_source: 'shop_owner_message' } } : {}) } } });
+          summary: { pilot: { version: 2, stage: 'finance', orders_offset: 0 }, api_sources: {} } });
         if (error && error.code !== '23505') throw new ApiError(500, 'Не удалось начать загрузку');
       }
       return json({ cabinet: await readCabinet(admin, shopId, period), background: true });

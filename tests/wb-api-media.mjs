@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from '../supabase/functions/wb-api/media.ts';
+import { processCabinetSource, readCabinet, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
+import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+const from='2026-09-01',to='2026-09-30';
+const block=(expenses)=>[{interval:{begin:from,end:to},stats:expenses.map(expenses=>({expenses,price:999999,daily_stats:[{expenses:888888}]}))}];
+assert.deepEqual(mediaCampaignPage(null),[]);
+assert.deepEqual(mediaCampaignPage([]),[]);
+assert.deepEqual(mediaCampaignPage([{advertId:1},{advertId:2}]),[1,2]);
+for(const bad of [{},[{advertId:1},{advertId:1}],[{advertId:'1'}],[{advertId:0}]])assert.throws(()=>mediaCampaignPage(bad));
+assert.equal(mediaIntervalAmount(block(['10.10','0.20']),from,to),'10.30','only actual expenses, not budget/daily totals');
+assert.equal(mediaIntervalAmount(block([]),from,to),'0.00','explicit empty stats for requested interval proves zero');
+for(const bad of [null,[],[{advert_id:1,error:'campaign not found'}],block([null]),block([-1]),[{interval:{begin:'2026-08-01',end:to},stats:[]}],block(['1.001'])])assert.throws(()=>mediaIntervalAmount(bad,from,to));
+assert.equal(mediaSource({status:'confirmed_by_user',amount:0},from,to).amount,null);
+assert.equal(mediaSource({status:'downloaded',amount:'42',date_from:from,date_to:to},from,to).amount,'42.00');
+assert.equal(mediaSource({status:'downloaded',amount:'42',date_from:'2026-08-01',date_to:to},from,to).amount,null);
+assert.throws(()=>monthSettings({operational_expenses:0,external_promotion_expenses:0,media_spend:10}));
+
+const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
+let job={id:'media-test',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,summary:{pilot:{stage:'media_list'},api_sources:{media:{status:'loading',amount:null,campaign_ids:[],list_offset:0}}}};
+let fail=false, requests=[];
+const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){if(!fail)Object.assign(job,values);return Promise.resolve({error:fail?{}:null}).then(resolve,reject);}};return q;}};
+const fetcher=async(_key,url,body)=>{requests.push({url,body});return url.includes('/adverts?')?[{advertId:11},{advertId:22}]:block([body[0].id===11?'10.10':'20.20']);};
+await processCabinetSource(admin,structuredClone(job),fetcher);
+assert.equal(job.summary.pilot.stage,'media_stats');assert.equal(job.summary.api_sources.media.amount,null);
+fail=true;await assert.rejects(()=>processCabinetSource(admin,structuredClone(job),fetcher));
+assert.equal(job.summary.api_sources.media.stats_offset,0,'failed commit cannot advance money cursor');
+fail=false;await processCabinetSource(admin,structuredClone(job),fetcher);
+assert.equal(job.summary.api_sources.media.amount,null,'partial results never look complete');
+assert.equal(job.summary.api_sources.media.partial_amount,'10.10');
+await processCabinetSource(admin,structuredClone(job),fetcher);
+assert.equal(job.status,'complete');assert.equal(job.summary.api_sources.media.amount,'30.30','retry never duplicates spend');
+assert.deepEqual(requests.at(-1).body,[{id:22,interval:{begin:from,end:to}}]);
+assert.ok(requests.every(x=>x.url.startsWith('https://advert-media-api.wildberries.ru/')));
+
+// A saved month must prefer API media even if a legacy manual setting exists.
+const data={shops:{id:PILOT_SHOP_ID,tax_rate:0},wb_api_month_settings:[{operational_expenses:0,external_promotion_expenses:0,media_spend:'999.00'}],wb_api_preview_jobs:[{...job,summary:{...job.summary,api_sources:{...job.summary.api_sources,orders:{status:'downloaded',orders_amount:'200'},internal_ads:{status:'downloaded',period_totals:{Баланс:{amount:'10.00'}}}}}}],wb_api_preview_rows:[{payload:{vendorCode:'SKU',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,retailAmount:100,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
+const reader={from(table){const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},range(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
+let result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
+assert.equal(result.net_profit,'32.70');assert.equal(result.economy.advertising_total,'40.30');assert.ok(Math.abs(result.economy.drr_orders-20.15)<1e-10);
+assert.equal(result.sources.media.status,'downloaded');assert.equal(result.settings.media_spend,undefined);
+data.wb_api_preview_jobs[0].summary.api_sources.media={status:'confirmed_by_user',amount:'0.00'};
+result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
+assert.equal(result.complete,false);assert.equal(result.net_profit,null);assert.equal(result.economy.drr_orders,null);
+assert.match(result.economy.missing.join(' '),/WB Медиа.*API/);
+console.log('WB Media API: passed (periods, explicit zero, validation, retries, private read model, no manual override, profit/DRR).');

@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261010-expense-fit1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-familiar1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-media-api1">
 </head>
 <body>
 
@@ -192,7 +192,6 @@
           <div class="api-expenses-grid">
             <div><label for="apiOperationalExpenses">Операционные расходы, ₽</label><input id="apiOperationalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
             <div><label for="apiExternalExpenses">Внешнее продвижение, ₽</label><input id="apiExternalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
-            <div><label for="apiMediaExpenses">WB Media, ₽ <span class="metric-help"><button type="button" class="help-button" aria-label="Как указать WB Media" aria-expanded="false" aria-controls="mediaHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="mediaHelpText" role="tooltip">Автоматическая сумма недоступна. Укажите подтверждённые расходы: 0 — рекламы не было, пустое поле — сумма неизвестна. Неизвестная сумма не считается нулём.</span></span></label><input id="apiMediaExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" placeholder="Не подтверждено"></div>
           </div>
           <button id="apiSaveExpenses" type="submit" class="primary" disabled>Сохранить расходы</button>
           <p id="apiExpensesStatus" class="api-cabinet-status" role="status" aria-live="polite"></p>
@@ -477,7 +476,7 @@
 <script src="/assets/dashboard.js?v=20261010-familiar2"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261010-overview1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261010-familiar1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261010-media-api1"></script>
 <script>
 (function () {
   let shop = null;

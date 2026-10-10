@@ -1,5 +1,6 @@
 import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
 import { advertising, economy } from './economy.ts';
+import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -82,10 +83,42 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Для рекламных затрат включите категорию «Продвижение» в персональном ключе'); throw e; }
     summary.api_sources ||= {};
     summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to);
-    // Unknown media is not zero. An explicit month-specific owner confirmation survives refresh.
-    summary.api_sources.media ||= { status: 'needs_confirmation', date_from: job.date_from, date_to: job.date_to, amount: null };
-    pilot.stage = 'done';
-    await commit(admin, job, summary, 'complete');
+    summary.api_sources.media = { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
+    pilot.stage = 'media_list';
+    await commit(admin, job, summary);
+  } else if (pilot.stage === 'media_list' || pilot.stage === 'media_stats') {
+    summary.api_sources ||= {};
+    const media = summary.api_sources.media ||= { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
+    Object.assign(media, { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null });
+    const fetchMedia = async (url: string, body?: any) => {
+      try { return await wbFetch(token, url, body); }
+      catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Нет доступа к WB Медиа. Проверьте категорию «Продвижение» в персональном ключе'); throw e; }
+    };
+    if (pilot.stage === 'media_list') {
+      const page = mediaCampaignPage(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/adverts?limit=100&offset=${media.list_offset || 0}&order=id&direction=asc`));
+      const previous: number[] = media.campaign_ids || [], seen = new Set(previous);
+      if (page.some(id => seen.has(id))) throw new ApiError(502, 'WB Медиа повторил кампании между страницами');
+      media.campaign_ids = [...previous, ...page];
+      media.list_offset = (media.list_offset || 0) + page.length;
+      if (page.length < 100) {
+        media.stats_offset = 0; media.partial_amount = '0.00';
+        pilot.stage = media.campaign_ids.length ? 'media_stats' : 'done';
+        if (!media.campaign_ids.length) Object.assign(media, { status: 'downloaded', amount: '0.00', fetched_at: new Date().toISOString(), source: 'wb_media_interval_stats' });
+      }
+    } else {
+      const id = media.campaign_ids?.[media.stats_offset || 0];
+      if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(502, 'Не удалось продолжить загрузку WB Медиа');
+      const response = await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]);
+      const amount = mediaIntervalAmount(response, job.date_from, job.date_to);
+      media.partial_amount = rub(cents(media.partial_amount) + cents(amount));
+      media.stats_offset = (media.stats_offset || 0) + 1;
+      if (media.stats_offset === media.campaign_ids.length) {
+        Object.assign(media, { status: 'downloaded', amount: media.partial_amount, fetched_at: new Date().toISOString(), source: 'wb_media_interval_stats' });
+        pilot.stage = 'done';
+      }
+    }
+    // Cursor and totals are committed together: retries cannot duplicate spend.
+    await commit(admin, job, summary, pilot.stage === 'done' ? 'complete' : 'loading');
   } else throw new ApiError(400, 'Неизвестный этап загрузки');
   return { retry_after: 63 };
 }
@@ -93,9 +126,9 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
 export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string) {
   const { data: shop, error: shopError } = await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
   if (shopError || !shop || shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
-  const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses,media_spend').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
+  const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
-  const settings = settingsRows?.[0] || { operational_expenses: '0.00', external_promotion_expenses: '0.00', media_spend: null };
+  const settings = { operational_expenses: settingsRows?.[0]?.operational_expenses ?? '0.00', external_promotion_expenses: settingsRows?.[0]?.external_promotion_expenses ?? '0.00' };
   let jobQuery = admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom).eq('date_to', period.dateTo);
   if (completedJobId) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
   const { data: jobs, error } = await jobQuery.order('created_at', { ascending: false }).limit(1);
@@ -140,11 +173,11 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const prices = new Map((costs || []).map((c: any) => [c.article, c.cost_price]));
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(p.article) ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
-  const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded';
+  const media = mediaSource(sources.media, period.dateFrom, period.dateTo);
+  const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
   const finance = financialComplete ? { ...Object.fromEntries(Object.entries(financialTotals).map(([k,v])=>[k,rub(v)])), bought_qty: bought } : null;
-  const media = settingsRows?.length ? { status: settings.media_spend == null ? 'needs_confirmation' : 'confirmed_by_user', amount: settings.media_spend == null ? null : String(settings.media_spend) } : { status: sources.media?.status || 'needs_confirmation', amount: sources.media?.amount ?? null };
   const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: rowsCount, updated_at: job.updated_at, error_message: job.error_message },
@@ -165,7 +198,8 @@ export function monthSettings(body: any) {
     if (v < 0n || v > 100000000000n) throw new ApiError(400, 'Расходы должны быть от 0 до 1 млрд ₽');
     return rub(v);
   };
-  return { operational_expenses: amount(body.operational_expenses), external_promotion_expenses: amount(body.external_promotion_expenses), media_spend: body.media_spend == null || body.media_spend === '' ? null : amount(body.media_spend) };
+  if (body.media_spend != null && body.media_spend !== '') throw new ApiError(400, 'Расходы WB Медиа загружаются только через API');
+  return { operational_expenses: amount(body.operational_expenses), external_promotion_expenses: amount(body.external_promotion_expenses) };
 }
 
 export async function readCabinetTrend(admin: any, shopId: string) {
@@ -180,6 +214,7 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
     const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id);
+    if (!c.complete) continue;
     byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
     if (byMonth.size >= 12) break;
   }
