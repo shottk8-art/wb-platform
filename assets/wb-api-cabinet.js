@@ -79,7 +79,7 @@
     if (!context?.allowed || busy) return;
     const current = epoch, ticket = ++requestId, month = el('apiCabinetMonth').value;
     clearTimeout(timer); busy = true; render();
-    status(action === 'cabinet_start' ? 'Ставим загрузку в очередь сервера…' : 'Читаем сохранённые данные…');
+    if (action !== 'cabinet_status') status(action === 'cabinet_start' ? 'Ставим загрузку в очередь сервера…' : 'Читаем сохранённые данные…');
     try {
       let result = await window.WBApi.cabinet(action,month,refresh);
       if (current !== epoch || ticket !== requestId) return;
@@ -119,7 +119,7 @@
   }
   document.addEventListener?.('visibilitychange',()=>{
     clearTimeout(timer);
-    if (!document.hidden && context?.allowed && historyLoading) load('cabinet_status');
+    if (!document.hidden && context?.allowed && (historyLoading || (cabinet?.refresh_job || cabinet?.job)?.status==='loading')) load('cabinet_status');
   });
   async function saveExpenses(month, operational, external) {
     if (!context?.allowed) throw new Error('Подключение недоступно');

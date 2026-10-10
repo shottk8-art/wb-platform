@@ -11,8 +11,10 @@ let changes=0;window.WBApiCabinet.subscribe(()=>{changes++;window.WBApiCabinet.o
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 window.WBApiCabinet.setContext({shopId:'synthetic',allowed:true});await tick();
 assert.equal(calls.filter(c=>c==='cabinet_trend').length,1);
+const statusText=el('apiCabinetStatus').textContent;
 timer();await tick();
 assert.equal(calls.at(-1),'cabinet_status');assert.equal(changes,1);
+assert.equal(el('apiCabinetStatus').textContent,statusText,'unchanged status must not leave a permanent reading message');
 assert.equal(calls.filter(c=>c==='cabinet_trend').length,1,'unchanged status cannot reread/reanimate history');
 revision='new-completed-month';timer();await tick();assert.equal(changes,2);
 assert.equal(calls.filter(c=>c==='cabinet_trend').length,2,'new data must update the overview');
