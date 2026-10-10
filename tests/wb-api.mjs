@@ -60,7 +60,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
-let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null;
+let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null, rpcCalls=[];
 const storedKey = token({ acc: 3, exp: 4102444800 });
 const job = { id: '00000000-0000-4000-8000-000000000001', shop_id: '63175e7a-5b26-425e-893f-68889b32f02f', date_from: '2026-09-01', date_to: '2026-09-30', cursor_id: 0, status: 'loading' };
 const chain = (table) => {
@@ -95,7 +95,7 @@ const sandbox = {
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
     from: chain,
-    rpc: async (name) => ({ data: name === 'wb_api_read_key' ? storedKey : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null }),
+    rpc: async (name, args) => {rpcCalls.push({name,args});return { data: name === 'wb_api_read_key' ? storedKey : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null };},
   }),
   fetch: async (url, options) => {
     outbound.push({ url, body: options.body });
@@ -157,8 +157,8 @@ const beforeCabinet = outbound.length;
 const firstCabinet = await invoke({ action: 'cabinet_start', month: '2026-08' });
 assert.equal(firstCabinet.status, 200); assertions++;
 assert.equal(firstCabinet.body.background, true); assertions++;
-assert.equal(dbWrites.findLast(item => item.operation === 'insert').values.summary.pilot.stage, 'finance'); assertions++;
-assert.equal(JSON.stringify(dbWrites.findLast(item => item.operation === 'insert').values.summary.api_sources), '{}'); assertions++;
+assert.equal(rpcCalls.findLast(item=>item.name==='wb_api_queue_month').args.p_month,'2026-08-01'); assertions++;
+assert.equal(rpcCalls.findLast(item=>item.name==='wb_api_queue_month').args.p_refresh,false); assertions++;
 assert.equal(outbound.length, beforeCabinet); assertions++;
 const originalReadCabinet=sandbox.readCabinet;
 job.summary={pilot:{stage:'done'},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{status:'confirmed_by_user',amount:'0.00'}}};

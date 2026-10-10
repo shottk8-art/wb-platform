@@ -21,7 +21,7 @@ export function validateShopId(value: unknown) {
   if (typeof value !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new ApiError(400, "Выберите магазин");
   return value;
 }
-export function validatePeriod(from: unknown, to: unknown) {
+export function validatePeriod(from: unknown, to: unknown, now = new Date()) {
   const parse = (value: unknown) => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new ApiError(400, "Укажите даты отчёта");
     const date = new Date(value + "T00:00:00Z");
@@ -29,7 +29,7 @@ export function validatePeriod(from: unknown, to: unknown) {
     return date;
   };
   const start = parse(from), end = parse(to);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(now.getTime() + 3 * 3600000).toISOString().slice(0, 10);
   if (start > end || String(from) < "2024-01-29" || String(to) > today) throw new ApiError(400, "Выберите период с 29 января 2024 года, без будущих дат");
   return { dateFrom: String(from), dateTo: String(to) };
 }

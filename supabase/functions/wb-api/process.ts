@@ -10,7 +10,7 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
   const personal = validateKey(String(token));
   const response = await wbFetch(personal.token, 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed', {
     dateFrom: job.date_from, dateTo: `${job.date_to}T23:59:59`, limit: 50000,
-    rrdId: Number(job.cursor_id), period: 'weekly', fields: FINANCE_FIELDS,
+    rrdId: Number(job.cursor_id), period: job.summary?.pilot?.finance_period || 'weekly', fields: FINANCE_FIELDS,
   });
   const rows = sanitizeRows(response || []);
   // Check the raw sequence: deduplication must not hide an out-of-order last row.

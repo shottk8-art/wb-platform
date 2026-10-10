@@ -120,6 +120,11 @@ Deno.serve(async (req) => {
       return String(data);
     };
     const connection = await readConnection();
+    const historyLoading = async () => {
+      const {data,error} = await admin.from('wb_api_preview_jobs').select('id').eq('shop_id',shopId).eq('status','loading').limit(1);
+      if (error) throw new ApiError(500,'Не удалось прочитать очередь загрузки');
+      return !!data?.length;
+    };
     if (body.action === 'cabinet_trend') {
       return json({ trend: await readCabinetTrend(admin, shopId) });
     }
@@ -133,10 +138,10 @@ Deno.serve(async (req) => {
     if (body.action === 'cabinet' || body.action === 'cabinet_start') {
       if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
       const period = cabinetPeriod(body.month);
-      if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period) });
+      if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period), history_loading: await historyLoading() });
       if (!connection) throw new ApiError(400, 'Сначала подключите персональный ключ в настройках');
       const cabinet = await readCabinet(admin, shopId, period);
-      if (cabinet.job?.status === 'loading' || (cabinet.complete && body.refresh !== true)) return json({ cabinet, cached: cabinet.complete });
+      if (cabinet.refresh_job?.status === 'loading' || cabinet.job?.status === 'loading' || (cabinet.complete && body.refresh !== true)) return json({ cabinet, cached: cabinet.complete });
       if (cabinet.job?.status === 'complete' && cabinet.finance && cabinet.sources.orders?.status === 'downloaded' && cabinet.sources.ads?.status === 'downloaded' && cabinet.sources.media?.status !== 'downloaded' && body.refresh !== true) {
         // Upgrade a saved month without downloading finance/orders/ads again.
         const { data: oldJob, error: readError } = await admin.from('wb_api_preview_jobs').select('summary').eq('id', cabinet.job.id).eq('shop_id', shopId).single();
@@ -154,9 +159,8 @@ Deno.serve(async (req) => {
         const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status: 'loading', failure_count: 0, error_message: null }).eq('id', cabinet.job.id).eq('shop_id', shopId);
         if (error) throw new ApiError(500, 'Не удалось возобновить загрузку');
       } else {
-        const { error } = await admin.from('wb_api_preview_jobs').insert({ shop_id: shopId, date_from: period.dateFrom, date_to: period.dateTo,
-          summary: { pilot: { version: 2, stage: 'finance', orders_offset: 0 }, api_sources: {} } });
-        if (error && error.code !== '23505') throw new ApiError(500, 'Не удалось начать загрузку');
+        const { error } = await admin.rpc('wb_api_queue_month',{p_shop_id:shopId,p_month:period.dateFrom,p_refresh:body.refresh === true});
+        if (error) throw new ApiError(500, 'Не удалось начать загрузку');
       }
       return json({ cabinet: await readCabinet(admin, shopId, period), background: true });
     }
@@ -175,6 +179,10 @@ Deno.serve(async (req) => {
       if (connection && connection.seller_id !== seller.seller_id) throw new ApiError(409, "Это ключ другого продавца. Сначала отключите текущее подключение");
       const { error } = await admin.rpc("wb_api_save_key", { p_shop_id: shopId, p_key: token, p_seller_id: seller.seller_id, p_seller_name: seller.seller_name, p_expires_at: expiresAt });
       if (error) throw new ApiError(error.code === "23505" ? 409 : 500, error.code === "23505" ? "Этот продавец WB уже подключён к другому магазину платформы" : "Не удалось сохранить ключ");
+      if (shopId === PILOT_SHOP_ID) {
+        const {error: queueError} = await admin.rpc('wb_api_queue_history');
+        if (queueError) throw new ApiError(500,'Ключ сохранён. Не удалось запустить историю; очередь повторит запуск автоматически');
+      }
       return json({ connection: await readConnection() });
     }
     if (!connection) throw new ApiError(400, "Сначала подключите API магазина");

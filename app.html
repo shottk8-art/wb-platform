@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261010-expense-fit1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-media-api1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-history1">
 </head>
 <body>
 
@@ -123,6 +123,7 @@
           <button type="button" data-scope="all">Все вместе</button>
         </div>
         <div class="period-bar"><select id="periodSelect" aria-label="Период отчёта"></select></div>
+        <button type="button" class="ghost overview-refresh" id="overviewRefresh" hidden title="Обновить выбранный месяц из WB; текущий месяц — по сегодняшнюю дату">Обновить</button>
       </div>
     </div>
 
@@ -168,7 +169,7 @@
     </section>
 
     <section class="section app-view" id="secApiCabinet" data-view="settings" hidden>
-      <div class="section-head"><h2>Загрузка данных Wildberries</h2><span class="metric-help"><button type="button" class="help-button" aria-label="О загрузке через API" aria-expanded="false" aria-controls="apiHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="apiHelpText" role="tooltip">Загрузка идёт на сервере — страницу можно закрыть. API и файлы не складываются между собой. Готовые месяцы появятся в привычном обзоре.</span></span></div>
+      <div class="section-head"><h2>Загрузка данных Wildberries</h2><span class="metric-help"><button type="button" class="help-button" aria-label="О загрузке через API" aria-expanded="false" aria-controls="apiHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="apiHelpText" role="tooltip">Текущий и 11 предыдущих месяцев загружаются автоматически, от новых к старым. Страницу можно закрыть. Текущий месяц — по сегодняшнюю дату, суммы предварительные. Лимиты WB соблюдаются сервером. API и файлы не складываются.</span></span></div>
       <div class="card wb-api-card">
       <div class="api-source-field"><label for="overviewDataSource">Данные Wildberries в обзоре</label><select id="overviewDataSource"><option value="api">Из API</option><option value="files">Из файлов отчётов</option></select></div>
       <div class="api-cabinet-toolbar">
@@ -476,7 +477,7 @@
 <script src="/assets/dashboard.js?v=20261010-familiar2"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261010-overview1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261010-media-api1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261010-history1"></script>
 <script>
 (function () {
   let shop = null;
@@ -543,6 +544,7 @@
     document.getElementById('secApiCabinet').hidden = !allowed;
     document.getElementById('secAiAnalysis').hidden = usesApiData() || !aiAllowed;
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
+    document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
   }
   function usesApiData() {
     return apiCabinetAllowed() && overviewSource === 'api' && overviewScope !== 'ozon';
@@ -713,13 +715,17 @@
     if (request !== dashboardRequest) return;
     const unique = new Map();
     lists.flat().forEach((period) => unique.set(`${period.year}-${period.month}`, period));
+    if (usesApiData()) {
+      const [year,month] = window.WBApiCabinet.currentMonth.split('-').map(Number);
+      unique.set(`${year}-${month}`,{year,month,current:true});
+    }
     periods = [...unique.values()].sort((a, b) => b.year - a.year || b.month - a.month);
     const sel = document.getElementById("periodSelect");
     if (!periods.length) {
       sel.innerHTML = `<option value="">${usesApiData() ? 'Нет готовых периодов' : 'Загрузите все обязательные отчёты'}</option>`;
       return;
     }
-    sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
+    sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}${p.current ? ' · текущий' : ''}</option>`).join("");
     const requested = selectYear && selectMonth ? `${selectYear}-${selectMonth}` : "";
     sel.value = periods.some((period) => `${period.year}-${period.month}` === requested)
       ? requested
@@ -773,12 +779,12 @@
     const sel = document.getElementById("periodSelect");
     const marketplaces = overviewMarketplaces();
     const displayMarketplace = overviewScope;
-    // Не оставляем график предыдущего магазина/площадки во время загрузки.
-    currentTrend = [];
-    refreshTrendChart();
     if (usesApiData()) {
       return renderApiPeriod(sel.value, request);
     }
+    // Не оставляем график предыдущего магазина/площадки во время загрузки.
+    currentTrend = [];
+    refreshTrendChart();
     if (!sel.value) {
       // магазин без единого загруженного периода — явно сбрасываем панель,
       // иначе остаются данные, отрисованные для предыдущего магазина
@@ -830,9 +836,11 @@
     window.WBDashboard.renderExpenses(document.getElementById('expList'),document.getElementById('expTotal'),document.getElementById('expChart'),derived,overviewScope,previous);
     window.WBDashboard.renderSkuTable(document.getElementById('skuBody'),document.getElementById('skuFoot'),document.getElementById('skuHint'),document.getElementById('skuChart'),derived,previous);
   }
+  let apiDisplayedPeriod = null;
   async function renderApiPeriod(period, request) {
     const empty = window.WBDashboard.fromApiCabinet(null);
-    paintApiDashboard(empty,null,[],false);
+    const displayKey = `${shop.id}:${overviewScope}:${period}`;
+    if(!period || apiDisplayedPeriod !== displayKey) paintApiDashboard(empty,null,[],false);
     const help = document.getElementById('overviewHelpText');
     help.textContent = period ? 'Показатели обновляются.' : 'Нет данных за полный месяц. Выберите готовый период или загрузите его в настройках.';
     if(!period) return;
@@ -869,7 +877,16 @@
       }
       if(request !== dashboardRequest) return;
       paintApiDashboard(derived,previous,trend,!!snapshot.cabinet?.complete);
+      apiDisplayedPeriod = displayKey;
+      const job = snapshot.cabinet?.refresh_job || snapshot.cabinet?.job;
+      const refreshing = job?.status === 'loading';
+      const refreshButton = document.getElementById('overviewRefresh');
+      refreshButton.disabled = refreshing;
+      refreshButton.textContent = refreshing ? 'Обновляется…' : 'Обновить';
       help.textContent = 'Продажи — с учётом возвратов. Чистая прибыль — после удержаний, себестоимости, налога и денежных расходов. Бонусы и рекламный кэшбэк не уменьшают прибыль. ' + (derived.missing?.length ? derived.missing.join('. ') : '');
+      if (key === window.WBApiCabinet.currentMonth) help.textContent += ' Текущий месяц — предварительные данные WB по ' + (snapshot.cabinet?.period?.dateTo || 'сегодняшнюю дату') + '. Источники обновляются с задержкой. Сравнение неполного месяца с полным не показывается.';
+      if (refreshing) help.textContent += ' Новая выгрузка идёт на сервере; готовые цифры появятся автоматически.';
+      if (job?.status === 'error') help.textContent += ' Обновление остановлено: ' + (job.error_message || 'проверьте подключение в настройках') + '.';
     } catch(error) {
       if(request !== dashboardRequest) return;
       help.textContent = 'Не удалось прочитать показатели. Проверьте подключение и обновите расчёт в настройках.';
@@ -1065,6 +1082,24 @@
     document.getElementById('overviewDataSource').addEventListener('change',async event=>{
       overviewSource=event.target.value; ++dashboardRequest; updateOverviewSource();
       await refreshPeriods(); await renderCurrentPeriod();
+    });
+    document.getElementById('overviewRefresh').addEventListener('click',async()=>{
+      if(!usesApiData()) return;
+      const button = document.getElementById('overviewRefresh');
+      if(button.disabled) return;
+      const selectedShop=shop.id, period=document.getElementById('periodSelect').value;
+      const [year,month]=period.split('-').map(Number);
+      const key=year && month ? `${year}-${String(month).padStart(2,'0')}` : window.WBApiCabinet.currentMonth;
+      let queued=false;
+      button.disabled=true; button.textContent='Обновляется…';
+      try {
+        const result=await window.WBApiCabinet.refreshOverview(key);
+        queued=(result?.refresh_job || result?.job)?.status==='loading';
+        if(shop.id!==selectedShop || !usesApiData()) return;
+        await refreshPeriods(Number(key.slice(0,4)),Number(key.slice(5))); await renderCurrentPeriod();
+        toast('Обновление идёт на сервере. Можно закрыть страницу.');
+      } catch(error) { if(shop.id===selectedShop && usesApiData()) toast(error.message,true); }
+      finally { if(shop.id===selectedShop && usesApiData() && !queued) { button.disabled=false; button.textContent='Обновить'; } }
     });
     window.WBApiCabinet.subscribe(async()=>{
       if(!usesApiData()) return;

@@ -5,11 +5,13 @@ import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, med
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
   if (Number(value.slice(5)) < 1 || Number(value.slice(5)) > 12) throw new ApiError(400, 'Некорректный месяц');
+  const today = new Date(now.getTime() + 3 * 3600000).toISOString().slice(0,10);
+  const current = new Date(today.slice(0,7) + '-01T00:00:00Z');
+  const oldest = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() - 11, 1)).toISOString().slice(0,10);
   const start = `${value}-01`, d = new Date(start + 'T00:00:00Z');
-  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
-  const period = validatePeriod(start, end);
-  const oldest = new Date(now.getTime() - 365 * 86400000).toISOString().slice(0, 10);
-  if (start < oldest || end >= now.toISOString().slice(0, 7) + '-01') throw new ApiError(400, 'Доступны закрытые месяцы за последний год');
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+  if (start < oldest || start > today) throw new ApiError(400, 'Доступны текущий и 11 предыдущих месяцев');
+  const period = validatePeriod(start, last > today ? today : last, now);
   return period;
 }
 const text = (value: unknown) => String(value || '').slice(0, 300);
@@ -155,12 +157,25 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const { data: settingsRows, error: settingsError } = await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
   const settings = { operational_expenses: settingsRows?.[0]?.operational_expenses ?? '0.00', external_promotion_expenses: settingsRows?.[0]?.external_promotion_expenses ?? '0.00' };
-  let jobQuery = admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom).eq('date_to', period.dateTo);
+  let jobQuery = admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom);
   if (completedJobId) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
   const { data: jobs, error } = await jobQuery.order('created_at', { ascending: false }).limit(1);
   if (error) throw new ApiError(500, 'Не удалось прочитать выгрузку');
   const job = jobs?.[0];
   if (!job) return { job: null, shop, settings, products: [], finance: null, sources: {} };
+  // A refresh is a separate snapshot, not an append. Keep the last complete
+  // snapshot visible while the new one is queued/loading or has failed.
+  if (!completedJobId && job.status !== 'complete') {
+    const {data: saved, error: savedError} = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to').eq('shop_id',shopId).eq('date_from',period.dateFrom).eq('status','complete').order('created_at',{ascending:false}).limit(1);
+    if (savedError) throw new ApiError(500, 'Не удалось прочитать сохранённый месяц');
+    if (saved?.[0]) {
+      const snapshot = await readCabinet(admin,shopId,{dateFrom:saved[0].date_from,dateTo:saved[0].date_to},saved[0].id);
+      if (snapshot.complete) return {...snapshot, refresh_job:{id:job.id,status:job.status,stage:job.summary?.pilot?.stage || 'finance',row_count:job.row_count,error_message:job.error_message,updated_at:job.updated_at}};
+    }
+  }
+  // Sources must be validated against the saved snapshot's end, not today's
+  // moving end; otherwise yesterday's valid current-month media becomes unknown.
+  period = {dateFrom:job.date_from,dateTo:job.date_to};
   const sources = job.summary?.api_sources || {}, products = new Map<string, any>();
   for (const p of sources.orders?.rows || []) {
     const article = String(p.vendor_code || p.nm_id), old = products.get(article);
@@ -207,7 +222,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: rowsCount, updated_at: job.updated_at, error_message: job.error_message },
-    complete, settings, cogs, finance, products: safeProducts,
+    complete, period, settings, cogs, finance, products: safeProducts,
     missing_costs: missing,
     sources: { finance: { status: financialComplete ? 'downloaded' : 'loading' },
       orders: { status: sources.orders?.status || 'pending', amount: sources.orders?.orders_amount ?? null, count: sources.orders?.orders_count ?? null },
@@ -236,7 +251,11 @@ export async function readCabinetTrend(admin: any, shopId: string) {
   for (const job of jobs || []) {
     const month = job.date_from.slice(0,7);
     if (byMonth.has(month)) continue;
-    try { const period = cabinetPeriod(month); if (period.dateFrom !== job.date_from || period.dateTo !== job.date_to) continue; } catch { continue; }
+    try {
+      const period = cabinetPeriod(month);
+      const current = new Date(Date.now()+3*3600000).toISOString().slice(0,7);
+      if (period.dateFrom !== job.date_from || job.date_to > period.dateTo || (month !== current && job.date_to !== period.dateTo)) continue;
+    } catch { continue; }
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
     const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id);

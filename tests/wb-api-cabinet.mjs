@@ -3,7 +3,10 @@ import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabine
 import { PILOT_SHOP_ID, PILOT_USER_ID } from '../supabase/functions/wb-api/core.ts';
 const from = '2026-09-01', to = '2026-09-30';
 assert.deepEqual(cabinetPeriod('2026-09'), {dateFrom:from,dateTo:to});
-for (const value of ['2026-13','2026-00','bad','2026-10','2024-01']) assert.throws(()=>cabinetPeriod(value));
+for (const value of ['2026-13','2026-00','bad','2026-11','2024-01']) assert.throws(()=>cabinetPeriod(value));
+assert.deepEqual(cabinetPeriod('2026-10',new Date('2026-10-09T22:05:00Z')),{dateFrom:'2026-10-01',dateTo:'2026-10-10'},'current-month end follows Moscow, not UTC');
+assert.deepEqual(cabinetPeriod('2025-11',new Date('2026-10-10T12:00:00Z')),{dateFrom:'2025-11-01',dateTo:'2025-11-30'});
+assert.throws(()=>cabinetPeriod('2025-10',new Date('2026-10-10T12:00:00Z')));
 const product = (id, sum = 100) => ({product:{nmId:id,vendorCode:'SKU',title:'Товар'},statistic:{selected:{period:{start:from,end:to},orderCount:2,orderSum:sum,wbClub:{orderCount:1,orderSum:50}}}});
 const response = {data:{currency:'RUB',products:[product(1)]}};
 assert.equal(orderPage(response,from,to)[0].orders_amount,'100.00','club is a subset, never added twice');
