@@ -187,7 +187,7 @@
       transfer_total:n(e.payout), transfer_goods:n(f.forPay),
       delivery_cost:n(f.deliveryService), storage_cost:n(f.paidStorage), fines:n(f.penalty), acceptance_ops:n(f.paidAcceptance),
       other_fees:n(f.deduction), damage_comp:0, return_comp:0,
-      ads_spend:n(e.internal_ads), ads_promo_spend:n(e.promo), wb_media_spend:n(s.media?.amount),
+      ads_spend:s.ads?.status === 'downloaded' ? n(e.internal_ads) : null, ads_promo_spend:s.ads?.status === 'downloaded' ? n(e.promo) : null, wb_media_spend:n(s.media?.amount),
       operational_expenses:n(c.settings?.operational_expenses), external_promotion_expenses:n(c.settings?.external_promotion_expenses),
     };
     const skuRows = (c.finance ? c.products || [] : []).map(p => {
@@ -203,7 +203,7 @@
       ['Штрафы',rep.fines],['Операции при приёмке',rep.acceptance_ops],['Прочие удержания',rep.other_fees],
       ['Корректировка вознаграждения WB',n(f.additionalPayment)],['Баллы за отзывы и лояльность',n(f.cashbackAmount)],
       ['Комиссия лояльности',n(f.cashbackCommissionChange)],['Компенсация скидки лояльности',f.cashbackDiscount == null ? null : -n(f.cashbackDiscount)],
-      ['Реклама уже в удержаниях',f.advertisingDeductions == null ? null : -n(f.advertisingDeductions)],
+      ['Реклама уже в удержаниях',n(e.advertising_already_withheld)==null ? c.finance ? -(n(f.advertisingDeductions) || 0) : null : -n(e.advertising_already_withheld)],
       ['WB Продвижение',rep.ads_spend],['WB Media',rep.wb_media_spend],['Операционные расходы',rep.operational_expenses],
       ['Внешнее продвижение',rep.external_promotion_expenses],['Налог',tax],['Себестоимость товара',cogs],
     ];

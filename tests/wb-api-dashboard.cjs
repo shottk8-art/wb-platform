@@ -7,8 +7,8 @@ vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../asset
 const api=window.WBDashboard;
 const cabinet={complete:true,net_profit:'792508.25',cogs:'696198.00',settings:{operational_expenses:'0',external_promotion_expenses:'0'},
   finance:{retailAmount:'2231707.63',forPay:'2096453.30',bought_qty:1455,deliveryService:'238987.73',paidStorage:'70.09',paidAcceptance:'4030',penalty:'6642.80',deduction:'23440',additionalPayment:'0',cashbackAmount:'20',cashbackCommissionChange:'569.02',cashbackDiscount:'4150.97',advertisingDeductions:'0'},
-  sources:{orders:{amount:'3583156.00'},media:{status:'confirmed_by_user',amount:'0'}},
-  economy:{payout:'1826844.63',tax:'111585.38',internal_ads:'226553.00',promo:'77511',advertising_total:'226553',drr_orders:6.322,drr_sales:10.151,missing:[]},
+  sources:{orders:{amount:'3583156.00'},ads:{status:'downloaded'},media:{status:'confirmed_by_user',amount:'0'}},
+  economy:{payout:'1826844.63',tax:'111585.38',internal_ads:'226553.00',promo:'77511',advertising_total:'226553',advertising_already_withheld:'0.00',drr_orders:6.322,drr_sales:10.151,missing:[]},
   products:[{article:'SKU',name:'Название',revenue:'1000',for_pay:'800',bought_qty:2,cost_price:'100'}]};
 const d=api.fromApiCabinet(cabinet);
 assert.equal(d.netProfit,792508.25,'server-rounded profit is preserved, not recomputed with file formula');
@@ -23,6 +23,8 @@ assert.equal(d.skuRows[0].profit,800,'gross profit remains revenue minus COGS');
 assert.equal(d.skuRows[0].abc,'A');
 const signedExpenses=d.expenses.reduce((sum,[,value])=>sum+value,0);
 assert.ok(Math.abs(cabinet.finance.retailAmount-d.netProfit-signedExpenses)<0.011,'all signed expenses and compensation reconcile to sales minus net profit');
+const noWithheld=structuredClone(cabinet);delete noWithheld.finance.advertisingDeductions;
+assert.ok(api.fromApiCabinet(noWithheld).expenses.every(([,amount])=>amount!=null),'known zero already-withheld ads remains zero even when no row had that charge');
 const rows=[];api.renderKPI({innerHTML:'',appendChild:card=>rows.push(card)},d,null,'wildberries');
 assert.equal(rows.length,9,'incumbent KPI count, not expanded API metric grid');
 assert.ok(rows.some(row=>row.html.includes('kpi--hero')));
