@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261009-kpi-trend1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-overview2">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-familiar1">
 </head>
 <body>
 
@@ -115,12 +115,8 @@
   <main class="app-main">
 
     <div class="page-heading">
-      <div><h1 id="pageTitle">Обзор</h1><p id="pageSubtitle">Главные показатели магазина за выбранный месяц</p></div>
+      <div><div class="page-title-row"><h1 id="pageTitle">Обзор</h1><span class="metric-help" id="overviewHelp" hidden><button type="button" class="help-button" aria-label="Как рассчитаны показатели" aria-expanded="false" aria-controls="overviewHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="overviewHelpText" role="tooltip">Продажи учитывают возвраты. Из выплаты вычитаются себестоимость, налог и денежные расходы. Бонусы показаны справочно.</span></span></div><p id="pageSubtitle">Главные показатели магазина за выбранный месяц</p></div>
       <div class="overview-controls" id="overviewControls">
-        <div class="segmented-control" id="overviewSource" aria-label="Источник данных" hidden>
-          <button type="button" data-source="api">API Wildberries</button>
-          <button type="button" data-source="files">Файлы отчётов</button>
-        </div>
         <div class="segmented-control" id="overviewScope" aria-label="Показывать данные">
           <button type="button" data-scope="wildberries">Wildberries</button>
           <button type="button" data-scope="ozon">Ozon</button>
@@ -129,52 +125,6 @@
         <div class="period-bar"><select id="periodSelect" aria-label="Период отчёта"></select></div>
       </div>
     </div>
-
-    <section class="section app-view" id="secApiCabinet" data-view="overview" hidden>
-      <div class="api-cabinet-toolbar">
-        <div><label for="apiCabinetMonth">Месяц</label><input type="month" id="apiCabinetMonth"></div>
-        <button class="primary" type="button" id="apiCabinetSync">Загрузить данные</button>
-        <button class="ghost" type="button" id="apiCabinetRefresh" hidden>Обновить из WB</button>
-        <a href="#settings" class="api-cabinet-link">Настройки ключа</a>
-      </div>
-      <p class="api-cabinet-status" id="apiCabinetStatus" role="status" aria-live="polite"></p>
-      <details class="api-data-details">
-      <summary>Источники и формула расчёта</summary>
-      <div class="api-cabinet-warning" id="apiCabinetWarning"></div>
-      <p class="hint">Wildberries · данные через API. Загрузка идёт на сервере — страницу можно закрыть. Отчёты из файлов доступны отдельно и не смешиваются с API.</p>
-      <ul class="api-source-list" id="apiCabinetSources" aria-label="Статусы источников"></ul>
-      </details>
-      <div class="api-cabinet-metrics" id="apiCabinetMetrics"></div>
-      <div class="api-cabinet-columns">
-        <section class="card api-cabinet-panel"><h2>Финансовые начисления</h2><p class="hint">Поля финансовой детализации. Компенсации и удержания не вычитаются повторно как реклама.</p><dl id="apiCabinetFinance"></dl></section>
-        <section class="card api-cabinet-panel"><h2>Себестоимость и налог</h2><ul id="apiCabinetReadiness"></ul><p><a href="#costs">Изменить себестоимость</a> · <a href="#settings">Изменить налог</a></p><h3>Рекламные списания</h3><dl id="apiCabinetAds"></dl><p class="hint">Баланс и счёт уменьшают прибыль. Бонусы, промобонусы и рекламный кэшбэк показаны справочно.</p></section>
-      </div>
-      <section class="card api-cabinet-panel api-cabinet-products">
-        <h2>Расходы за месяц</h2><p class="hint">Сохраняются для выбранного месяца API. Для WB Media укажите подтверждённую сумму; 0 означает, что рекламы не было, пустое поле — сумма неизвестна.</p>
-        <form id="apiCabinetExpensesForm">
-          <div class="api-expenses-grid">
-            <div><label for="apiOperationalExpenses">Операционные расходы, ₽</label><input id="apiOperationalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
-            <div><label for="apiExternalExpenses">Внешнее продвижение, ₽</label><input id="apiExternalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
-            <div><label for="apiMediaExpenses">WB Media, ₽</label><input id="apiMediaExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" placeholder="Не подтверждено"></div>
-          </div>
-          <button id="apiSaveExpenses" type="submit" class="primary" disabled>Сохранить расходы</button>
-          <p id="apiExpensesStatus" class="api-cabinet-status" role="status" aria-live="polite"></p>
-        </form>
-      </section>
-      <section class="card api-cabinet-panel api-cabinet-products">
-        <h2>Динамика магазина</h2><p class="hint">Сохранённые месяцы API. Нажмите на показатель, чтобы изменить график.</p>
-        <div class="segmented-control api-trend-controls" id="apiTrendControls" aria-label="Показатель графика">
-          <button type="button" data-metric="orders">Заказы, ₽</button><button type="button" data-metric="sales">Продажи, ₽</button><button type="button" data-metric="internalAds">Внутренняя реклама</button>
-          <button type="button" data-metric="profit">Прибыль</button><button type="button" data-metric="drrOrders">ДРР заказов</button><button type="button" data-metric="drrSales">ДРР выкупа</button>
-        </div>
-        <p id="apiTrendEmpty" class="hint" hidden>Динамика появится после загрузки месяца.</p>
-        <div class="api-trend-chart"><canvas id="apiTrendChart" aria-label="Динамика выбранного показателя API" aria-describedby="apiTrendValues" role="img"></canvas></div>
-        <div id="apiTrendValues" class="api-trend-values" aria-live="polite"></div>
-      </section>
-      <section class="card api-cabinet-panel api-cabinet-products"><h2>Товары из API</h2><p class="hint">Заказы — по дате заказа. Выкупы — продажи минус возвраты из финансового отчёта; корректировки не добавляют количество повторно. «К перечислению за товар» — не выручка и не прибыль.</p>
-        <div class="table-scroll"><table><thead><tr><th>Товар</th><th>Заказы, шт.</th><th>Сумма заказов</th><th>Выкупили, шт.</th><th>К перечислению за товар</th><th>Себестоимость, ₽/шт.</th></tr></thead><tbody id="apiCabinetProducts"></tbody></table></div>
-      </section>
-    </section>
 
     <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
@@ -199,7 +149,7 @@
       </div>
       <div class="collapsible-body"><div>
         <div class="card wb-api-card">
-          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Нужны категории «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Используйте персональный ключ своего продавца. Ключ хранится зашифрованным на сервере и не показывается после сохранения. Загрузка месяца доступна в «Обзоре» GREEN FLOW.</p>
+          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Нужны категории «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Ключ хранится зашифрованным на сервере. Загрузкой месяцев GREEN FLOW можно управлять здесь, в настройках.</p>
           <div class="wb-api-key-row">
             <div class="wb-api-key-field">
               <label for="wbApiKey">Персональный API-ключ Wildberries</label>
@@ -215,6 +165,40 @@
           <p class="wb-api-message" id="wbApiMessage" role="status" aria-live="polite"></p>
         </div>
       </div></div>
+    </section>
+
+    <section class="section app-view" id="secApiCabinet" data-view="settings" hidden>
+      <div class="section-head"><h2>Загрузка данных Wildberries</h2><span class="metric-help"><button type="button" class="help-button" aria-label="О загрузке через API" aria-expanded="false" aria-controls="apiHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="apiHelpText" role="tooltip">Загрузка идёт на сервере — страницу можно закрыть. API и файлы не складываются между собой. Готовые месяцы появятся в привычном обзоре.</span></span></div>
+      <div class="card wb-api-card">
+      <div class="api-source-field"><label for="overviewDataSource">Данные Wildberries в обзоре</label><select id="overviewDataSource"><option value="api">Из API</option><option value="files">Из файлов отчётов</option></select></div>
+      <div class="api-cabinet-toolbar">
+        <div><label for="apiCabinetMonth">Месяц</label><input type="month" id="apiCabinetMonth"></div>
+        <button class="primary" type="button" id="apiCabinetSync">Загрузить данные</button>
+        <button class="ghost" type="button" id="apiCabinetRefresh" hidden>Обновить из WB</button>
+      </div>
+      <p class="api-cabinet-status" id="apiCabinetStatus" role="status" aria-live="polite"></p>
+      <details class="api-data-details">
+      <summary>Источники и формула расчёта</summary>
+      <div class="api-cabinet-warning" id="apiCabinetWarning"></div>
+      <ul class="api-source-list" id="apiCabinetSources" aria-label="Статусы источников"></ul>
+      <dl class="api-finance-details" id="apiCabinetFinance"></dl>
+      <ul id="apiCabinetReadiness"></ul>
+      <dl class="api-finance-details" id="apiCabinetAds"></dl>
+      </details>
+      <details class="api-data-details">
+        <summary>Ручные расходы за месяц</summary>
+        <p class="hint">Операционные расходы и внешнее продвижение также доступны в обзоре.</p>
+        <form id="apiCabinetExpensesForm">
+          <div class="api-expenses-grid">
+            <div><label for="apiOperationalExpenses">Операционные расходы, ₽</label><input id="apiOperationalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
+            <div><label for="apiExternalExpenses">Внешнее продвижение, ₽</label><input id="apiExternalExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required></div>
+            <div><label for="apiMediaExpenses">WB Media, ₽ <span class="metric-help"><button type="button" class="help-button" aria-label="Как указать WB Media" aria-expanded="false" aria-controls="mediaHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="mediaHelpText" role="tooltip">Автоматическая сумма недоступна. Укажите подтверждённые расходы: 0 — рекламы не было, пустое поле — сумма неизвестна. Неизвестная сумма не считается нулём.</span></span></label><input id="apiMediaExpenses" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" placeholder="Не подтверждено"></div>
+          </div>
+          <button id="apiSaveExpenses" type="submit" class="primary" disabled>Сохранить расходы</button>
+          <p id="apiExpensesStatus" class="api-cabinet-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+      </div>
     </section>
 
     <section class="section app-view" id="secTax" data-view="settings">
@@ -396,7 +380,7 @@
             <span><i class="trend-dot trend-dot--sales"></i>Сумма продаж</span>
           </div>
         </div>
-        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div>
+        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев" aria-describedby="trendValues"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div><div id="trendValues" class="sr-only" aria-live="polite"></div>
       </div>
     </section>
 
@@ -474,7 +458,6 @@
 
     <footer class="note">
       Файлы отчётов обрабатываются в браузере и не сохраняются — сохраняются рассчитанные данные.
-      API-выгрузки обрабатываются и сохраняются на сервере.<br>
       Разработано · <a href="https://t.me/karlshott" target="_blank" rel="noopener">@karlshott</a>
     </footer>
   </main>
@@ -491,10 +474,10 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
-<script src="/assets/dashboard.js?v=20261010-api-overview3"></script>
+<script src="/assets/dashboard.js?v=20261010-familiar1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261010-overview1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261010-overview2"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261010-familiar1"></script>
 <script>
 (function () {
   let shop = null;
@@ -548,7 +531,6 @@
     document.getElementById("pageSubtitle").textContent = view === "api" ? meta.subtitle : `${meta.subtitle} · ${market}`;
     document.getElementById("overviewControls").hidden = !meta.period;
     updateOverviewSource();
-    if (view === 'overview' && overviewSource === 'api') window.WBApiCabinet?.reload();
     if (updateHash) history.replaceState(null, "", `#${view}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -558,18 +540,13 @@
     const allowed = apiCabinetAllowed();
     if (sourceShopId !== shop?.id) { sourceShopId = shop?.id; overviewSource = allowed ? 'api' : 'files'; }
     if (!allowed) overviewSource = 'files';
-    const api = allowed && overviewSource === 'api';
-    document.getElementById('overviewSource').hidden = !allowed;
-    document.querySelectorAll('#overviewSource [data-source]').forEach(button => {
-      button.classList.toggle('active', button.dataset.source === overviewSource);
-      button.setAttribute('aria-pressed', String(button.dataset.source === overviewSource));
-    });
-    document.getElementById('secApiCabinet').hidden = !api;
-    for (const id of ['secKpis','secManualExpenses','secTrend','secAnalytics']) document.getElementById(id).hidden = api;
-    document.getElementById('secAiAnalysis').hidden = api || !aiAllowed;
-    document.getElementById('overviewScope').hidden = api;
-    document.getElementById('periodSelect').parentElement.hidden = api;
-    if (activeView === 'overview' && api) document.getElementById('pageSubtitle').textContent = 'Экономика магазина · Wildberries · данные API';
+    document.getElementById('overviewDataSource').value = overviewSource;
+    document.getElementById('secApiCabinet').hidden = !allowed;
+    document.getElementById('secAiAnalysis').hidden = usesApiData() || !aiAllowed;
+    document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
+  }
+  function usesApiData() {
+    return apiCabinetAllowed() && overviewSource === 'api' && overviewScope !== 'ozon';
   }
 
   function toast(msg, isErr) {
@@ -727,14 +704,20 @@
 
   async function refreshPeriods(selectYear, selectMonth) {
     const request = dashboardRequest;
-    const lists = await Promise.all(overviewMarketplaces().map((marketplace) => window.WBDashboard.loadPeriods(shop.id, marketplace)));
+    const lists = await Promise.all(overviewMarketplaces().map(async marketplace => {
+      if (marketplace === 'wildberries' && usesApiData()) {
+        try { const snapshot = await window.WBApiCabinet.overview(); return snapshot?.trend || []; }
+        catch { return []; }
+      }
+      return window.WBDashboard.loadPeriods(shop.id, marketplace);
+    }));
     if (request !== dashboardRequest) return;
     const unique = new Map();
     lists.flat().forEach((period) => unique.set(`${period.year}-${period.month}`, period));
     periods = [...unique.values()].sort((a, b) => b.year - a.year || b.month - a.month);
     const sel = document.getElementById("periodSelect");
     if (!periods.length) {
-      sel.innerHTML = `<option value="">Загрузите все обязательные отчёты</option>`;
+      sel.innerHTML = `<option value="">${usesApiData() ? 'Нет готовых периодов' : 'Загрузите все обязательные отчёты'}</option>`;
       return;
     }
     sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}</option>`).join("");
@@ -760,6 +743,8 @@
       ? "Нет данных для расчёта выбранного показателя"
       : "Загрузите отчёты, чтобы увидеть динамику";
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMetric, overviewScope);
+    document.getElementById('trendChart').setAttribute('aria-label', `${metric.label}: динамика магазина`);
+    document.getElementById('trendValues').textContent = currentTrend.map(row => `${window.WBDashboard.formatPeriod(row.year,row.month)}: ${row[trendMetric] == null ? 'нет данных' : Number(row[trendMetric]).toLocaleString('ru-RU')} ${row[trendMetric] == null ? '' : metric.unit}`).join('; ');
   }
 
   function selectTrendMetric(metric) {
@@ -792,6 +777,9 @@
     // Не оставляем график предыдущего магазина/площадки во время загрузки.
     currentTrend = [];
     refreshTrendChart();
+    if (usesApiData()) {
+      return renderApiPeriod(sel.value, request);
+    }
     if (!sel.value) {
       // магазин без единого загруженного периода — явно сбрасываем панель,
       // иначе остаются данные, отрисованные для предыдущего магазина
@@ -834,6 +822,60 @@
     refreshTrendChart();
     window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
     window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
+  }
+
+  function paintApiDashboard(derived, previous, trend, ready) {
+    renderDashboardKpis(derived,previous,overviewScope);
+    currentTrend = trend; refreshTrendChart();
+    showManualExpenses(derived,ready && overviewScope !== 'all');
+    window.WBDashboard.renderExpenses(document.getElementById('expList'),document.getElementById('expTotal'),document.getElementById('expChart'),derived,overviewScope,previous);
+    window.WBDashboard.renderSkuTable(document.getElementById('skuBody'),document.getElementById('skuFoot'),document.getElementById('skuHint'),document.getElementById('skuChart'),derived,previous);
+  }
+  async function renderApiPeriod(period, request) {
+    const empty = window.WBDashboard.fromApiCabinet(null);
+    paintApiDashboard(empty,null,[],false);
+    const help = document.getElementById('overviewHelpText');
+    help.textContent = period ? 'Показатели обновляются.' : 'Нет данных за полный месяц. Выберите готовый период или загрузите его в настройках.';
+    if(!period) return;
+    const [year,month] = period.split('-').map(Number), key = `${year}-${String(month).padStart(2,'0')}`;
+    try {
+      const snapshot = await window.WBApiCabinet.overview(key);
+      if(request !== dashboardRequest || !usesApiData() || !snapshot) return;
+      let derived = window.WBDashboard.fromApiCabinet(snapshot.cabinet);
+      let previous = snapshot.previous?.complete ? window.WBDashboard.fromApiCabinet(snapshot.previous) : null;
+      let trend = snapshot.trend;
+      if(overviewScope === 'all') {
+        const prevDate = new Date(year,month-2,1);
+        const [data,prevData,ozonTrend] = await Promise.all([
+          window.WBDashboard.loadPeriodData(shop.id,year,month,'ozon'),
+          window.WBDashboard.loadPeriodData(shop.id,prevDate.getFullYear(),prevDate.getMonth()+1,'ozon'),
+          window.WBDashboard.loadTrendData(shop.id,shop.tax_rate,'ozon'),
+        ]);
+        if(request !== dashboardRequest || !usesApiData()) return;
+        const merge = (api,ozon) => {
+          const other = window.WBDashboard.computeDerived(ozon.report,ozon.skus,ozon.costMap,shop.tax_rate);
+          const combined = window.WBDashboard.combineDerived([{derived:api,shop:{...shop,marketplace:'wildberries'}},{derived:other,shop:{...shop,marketplace:'ozon'}}]);
+          // Unknown private inputs must not become zero when summing marketplaces.
+          combined.isApi=true; combined.missing=api.missing;
+          combined.expenses=[...api.expenses,['Комиссия Ozon',other.commission],['Доставка Ozon',other.rep.delivery_cost || 0],['Хранение Ozon',other.rep.storage_cost || 0],['Штрафы Ozon',other.rep.fines || 0],['Приёмка Ozon',other.rep.acceptance_ops || 0],['Прочие услуги Ozon',other.rep.other_fees || 0],['Продвижение Ozon',other.rep.ads_spend || 0],['Операционные расходы Ozon',other.rep.operational_expenses || 0],['Внешнее продвижение Ozon',other.rep.external_promotion_expenses || 0],['Налог Ozon',other.tax],['Себестоимость Ozon',other.cogs]];
+          for(const field of ['netProfit','cogs','tax','ads']) if(api[field]==null) combined[field]=null;
+          for(const field of ['sales_amount','orders_amount','transfer_total','wb_media_spend','ads_spend']) if(api.rep[field]==null) combined.rep[field]=null;
+          combined.rates = api.rates.drrOrders==null || api.rates.drrSales==null ? {drrOrders:null,drrSales:null} : undefined;
+          return combined;
+        };
+        if(data.report) derived=merge(derived,data);
+        if(previous && prevData.report) previous=merge(previous,prevData);
+        trend=window.WBDashboard.combineTrend([snapshot.trend.map(p=>({...p,ads:p.mediaAds==null ? null : p.internalAds+p.mediaAds+(p.externalAds || 0)})),ozonTrend]);
+        trend=trend.map(p=>{const api=snapshot.trend.find(a=>a.year===p.year && a.month===p.month);return api ? {...p,...(api.profit==null?{profit:null}:{}),...(api.drrOrders==null?{drrOrders:null}:{}),...(api.drrSales==null?{drrSales:null}:{})} : p;});
+      }
+      if(request !== dashboardRequest) return;
+      paintApiDashboard(derived,previous,trend,!!snapshot.cabinet?.complete);
+      help.textContent = 'Продажи — с учётом возвратов. Чистая прибыль — после удержаний, себестоимости, налога и денежных расходов. Бонусы и рекламный кэшбэк не уменьшают прибыль. ' + (derived.missing?.length ? derived.missing.join('. ') : '');
+    } catch(error) {
+      if(request !== dashboardRequest) return;
+      help.textContent = 'Не удалось прочитать показатели. Проверьте подключение и обновите расчёт в настройках.';
+      document.getElementById('trendEmpty').textContent = 'Не удалось загрузить данные';
+    }
   }
 
   async function refreshUploadsLog() {
@@ -1021,9 +1063,30 @@
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
 
     const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-    document.querySelectorAll('#overviewSource [data-source]').forEach(button => button.addEventListener('click', () => {
-      overviewSource = button.dataset.source; setActiveView('overview');
-    }));
+    document.getElementById('overviewDataSource').addEventListener('change',async event=>{
+      overviewSource=event.target.value; ++dashboardRequest; updateOverviewSource();
+      await refreshPeriods(); await renderCurrentPeriod();
+    });
+    window.WBApiCabinet.subscribe(async()=>{
+      if(!usesApiData()) return;
+      const [year,month] = document.getElementById('periodSelect').value.split('-').map(Number);
+      ++dashboardRequest;
+      try { await refreshPeriods(year,month); await renderCurrentPeriod(); } catch { /* recovery remains in Settings */ }
+    });
+    const positionHelp = button => {
+      const popover=document.getElementById(button.getAttribute('aria-controls')), rect=button.getBoundingClientRect();
+      const width=Math.min(320,window.innerWidth-32);
+      popover.style.left=`${Math.max(16,Math.min(rect.left,window.innerWidth-width-16))}px`;
+      popover.style.top=`${Math.max(16,Math.min(rect.bottom+8,window.innerHeight-popover.offsetHeight-16))}px`;
+    };
+    document.querySelectorAll('.help-button').forEach(button=>{
+      button.addEventListener('pointerenter',()=>{button.closest('.metric-help').classList.remove('is-dismissed');positionHelp(button);});
+      button.addEventListener('focus',()=>{button.closest('.metric-help').classList.remove('is-dismissed');positionHelp(button);});
+      button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));button.closest('.metric-help').classList.toggle('is-open',open);positionHelp(button);});
+    });
+    const closeHelp = () => document.querySelectorAll('.metric-help.is-open').forEach(help=>{help.classList.remove('is-open');help.querySelector('button').setAttribute('aria-expanded','false');});
+    document.addEventListener('click',event=>{if(!event.target.closest('.metric-help'))closeHelp();});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeHelp();document.activeElement?.closest('.metric-help')?.classList.add('is-dismissed');}});
     document.querySelectorAll('#secApiCabinet a[href^="#"]').forEach(link => link.addEventListener('click', event => {
       event.preventDefault(); setActiveView(link.getAttribute('href').slice(1));
     }));
@@ -1258,7 +1321,9 @@
       const button = document.getElementById("saveManualExpensesBtn");
       button.disabled = true;
       try {
-        await window.WBUpload.saveManualExpenses(
+        if(usesApiData()) {
+          await window.WBApiCabinet.saveOverviewExpenses(`${year}-${String(month).padStart(2,'0')}`,document.getElementById('operationalExpensesInput').value,document.getElementById('externalPromotionInput').value);
+        } else await window.WBUpload.saveManualExpenses(
           shop.id,
           overviewScope,
           year,

@@ -106,7 +106,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   for (const p of sources.orders?.rows || []) {
     const article = String(p.vendor_code || p.nm_id), old = products.get(article);
     products.set(article, { article, name: text(p.title) || old?.name || '', orders_count: (old?.orders_count || 0) + Number(p.orders_count),
-      orders_amount: rub(cents(old?.orders_amount) + cents(p.orders_amount)), bought_qty: 0, for_pay: 0n });
+      orders_amount: rub(cents(old?.orders_amount) + cents(p.orders_amount)), bought_qty: 0, for_pay: 0n, revenue: 0n });
   }
   let bought = 0, rowsCount = 0;
   const financialTotals: Record<string, bigint> = {};
@@ -124,12 +124,13 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
       if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) financialTotals.advertisingDeductions = (financialTotals.advertisingDeductions || 0n) + cents(p.deduction);
       const article = String(p.vendorCode || p.nmId || '');
       if (!article) continue;
-      const row = products.get(article) || { article, name: text(p.title), orders_count: null, orders_amount: null, bought_qty: 0, for_pay: 0n };
+      const row = products.get(article) || { article, name: text(p.title), orders_count: null, orders_amount: null, bought_qty: 0, for_pay: 0n, revenue: 0n };
       if (!row.name) row.name = text(p.title);
       const sign = p.docTypeName === 'Возврат' ? -1 : 1;
       // Corrections can have quantity=1 without a new sale: never double count them.
       if (['Продажа','Возврат'].includes(p.sellerOperName)) { row.bought_qty += sign * Number(p.quantity || 0); bought += sign * Number(p.quantity || 0); }
       row.for_pay += BigInt(sign) * cents(p.forPay);
+      row.revenue += BigInt(sign) * cents(p.retailAmount);
       products.set(article, row);
     }
     if (rows.length < 1000) break;
@@ -137,7 +138,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const { data: costs, error: costError } = await admin.from('sku_costs').select('article,cost_price').eq('shop_id', shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
   const prices = new Map((costs || []).map((c: any) => [c.article, c.cost_price]));
-  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), cost_price: prices.get(p.article) ?? null }));
+  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(p.article) ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
@@ -179,7 +180,7 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     const s = job.summary?.api_sources;
     if (s?.orders?.status !== 'downloaded' || s?.internal_ads?.status !== 'downloaded') continue;
     const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id);
-    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), internalAds:Number(c.economy?.internal_ads), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
+    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
     if (byMonth.size >= 12) break;
   }
   return [...byMonth.values()].sort((a,b)=>a.year-b.year || a.month-b.month).slice(-12);

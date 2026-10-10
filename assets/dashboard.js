@@ -177,6 +177,41 @@
     });
   }
 
+  // Display adapter only: private API results are never written to public reports.
+  // Keep the server's kopeck-rounded profit, tax and advertising ratios authoritative.
+  function fromApiCabinet(cabinet) {
+    const c = cabinet || {}, f = c.finance || {}, e = c.economy || {}, s = c.sources || {};
+    const n = value => value == null || value === '' ? null : Number(value);
+    const rep = {
+      sales_amount:n(f.retailAmount), orders_amount:n(s.orders?.amount), bought_qty:n(f.bought_qty),
+      transfer_total:n(e.payout), transfer_goods:n(f.forPay),
+      delivery_cost:n(f.deliveryService), storage_cost:n(f.paidStorage), fines:n(f.penalty), acceptance_ops:n(f.paidAcceptance),
+      other_fees:n(f.deduction), damage_comp:0, return_comp:0,
+      ads_spend:n(e.internal_ads), ads_promo_spend:n(e.promo), wb_media_spend:n(s.media?.amount),
+      operational_expenses:n(c.settings?.operational_expenses), external_promotion_expenses:n(c.settings?.external_promotion_expenses),
+    };
+    const skuRows = (c.finance ? c.products || [] : []).map(p => {
+      const quantity = n(p.bought_qty) || 0, cost = n(p.cost_price), revenue = n(p.revenue);
+      const totalCost = quantity === 0 ? 0 : cost > 0 ? Math.round(quantity*cost*100)/100 : null;
+      return {article:p.article,name:p.name,bought_qty:quantity,revenue,cost_price:cost,total_cost:totalCost,profit:revenue==null || totalCost==null ? null : Math.round((revenue-totalCost)*100)/100};
+    }).sort((a,b)=>b.bought_qty-a.bought_qty);
+    assignAbc(skuRows);
+    const commission = rep.sales_amount == null || rep.transfer_goods == null ? null : Math.round((rep.sales_amount-rep.transfer_goods)*100)/100;
+    const tax = n(e.tax), cogs = n(c.cogs);
+    const expenses = [
+      ['Комиссия Wildberries',commission],['Стоимость доставки',rep.delivery_cost],['Стоимость хранения',rep.storage_cost],
+      ['Штрафы',rep.fines],['Операции при приёмке',rep.acceptance_ops],['Прочие удержания',rep.other_fees],
+      ['Корректировка вознаграждения WB',n(f.additionalPayment)],['Баллы за отзывы и лояльность',n(f.cashbackAmount)],
+      ['Комиссия лояльности',n(f.cashbackCommissionChange)],['Компенсация скидки лояльности',f.cashbackDiscount == null ? null : -n(f.cashbackDiscount)],
+      ['Реклама уже в удержаниях',f.advertisingDeductions == null ? null : -n(f.advertisingDeductions)],
+      ['WB Продвижение',rep.ads_spend],['WB Media',rep.wb_media_spend],['Операционные расходы',rep.operational_expenses],
+      ['Внешнее продвижение',rep.external_promotion_expenses],['Налог',tax],['Себестоимость товара',cogs],
+    ];
+    return {rep,commission,skuRows,cogs,tax,netProfit:n(c.net_profit),ads:e.advertising_total == null ? null : n(e.internal_ads)+n(s.media?.amount),
+      manualExpenses:(rep.operational_expenses || 0)+(rep.external_promotion_expenses || 0),expenses,
+      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,missing:e.missing || []};
+  }
+
   function combineDerived(entries) {
     if (!entries.length) return computeDerived(null, [], new Map(), 0);
     const rep = {};
@@ -283,9 +318,10 @@
   }
 
   function renderKPI(container, d, prevD, marketplace, interaction) {
+    const focusedMetric = container.contains?.(document.activeElement) ? document.activeElement?.dataset?.trendMetric : null;
     container.innerHTML = "";
-    const rates = advertisingRatios(d.rep);
-    const prevRates = prevD ? advertisingRatios(prevD.rep) : null;
+    const rates = d.rates || advertisingRatios(d.rep);
+    const prevRates = prevD ? prevD.rates || advertisingRatios(prevD.rep) : null;
     const advertisingHint = marketplace === "ozon" ? "Продвижение Ozon + внешняя реклама" : "Внутренняя + медийная + внешняя реклама";
     const cards = [
       { metric: "sales", label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
@@ -295,16 +331,16 @@
       {
         metric: "internalAds",
         label: marketplace === "ozon" ? "Продвижение Ozon" : "Внутренняя реклама",
-        value: d.rep.ads_spend || 0,
-        prev: prevD ? prevD.rep.ads_spend || 0 : null,
+        value: d.isApi ? d.rep.ads_spend : d.rep.ads_spend || 0,
+        prev: prevD ? prevD.isApi ? prevD.rep.ads_spend : prevD.rep.ads_spend || 0 : null,
         unit: "₽", lowerIsBetter: true,
         className: marketplace === "ozon" ? " kpi--advertising-wide" : "",
       },
       {
         metric: "mediaAds",
         label: "Медийная реклама",
-        value: d.rep.wb_media_spend || 0,
-        prev: prevD ? prevD.rep.wb_media_spend || 0 : null,
+        value: d.isApi ? d.rep.wb_media_spend : d.rep.wb_media_spend || 0,
+        prev: prevD ? prevD.isApi ? prevD.rep.wb_media_spend : prevD.rep.wb_media_spend || 0 : null,
         unit: "₽", lowerIsBetter: true, hideForOzon: true,
       },
       { metric: "drrOrders", label: "ДРР (заказа)", value: rates.drrOrders, prev: prevRates ? prevRates.drrOrders : null,
@@ -336,12 +372,14 @@
       `);
       if (interactive) card.addEventListener("click", () => interaction.onSelect(c.metric));
       container.appendChild(card);
+      if (focusedMetric === c.metric) card.focus?.({preventScroll:true});
       if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
     return activeMetric;
   }
 
   function expenseItems(d, marketplace) {
+    if (d.expenses) return d.expenses;
     return [
       [marketplace === "all" ? "Комиссии маркетплейсов" : marketplace === "ozon" ? "Комиссия Ozon" : "Комиссия Wildberries", d.commission],
       ["Стоимость доставки", d.rep.delivery_cost],
@@ -598,7 +636,7 @@
       tbody.innerHTML = rows.map((s, index) => {
         const qtyPct = Math.max(3, Math.round((s.bought_qty / maxQty) * 100));
         const profitClass = s.profit >= 0 ? "profit-pos" : "profit-neg";
-        const costCell = hasCost || s.cost_price > 0
+        const costCell = s.total_cost == null ? `<span class="cost-warn">не заполнено</span>` : hasCost || s.cost_price > 0
           ? fmtMoney.format(Math.round(s.total_cost))
           : `<span class="cost-warn">не заполнено</span>`;
         const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
@@ -608,22 +646,22 @@
           <tr style="--row-index:${Math.min(index, 12)}">
             <td>${abcBadge}${newBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
             <td class="num"><div class="sku-metric"><div class="qty-cell"><div class="qty-track"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div>${prev ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
-            <td class="num mono"><div class="sku-metric"><strong>${fmtMoney.format(Math.round(s.revenue))}</strong>${prev ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
+            <td class="num mono"><div class="sku-metric"><strong>${s.revenue == null ? '—' : fmtMoney.format(Math.round(s.revenue))}</strong>${prev && s.revenue != null ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
             <td class="num mono">${costCell}</td>
-            <td class="num ${profitClass}"><div class="sku-metric"><strong>${fmtMoney.format(Math.round(s.profit))}</strong>${prev ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
+            <td class="num ${profitClass}"><div class="sku-metric"><strong>${s.profit == null ? '—' : fmtMoney.format(Math.round(s.profit))}</strong>${prev && s.profit != null ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
           </tr>`;
       }).join("");
 
       const tot = rows.reduce((a, s) => ({
-        qty: a.qty + s.bought_qty, rev: a.rev + s.revenue, cost: a.cost + s.total_cost, profit: a.profit + s.profit,
+        qty: a.qty + s.bought_qty, rev: a.rev == null || s.revenue == null ? null : a.rev + s.revenue, cost: a.cost == null || s.total_cost == null ? null : a.cost + s.total_cost, profit: a.profit == null || s.profit == null ? null : a.profit + s.profit,
       }), { qty: 0, rev: 0, cost: 0, profit: 0 });
       tfoot.innerHTML = `
         <tr>
           <td>Итого</td>
           <td class="num mono">${fmtQty.format(tot.qty)}</td>
-          <td class="num mono">${fmtMoney.format(Math.round(tot.rev))}</td>
-          <td class="num mono">${fmtMoney.format(Math.round(tot.cost))}</td>
-          <td class="num mono">${fmtMoney.format(Math.round(tot.profit))}</td>
+          <td class="num mono">${tot.rev == null ? '—' : fmtMoney.format(Math.round(tot.rev))}</td>
+          <td class="num mono">${tot.cost == null ? '—' : fmtMoney.format(Math.round(tot.cost))}</td>
+          <td class="num mono">${tot.profit == null ? '—' : fmtMoney.format(Math.round(tot.profit))}</td>
         </tr>`;
     }
 
@@ -672,5 +710,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
+  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
 })();

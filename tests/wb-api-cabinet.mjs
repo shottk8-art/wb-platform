@@ -48,6 +48,7 @@ const reader={from(table){const q={select(){return q;},eq(){return q;},order(){r
 const result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(result.products[0].bought_qty,0);
 assert.equal(result.products[0].for_pay,'5.00');
+assert.equal(result.products[0].revenue,'100.00','retail sales are distinct from payout');
 assert.equal(result.net_profit,null);
 assert.equal(result.cogs,'0.00');
 assert.equal(result.sources.ads.totals['Баланс'].amount,'10.00');
@@ -73,6 +74,8 @@ assert.equal(history.length,1,'monthly refreshes must not duplicate a chart poin
 assert.equal(history[0].sales,100);
 assert.equal(history[0].orders,100);
 assert.equal(history[0].internalAds,10);
+assert.equal(history[0].quantity,1);
+assert.equal(history[0].externalAds,10);
 await assert.rejects(()=>readCabinetTrend(reader,'another-shop'));
 data.wb_api_preview_rows=[{payload:{vendorCode:'RETURN-ONLY',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80,retailAmount:100}}];
 const returnOnly=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
