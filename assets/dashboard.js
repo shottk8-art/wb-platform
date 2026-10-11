@@ -8,6 +8,18 @@
     Chart.defaults.color = getComputedStyle(document.body).getPropertyValue("--ink-soft").trim();
   }
   const sb = () => window.supabaseClient;
+  const articleKey = value => String(value ?? '').trim().toLowerCase();
+  function costCatalogue(rows) {
+    const selected = new Map();
+    const ordered = [...rows].sort((a, b) => Number(Number(b.cost_price) > 0) - Number(Number(a.cost_price) > 0)
+      || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))
+      || (a.article < b.article ? -1 : a.article > b.article ? 1 : 0));
+    for (const row of ordered) {
+      const key = articleKey(row.article);
+      if (!selected.has(key)) selected.set(key, row);
+    }
+    return selected;
+  }
   const fmtMoney = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
   const fmtQty = new Intl.NumberFormat("ru-RU");
   const fmtCompact = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
@@ -78,7 +90,7 @@
   async function loadPeriodData(shopId, year, month, marketplace) {
     const reportQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month);
     const sales = () => withMarketplace(sb().from("sku_sales").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month),marketplace).order("article");
-    const costs = () => sb().from("sku_costs").select("article,name,cost_price").eq("shop_id", shopId).order("article");
+    const costs = () => sb().from("sku_costs").select("article,name,cost_price,updated_at").eq("shop_id", shopId).order("article");
     const [reportResult, skus, catalogue] = await Promise.all([
       withMarketplace(reportQuery, marketplace).maybeSingle(),
       readPages(sales),
@@ -86,11 +98,12 @@
     ]);
     if (reportResult.error) throw reportResult.error;
     const report = reportResult.data;
-    const costMap = new Map(catalogue.map((c) => [c.article, c.cost_price]));
-    const costNameMap = new Map(catalogue.filter((c) => c.name).map((c) => [c.article, c.name]));
+    const resolved = costCatalogue(catalogue);
+    const costMap = new Map([...resolved].map(([key, c]) => [key, c.cost_price]));
+    const costNameMap = new Map(catalogue.filter((c) => c.name).map((c) => [articleKey(c.article), c.name]));
     const namedSkus = (skus || []).map((sku) => ({
       ...sku,
-      name: sku.name || costNameMap.get(sku.article) || sku.article,
+      name: sku.name || costNameMap.get(articleKey(sku.article)) || sku.article,
     }));
     return { report, skus: namedSkus, costMap };
   }
@@ -138,8 +151,9 @@
       operational_expenses: 0, external_promotion_expenses: 0,
     };
     const commission = (rep.sales_amount || 0) - (rep.transfer_goods || 0);
+    const prices = costCatalogue([...costMap].map(([article, cost_price]) => ({article, cost_price})));
     const skuRows = skus.map((s) => {
-      const cost = costMap.get(s.article) || 0;
+      const cost = prices.get(articleKey(s.article))?.cost_price || 0;
       const totalCost = cost * s.bought_qty;
       return { ...s, cost_price: cost, total_cost: totalCost, profit: s.revenue - totalCost };
     }).sort((a, b) => b.bought_qty - a.bought_qty);
@@ -711,5 +725,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
+  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
 })();

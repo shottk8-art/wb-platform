@@ -1,5 +1,6 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
+import { articleKey, costCatalogue } from './articles.ts';
 import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
@@ -22,7 +23,7 @@ const oldestMonth = () => {
 async function readCostPrices(admin:any,shopId:string) {
   const rows:any[]=[];
   for(let offset=0;;offset+=1000) {
-    const {data,error}=await admin.from('sku_costs').select('article,cost_price').eq('shop_id',shopId).order('article').range(offset,offset+999);
+    const {data,error}=await admin.from('sku_costs').select('article,cost_price,updated_at').eq('shop_id',shopId).order('article').range(offset,offset+999);
     if(error) throw new ApiError(500,'Не удалось прочитать себестоимость');
     rows.push(...(data || []));
     if(!data || data.length<1000) return {data:rows,error:null};
@@ -268,8 +269,8 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   }
   const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await readCostPrices(admin,shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
-  const prices = new Map((costs || []).map((c: any) => [c.article, c.cost_price]));
-  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(p.article) ?? null }));
+  const prices = costCatalogue(costs || []);
+  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const media = mediaSource(sources.media, period.dateFrom, period.dateTo);
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';

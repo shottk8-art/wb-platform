@@ -91,4 +91,11 @@ data.wb_api_preview_rows=[{payload:{vendorCode:'RETURN-ONLY',sellerOperName:'В�
 const returnOnly=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(returnOnly.cogs,null,'return-only products also need a known cost for reversal');
 assert.deepEqual(returnOnly.missing_costs,['RETURN-ONLY']);
+// A seeded lowercase placeholder must not mask an entered uppercase price.
+data.wb_api_preview_rows=[{payload:{vendorCode:'top-114',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,forPay:3000,retailAmount:4000}}];
+data.sku_costs=[{article:'Top-114',cost_price:1160},{article:'top-114',cost_price:0}];
+const caseVariant=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
+assert.deepEqual(caseVariant.missing_costs,[],'article casing is not a missing cost');
+assert.equal(caseVariant.cogs,'2320.00');
+assert.equal(caseVariant.net_profit,'634.90','profit must use the saved price regardless of casing');
 console.log('API cabinet: passed (periods, Moscow dates, exact money, pagination, retries, isolation, unknown media, correction quantity).');

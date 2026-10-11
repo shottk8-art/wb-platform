@@ -129,14 +129,15 @@
   }
 
   async function saveCostPrice(shopId, _marketplace, article, name, cost) {
-    const { error } = await sb()
-      .from("sku_costs")
-      .upsert({ shop_id: shopId, article, name: name || "", cost_price: cost }, { onConflict: "shop_id,article" });
+    const { error } = await sb().rpc("save_cost_prices", {
+      p_shop_id: shopId, p_rows: [{ article, name: name || "", cost_price: cost }],
+    });
     if (error) throw error;
   }
 
   async function listCosts(shopId, _marketplace) {
-    return readList(()=>sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article"));
+    const rows = await readList(()=>sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article"));
+    return [...window.WBDashboard.costCatalogue(rows).values()].sort((a,b)=>a.article.localeCompare(b.article));
   }
 
   // Массовый импорт себестоимости из файла (см. WBParse.parseCostsFile).
@@ -144,14 +145,13 @@
   // импорт не должен затирать то, что уже подтянулось из отчёта «Продажи».
   async function importCosts(shopId, marketplace, rows, filename) {
     const existing = await listCosts(shopId, marketplace);
-    const nameByArticle = new Map(existing.map((c) => [c.article, c.name]));
+    const nameByArticle = new Map(existing.map((c) => [window.WBDashboard.articleKey(c.article), c.name]));
     const payload = rows.map((r) => ({
-      shop_id: shopId,
       article: r.article,
-      name: r.name || nameByArticle.get(r.article) || "",
+      name: r.name || nameByArticle.get(window.WBDashboard.articleKey(r.article)) || "",
       cost_price: r.cost_price,
     }));
-    const { error } = await sb().from("sku_costs").upsert(payload, { onConflict: "shop_id,article" });
+    const { error } = await sb().rpc("save_cost_prices", { p_shop_id: shopId, p_rows: payload });
     if (error) throw error;
     await logUpload(shopId, marketplace, "costs", filename || "себестоимость.xlsx", {
       articles: rows.map((r) => r.article),
@@ -203,8 +203,9 @@
       if (error) throw error;
     } else if (upload.kind === "costs") {
       if (upload.articles && upload.articles.length) {
-        const { error } = await sb().from("sku_costs").update({ cost_price: 0 })
-          .eq("shop_id", shopId).in("article", upload.articles);
+        const { error } = await sb().rpc("save_cost_prices", {
+          p_shop_id: shopId, p_rows: upload.articles.map(article => ({article, cost_price: 0})),
+        });
         if (error) throw error;
       }
     } else if (upload.kind === "ads") {
