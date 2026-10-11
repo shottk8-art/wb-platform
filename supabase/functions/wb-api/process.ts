@@ -1,4 +1,5 @@
 import { ApiError, FINANCE_FIELDS, mergeSummaries, pageCursor, sanitizeRows, summarize, validateKey } from './core.ts';
+import { aggregateFinanceRows, mergeFinanceModels } from './cabinet.ts';
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
 export async function processPage(admin: any, job: any, shopId: string, wbFetch: any) {
@@ -27,10 +28,14 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
       if (!data || data.length < 1000) break;
     }
   }
-  for (let offset = 0; offset < freshRows.length; offset += 500) {
-    const { error } = await admin.from('wb_api_preview_rows').upsert(freshRows.slice(offset, offset + 500).map((row) => ({ job_id: job.id, rrd_id: row.rrdId, payload: row })), { onConflict: 'job_id,rrd_id' });
-    if (error) throw new ApiError(500, 'Не удалось сохранить финансовые операции');
+  let previousModel = job.finance_model;
+  if (Number(job.cursor_id) > 0 && (previousModel?.version !== 1 || previousModel.cursor_id !== String(job.cursor_id) || Number(previousModel.row_count) !== Number(job.row_count ?? accumulated?.row_count))) {
+    // One-time bridge for old snapshots; future pages never persist raw rows.
+    const {data,error} = await admin.rpc('wb_api_finance_read_model',{p_job_id:job.id});
+    if (error || !data) throw new ApiError(500,'Не удалось прочитать сохранённые финансовые итоги');
+    previousModel = data;
   }
+  const model = mergeFinanceModels(previousModel, aggregateFinanceRows(freshRows,cursor.toString()));
   if (job.summary?.pilot) {
     const cards = new Map();
     for (const row of freshRows) if (row.vendorCode) cards.set(String(row.vendorCode), { shop_id: shopId, article: String(row.vendorCode), name: String(row.title || '').slice(0, 300), cost_price: 0 });
@@ -45,10 +50,13 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     pilot.finance_complete = true;
     pilot.stage = 'orders';
   }
-  const { error } = await admin.from('wb_api_preview_jobs').update({
-    cursor_id: cursor.toString(), status: rows.length || pilot ? 'loading' : 'complete', summary,
-    row_count: summary.row_count, failure_count: 0, error_message: null, updated_at: new Date().toISOString(),
-  }).eq('id', job.id).eq('shop_id', shopId);
-  if (error) throw new ApiError(500, 'Не удалось сохранить прогресс загрузки');
+  // Compare-and-swap in a single DB transaction: a crash/retry cannot save
+  // only half a page, and a stale lease cannot double-count or rewind totals.
+  const { data: committed, error } = await admin.rpc('wb_api_commit_finance_page', {
+    p_job_id:job.id, p_shop_id:shopId, p_expected_cursor:String(job.cursor_id),
+    p_expected_rows:Number(job.row_count || 0), p_cursor:cursor.toString(),
+    p_summary:summary, p_model:model, p_status:rows.length || pilot ? 'loading' : 'complete',
+  });
+  if (error || committed !== true) throw new ApiError(500, 'Не удалось сохранить прогресс загрузки: он мог измениться');
   return { row_count: summary.row_count, retry_after: rows.length ? 63 : 0 };
 }

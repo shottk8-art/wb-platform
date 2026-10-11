@@ -15,6 +15,19 @@ export function cabinetPeriod(value: unknown, now = new Date()) {
   return period;
 }
 const text = (value: unknown) => String(value || '').slice(0, 300);
+const oldestMonth = () => {
+  const now=new Date(Date.now()+3*3600000);
+  return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-11,1)).toISOString().slice(0,10);
+};
+async function readCostPrices(admin:any,shopId:string) {
+  const rows:any[]=[];
+  for(let offset=0;;offset+=1000) {
+    const {data,error}=await admin.from('sku_costs').select('article,cost_price').eq('shop_id',shopId).order('article').range(offset,offset+999);
+    if(error) throw new ApiError(500,'Не удалось прочитать себестоимость');
+    rows.push(...(data || []));
+    if(!data || data.length<1000) return {data:rows,error:null};
+  }
+}
 export function orderPage(response: any, from: string, to: string) {
   if (response?.data?.currency !== 'RUB' || !Array.isArray(response?.data?.products)) throw new ApiError(400, 'Неожиданный формат аналитики WB');
   const seen = new Set();
@@ -170,7 +183,9 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
 // Reference reducer for regression/differential tests of the persisted SQL model.
 // Serving the cabinet never fetches raw operation pages.
 export function aggregateFinanceRows(rows: any[], cursor = '0') {
-  const totals = summarize(rows).totals, products = new Map<string, any>();
+  const summarized = summarize(rows).totals;
+  const totals = Object.fromEntries(['retailAmount','forPay','deliveryService','paidStorage','paidAcceptance','penalty','deduction','cashbackAmount','cashbackDiscount','cashbackCommissionChange'].map(key=>[key,summarized[key] || '0.00']));
+  const products = new Map<string, any>();
   let additional = 0n, advertisingDeductions = 0n, bought = 0;
   for (const p of rows) {
     additional += cents(p.additionalPayment);
@@ -188,6 +203,25 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
   return {version:1,cursor_id:cursor,row_count:rows.length,bought_qty:bought,
     totals:{...totals,additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions)},
     products:[...products.values()].map(p=>({...p,for_pay:rub(p.for_pay),revenue:rub(p.revenue)}))};
+}
+
+// The durable state grows with distinct products, not the number of operations.
+// Merge in integer kopecks; the first nonempty product title remains stable.
+export function mergeFinanceModels(previous: any, page: any) {
+  if (!previous) return page;
+  const products = new Map(previous.products.map((p: any) => [p.article, {...p}]));
+  for (const p of page.products) {
+    const old: any = products.get(p.article);
+    products.set(p.article, old ? {...old, name:old.name || p.name,
+      bought_qty:old.bought_qty + p.bought_qty,
+      for_pay:rub(cents(old.for_pay) + cents(p.for_pay)),
+      revenue:rub(cents(old.revenue) + cents(p.revenue))} : {...p});
+  }
+  const keys = new Set([...Object.keys(previous.totals), ...Object.keys(page.totals)]);
+  return {version:1, cursor_id:page.cursor_id, row_count:previous.row_count + page.row_count,
+    bought_qty:previous.bought_qty + page.bought_qty,
+    totals:Object.fromEntries([...keys].map(key=>[key,rub(cents(previous.totals[key]) + cents(page.totals[key]))])),
+    products:[...products.values()]};
 }
 
 export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string, catalog?: any) {
@@ -232,7 +266,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
     const row = products.get(p.article) || {article:p.article,name:p.name,orders_count:null,orders_amount:null};
     products.set(p.article,{...row,name:row.name || p.name,bought_qty:p.bought_qty,for_pay:cents(p.for_pay),revenue:cents(p.revenue)});
   }
-  const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await admin.from('sku_costs').select('article,cost_price').eq('shop_id', shopId);
+  const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await readCostPrices(admin,shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
   const prices = new Map((costs || []).map((c: any) => [c.article, c.cost_price]));
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(p.article) ?? null }));
@@ -271,26 +305,28 @@ export async function readCabinetStatus(admin: any, shopId: string) {
   validateShopId(shopId);
   const {data,error} = await admin.from('wb_api_preview_jobs')
     .select('id,date_from,date_to,status,row_count,stage:summary->pilot->>stage')
-    .eq('shop_id',shopId).order('created_at',{ascending:false});
+    .eq('shop_id',shopId).gte('date_from',oldestMonth()).order('created_at',{ascending:false});
   if (error) throw new ApiError(500,'Не удалось прочитать статус истории');
-  const jobs = data || [];
+  const jobs = (data || []).map((j:any)=>({id:j.id,date_from:j.date_from,date_to:j.date_to,status:j.status,row_count:j.row_count,stage:j.stage}));
   return {history_loading:jobs.some((j:any)=>j.status==='loading'),
-    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.row_count,j.stage])
+    jobs,
+    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage])
       .sort((a:any,b:any)=>a[0].localeCompare(b[0])))};
 }
 
 export async function readCabinetTrend(admin: any, shopId: string) {
   validateShopId(shopId);
-  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,summary,row_count,cursor_id,finance_model,updated_at,error_message').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
+  const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,pilot:summary->pilot,api_sources:summary->api_sources,row_count,cursor_id,finance_model,updated_at,error_message').eq('shop_id', shopId).eq('status', 'complete').gte('date_from',oldestMonth()).order('created_at', {ascending:false});
   if (error) throw new ApiError(500, 'Не удалось прочитать динамику');
   const [shopResult,settingsResult,costsResult] = await Promise.all([
     admin.from('shops').select('id,name,tax_rate').eq('id',shopId).single(),
     admin.from('wb_api_month_settings').select('month,operational_expenses,external_promotion_expenses').eq('shop_id',shopId),
-    admin.from('sku_costs').select('article,cost_price').eq('shop_id',shopId),
+    readCostPrices(admin,shopId),
   ]);
   if (shopResult.error || settingsResult.error || costsResult.error) throw new ApiError(500,'Не удалось прочитать настройки динамики');
   const byMonth = new Map();
-  for (const job of jobs || []) {
+  for (const item of jobs || []) {
+    const job={...item,summary:item.summary || {pilot:item.pilot,api_sources:item.api_sources}};
     const month = job.date_from.slice(0,7);
     if (byMonth.has(month)) continue;
     try {

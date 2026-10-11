@@ -23,7 +23,22 @@
     return isNaN(n) ? 0 : n;
   }
 
+  const libraries = new Map();
+  function loadLibrary(globalName,url) {
+    if(window[globalName]) return Promise.resolve();
+    if(!libraries.has(globalName)) libraries.set(globalName,new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src=url; script.async=true;
+      script.onload=()=>window[globalName] ? resolve() : fail();
+      const fail=()=>{libraries.delete(globalName);script.remove();reject(new Error('Не удалось загрузить обработчик отчётов. Проверьте интернет и повторите загрузку.'));};
+      script.onerror=fail;
+      document.head.append(script);
+    }));
+    return libraries.get(globalName);
+  }
+
   async function readWorkbook(file, options = {}) {
+    await loadLibrary('XLSX','https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
     const buf = await file.arrayBuffer();
     return window.XLSX.read(buf, { type: "array", cellDates: false, ...options });
   }
@@ -79,8 +94,9 @@
   // товаров дочитываем напрямую из XML внутри XLSX (ZIP), не затрагивая
   // финансовые расчёты основного парсера.
   async function extractOzonProductNames(file, articleIndex, nameIndex, targetArticles) {
-    if (!window.fflate || articleIndex < 0 || nameIndex < 0 || !targetArticles.size) return new Map();
+    if (articleIndex < 0 || nameIndex < 0 || !targetArticles.size) return new Map();
     try {
+      await loadLibrary('fflate','https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js');
       const files = window.fflate.unzipSync(new Uint8Array(await file.arrayBuffer()), {
         filter: (entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry.name),
       });

@@ -11,7 +11,7 @@ const jobs=Array.from({length:12},(_,i)=>{
 let queries=0,tax=0,price='0.50';
 const admin={rpc(){throw new Error('Warm chart must not rebuild finance aggregates');},from(table){
   assert.notEqual(table,'wb_api_preview_rows','chart must not reread financial operations');
-  let columns='';const q={select(c){columns=c;return q;},eq(){return q;},order(){return q;},single:async()=>run(),then:(ok,bad)=>Promise.resolve(run()).then(ok,bad)};
+  let columns='';const q={select(c){columns=c;if(table==='wb_api_preview_jobs' && !c.includes('stage:')) assert.ok(!c.split(',').includes('summary'),'trend must not transfer detailed deduction descriptions');return q;},eq(){return q;},gte(){return q;},range(){return q;},order(){return q;},single:async()=>run(),then:(ok,bad)=>Promise.resolve(run()).then(ok,bad)};
   function run(){queries++;return {error:null,data:table==='shops'?{id:PILOT_SHOP_ID,tax_rate:tax}:table==='sku_costs'?[{article:'SKU',cost_price:price}]:table==='wb_api_month_settings'?[]:columns.includes('stage:')?jobs.map(j=>({...j,stage:'done'})):jobs};}
   return q;
 }};
@@ -22,5 +22,7 @@ price='0.70';tax=5;
 assert.equal((await readCabinetTrend(admin,PILOT_SHOP_ID))[0].profit,2500,'cached finance must not freeze current cost prices or tax');
 const status=await readCabinetStatus(admin,PILOT_SHOP_ID);
 assert.equal(status.history_loading,false);assert.equal(JSON.parse(status.revision).length,12);
+jobs[0].row_count++;
+assert.equal((await readCabinetStatus(admin,PILOT_SHOP_ID)).revision,status.revision,'page progress must not invalidate completed chart data');
 await assert.rejects(()=>readCabinetStatus(admin,'another-shop'));
 console.log('Read budget: passed (4 queries for 12 months, zero raw rows, live tax/costs, cheap isolated status).');

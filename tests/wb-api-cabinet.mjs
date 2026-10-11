@@ -51,7 +51,7 @@ const data={shops:{id:PILOT_SHOP_ID,name:'GREEN FLOW',tax_rate:0},wb_api_preview
 wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,forPay:80,retailAmount:100}},
 {payload:{vendorCode:'SKU',sellerOperName:'Коррекция продаж',docTypeName:'Продажа',quantity:1,forPay:5}},
 {payload:{vendorCode:'SKU',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
-const reader={rpc:async()=>({data:aggregateFinanceRows(data.wb_api_preview_rows.map(r=>r.payload)),error:null}),from(table){assert.notEqual(table,'wb_api_preview_rows','cabinet must serve aggregates, not raw operations');const q={select(){return q;},eq(){return q;},order(){return q;},limit(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
+const reader={rpc:async()=>({data:aggregateFinanceRows(data.wb_api_preview_rows.map(r=>r.payload)),error:null}),from(table){assert.notEqual(table,'wb_api_preview_rows','cabinet must serve aggregates, not raw operations');const q={select(){return q;},eq(){return q;},gte(){return q;},range(){return q;},order(){return q;},limit(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
 const result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(result.products[0].bought_qty,0);
 assert.equal(result.products[0].for_pay,'5.00');

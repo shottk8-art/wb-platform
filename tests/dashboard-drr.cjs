@@ -64,7 +64,7 @@ async function main() {
         then: (resolve) => Promise.resolve({ data: results[table], error: null }).then(resolve) };
       return query;
     },
-    rpc: async () => ({ data: [{ year: 2026, month: 9 }], error: null }),
+    rpc: async () => ({ data: [{ report:rep,cogs:0 }], error: null }),
   };
   const trend = await api.loadTrendData('test-shop', 0, 'wildberries');
   assert.equal(trend[0].ads, 175);

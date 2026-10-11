@@ -98,7 +98,14 @@ const sandbox = {
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
     from: chain,
-    rpc: async (name, args) => {rpcCalls.push({name,args});return { data: name === 'wb_api_read_key' ? storedKey : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null };},
+    rpc: async (name, args) => {
+      rpcCalls.push({name,args});
+      if(name==='wb_api_commit_finance_page') {
+        Object.assign(job,{cursor_id:args.p_cursor,summary:args.p_summary,finance_model:args.p_model,row_count:args.p_model.row_count,status:args.p_status});
+        return {data:true,error:null};
+      }
+      return { data: name === 'wb_api_read_key' ? storedKey : name === 'wb_api_accept_lease' ? (leaseAccepted ? [structuredClone(job)] : []) : claimWait, error: null };
+    },
   }),
   fetch: async (url, options) => {
     outbound.push({ url, body: options.body });

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { ApiError, mergeSummaries, summarize, validatePeriod } from '../supabase/functions/wb-api/core.ts';
+import { aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
 
-const job = { id: 'fake-job', shop_id: 'fake-shop', cursor_id: '2', status: 'loading', summary: null };
+const job = { id: 'fake-job', shop_id: 'fake-shop', cursor_id: '2',row_count:2, status: 'loading', summary: null };
 const saved = new Map([
   ['1', { rrdId: '1', retailAmount: '100.10' }],
   ['2', { rrdId: '2', docTypeName: 'Возврат', retailAmount: '20.00' }],
@@ -11,7 +12,15 @@ let failCommit = true, wait = 0, outbound = 0;
 const personalKey = `e30.${Buffer.from(JSON.stringify({ acc: 3, exp: 4102444800 })).toString('base64url')}.${'x'.repeat(100)}`;
 let key = personalKey;
 const admin = {
-  rpc: async (name) => ({ data: name === 'wb_api_read_key' ? key : wait }),
+  rpc: async (name,args) => {
+    if(name==='wb_api_commit_finance_page') {
+      if(failCommit) return {error:{code:'test-failure'}};
+      Object.assign(job,{cursor_id:args.p_cursor,summary:args.p_summary,finance_model:args.p_model,row_count:args.p_model.row_count,status:args.p_status});
+      return {data:true};
+    }
+    if(name==='wb_api_finance_read_model') return {data:aggregateFinanceRows([...saved.values()].filter(r=>Number(r.rrdId)<=Number(job.cursor_id)),String(job.cursor_id))};
+    return { data: name === 'wb_api_read_key' ? key : wait };
+  },
   from(table) {
     let values, range, ceiling = Infinity;
     const q = {
@@ -34,19 +43,19 @@ let page = [{ rrdId: 2, retailAmount: '20.00' }, { rrdId: 3, retailAmount: '0.01
 const fetcher = async (_key, _url, body) => { outbound++; assert.equal(body.limit, 50000); return page; };
 await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher));
 assert.equal(job.cursor_id, '2');
-assert.equal(saved.size, 3);
+assert.equal(saved.size, 2,'failed compact commit never saves raw operations');
 failCommit = false;
 await processPage(admin, { ...job }, job.shop_id, fetcher);
 // Bootstrap only committed IDs, not rows written by a crashed attempt.
 assert.equal(job.summary.totals.retailAmount, '80.11');
 assert.equal(job.row_count, 3);
-assert.equal(saved.size, 3);
+assert.equal(saved.size, 2,'legacy raw rows remain unchanged');
 assert.equal(job.status, 'loading', 'short page is not proof of completeness');
 // Following an out-of-order last ID must never silently drop financial rows.
 page = [{ rrdId: 5, retailAmount: '1.00' }, { rrdId: 4, retailAmount: '1.00' }];
 await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher), (error) => error instanceof ApiError && error.status === 400);
 assert.equal(job.cursor_id, '3');
-assert.equal(saved.size, 3, 'invalid page is rejected before writes');
+assert.equal(saved.size, 2, 'invalid page is rejected before writes');
 page = [{ rrdId: 3 }, { rrdId: 4 }, { rrdId: 3 }];
 await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher), /не по порядку/);
 assert.equal(job.cursor_id, '3', 'dedup must not hide a non-monotonic raw page');

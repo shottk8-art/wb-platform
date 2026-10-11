@@ -77,15 +77,17 @@
 
   async function loadPeriodData(shopId, year, month, marketplace) {
     const reportQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month);
-    const salesQuery = sb().from("sku_sales").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month);
-    const costsQuery = sb().from("sku_costs").select("*").eq("shop_id", shopId);
-    const [{ data: report }, { data: skus }, { data: costs }] = await Promise.all([
+    const sales = () => withMarketplace(sb().from("sku_sales").select("*").eq("shop_id", shopId).eq("year", year).eq("month", month),marketplace).order("article");
+    const costs = () => sb().from("sku_costs").select("article,name,cost_price").eq("shop_id", shopId).order("article");
+    const [reportResult, skus, catalogue] = await Promise.all([
       withMarketplace(reportQuery, marketplace).maybeSingle(),
-      withMarketplace(salesQuery, marketplace),
-      costsQuery,
+      readPages(sales),
+      readPages(costs),
     ]);
-    const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
-    const costNameMap = new Map((costs || []).filter((c) => c.name).map((c) => [c.article, c.name]));
+    if (reportResult.error) throw reportResult.error;
+    const report = reportResult.data;
+    const costMap = new Map(catalogue.map((c) => [c.article, c.cost_price]));
+    const costNameMap = new Map(catalogue.filter((c) => c.name).map((c) => [c.article, c.name]));
     const namedSkus = (skus || []).map((sku) => ({
       ...sku,
       name: sku.name || costNameMap.get(sku.article) || sku.article,
@@ -93,29 +95,27 @@
     return { report, skus: namedSkus, costMap };
   }
 
+  async function readPages(makeQuery) {
+    const rows = [];
+    for(let offset=0;;offset+=1000) {
+      const {data,error}=await makeQuery().range(offset,offset+999);
+      if(error) throw error;
+      rows.push(...(data || []));
+      if(!data || data.length<1000) return rows;
+    }
+  }
+
   async function loadTrendData(shopId, taxRate, marketplace) {
-    const reportsQuery = sb().from("monthly_reports").select("*").eq("shop_id", shopId).order("year", { ascending: false }).order("month", { ascending: false }).limit(12);
-    const salesQuery = sb().from("sku_sales").select("*").eq("shop_id", shopId);
-    const costsQuery = sb().from("sku_costs").select("*").eq("shop_id", shopId);
-    const [{ data: reports, error: reportError }, { data: sales, error: salesError }, { data: costs, error: costsError }, { data: completePeriods, error: periodsError }] = await Promise.all([
-      withMarketplace(reportsQuery, marketplace),
-      withMarketplace(salesQuery, marketplace),
-      costsQuery,
-      sb().rpc("get_complete_periods", { p_shop_id: shopId, p_marketplace: marketplace }),
-    ]);
-    if (reportError) throw reportError;
-    if (salesError) throw salesError;
-    if (costsError) throw costsError;
-    if (periodsError) throw periodsError;
-    const costMap = new Map((costs || []).map((c) => [c.article, c.cost_price]));
-    const completeKeys = new Set((completePeriods || []).map((period) => `${period.year}-${period.month}`));
-    return (reports || []).filter((report) => completeKeys.has(`${report.year}-${report.month}`)).map((report) => {
-      const periodSales = (sales || []).filter((row) => row.year === report.year && row.month === report.month);
-      const d = computeDerived(report, periodSales, costMap, taxRate);
+    const {data,error}=await sb().rpc('get_file_trend',{p_shop_id:shopId,p_marketplace:marketplace});
+    if(error) throw error;
+    return (data || []).map(({report,cogs}) => {
+      // Keep the established file-report profit formula; the only server-side
+      // aggregation is quantity × live cost price, for the exact shop/period.
+      const d = computeDerived(report, [], new Map(), taxRate);
       const salesAmount = report.sales_amount || 0;
       const ordersAmount = report.orders_amount || 0;
       return {
-        year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit,
+        year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit-Number(cogs),
         orders: ordersAmount,
         quantity: report.bought_qty || 0,
         transfer: report.transfer_total || 0,

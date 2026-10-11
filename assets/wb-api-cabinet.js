@@ -97,7 +97,18 @@
       if (action === 'cabinet_status') {
         historyLoading = !!result.history_loading;
         statusChanged();
-        if ((result.revision ?? null) === revision) return;
+        if ((result.revision ?? null) === revision) {
+          // Row-count progress is cheap metadata, not a new financial snapshot.
+          // Update the Settings text without rereading/reanimating all charts.
+          const job=cabinet?.refresh_job || cabinet?.job;
+          const progress=result.jobs?.find(p=>p.id===job?.id);
+          if(progress && job.status==='loading') {
+            job.row_count=progress.row_count;
+            const stage={finance:'финансы',orders:'заказы',ads:'внутренняя реклама',media_list:'кампании WB Медиа',media_stats:'расходы WB Медиа'}[job.stage] || 'финансы';
+            status(`Загружаются ${stage}. Сохранено ${number(job.row_count)} финансовых операций. Можно закрыть страницу.${job.error_message ? ' Последняя попытка: '+job.error_message : ''}`);
+          }
+          return;
+        }
         result = await window.WBApi.cabinet('cabinet',month);
         if (current !== epoch || ticket !== requestId) return;
         if (month !== el('apiCabinetMonth').value) {reloadQueued=true;return;}

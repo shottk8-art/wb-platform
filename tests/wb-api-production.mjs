@@ -14,7 +14,7 @@ const data={shops:[{id:a,name:'A',tax_rate:0},{id:b,name:'B',tax_rate:0}],sku_co
 const admin={rpc(){throw new Error('Warm private reads must not touch Vault or raw finance');},from(table){
   assert.ok(data[table],`unexpected table ${table}`);const filters={};let limit;
   const result=()=>{reads.push({table,filters:{...filters}});return {data:data[table].filter(row=>Object.entries(filters).every(([key,value])=>row[key]===value)).slice(0,limit),error:null}};
-  const q={select(){return q},eq(key,value){filters[key]=value;return q},order(){return q},limit(value){limit=value;return q},single:async()=>{const r=result();return {...r,data:r.data[0]||null}},then:(ok,bad)=>Promise.resolve(result()).then(ok,bad)};return q;
+  const q={select(){return q},eq(key,value){filters[key]=value;return q},gte(){return q},range(){return q},order(){return q},limit(value){limit=value;return q},single:async()=>{const r=result();return {...r,data:r.data[0]||null}},then:(ok,bad)=>Promise.resolve(result()).then(ok,bad)};return q;
 }};
 assert.equal((await readCabinet(admin,a,period)).net_profit,'130.00');
 assert.equal((await readCabinet(admin,b,period)).net_profit,'150.00');

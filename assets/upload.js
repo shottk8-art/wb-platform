@@ -1,6 +1,15 @@
 // Загрузка отчётов WB (клиентский парсинг + запись в Supabase) и ручной ввод.
 (function () {
   const sb = () => window.supabaseClient;
+  async function readList(makeQuery) {
+    const rows=[];
+    for(let offset=0;;offset+=1000) {
+      const {data,error}=await makeQuery().range(offset,offset+999);
+      if(error) throw error;
+      rows.push(...(data || []));
+      if(!data || data.length<1000) return rows;
+    }
+  }
 
   // Записывает загрузку в журнал (assets: не должно ронять основной
   // сценарий загрузки, если по какой-то причине не удалось залогировать).
@@ -127,9 +136,7 @@
   }
 
   async function listCosts(shopId, _marketplace) {
-    const { data, error } = await sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article");
-    if (error) throw error;
-    return data || [];
+    return readList(()=>sb().from("sku_costs").select("*").eq("shop_id", shopId).order("article"));
   }
 
   // Массовый импорт себестоимости из файла (см. WBParse.parseCostsFile).
@@ -155,9 +162,7 @@
 
   // ---- Журнал загрузок ----
   async function listUploads(shopId) {
-    const { data, error } = await sb().from("uploads").select("*").eq("shop_id", shopId).order("created_at", { ascending: false });
-    if (error) throw error;
-    return data || [];
+    return readList(()=>sb().from("uploads").select("*").eq("shop_id", shopId).order("created_at", { ascending: false }).order("id"));
   }
 
   async function saveManualExpenses(shopId, marketplace, year, month, operationalExpenses, externalPromotionExpenses) {

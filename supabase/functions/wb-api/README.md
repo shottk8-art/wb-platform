@@ -47,6 +47,38 @@ monthly_reports/sku_sales/uploads or changes Ozon imports. API data is not publi
 Run `node tests/wb-api.mjs`, `node tests/wb-api-access.mjs` and the other `wb-api*`
 regressions for handler, isolation, calculation, queue, read-budget and UI tests.
 
+## Storage and query budgets
+
+Apply the three `2026101118*` migrations before deploying compact ingestion.
+Each finance page is reduced to money totals and distinct SKU totals, using
+integer kopecks. `wb_api_commit_finance_page` atomically compares the previous
+cursor AND operation count before committing the model, summary and cursor.
+Retries cannot double-count; compact snapshots reject raw-operation writes.
+Storage grows with distinct products, not the number of financial operations.
+
+Legacy raw rows must be archived, authenticated-decrypted and checked against
+every committed cursor/count/summary and existing valid model before cleanup.
+`tools/verify-wb-archive.mjs` verifies chunk hashes and continuity offline and
+generates guarded compact-model updates. Keep the encrypted archive and its
+passphrase outside the published repository. Never run a large SQL backfill or
+DELETE/VACUUM FULL against a disk-exhausted staging table. Cleanup is a separate,
+explicit maintenance operation, not a side effect of applying migrations.
+
+Two usable completed snapshots per month are retained; unfinished/error jobs
+are untouched. Only compact jobs with no raw rows can be pruned. Worker cron
+logs expire after seven days. No reports, costs, uploaded files, credentials or
+manual settings participate in retention. Status and trend reads cover the
+last twelve calendar months. Unchanged row-count progress does not reload the
+dashboard. File trends use one RLS-scoped aggregate RPC; SKU/cost lists are
+paginated to avoid silently truncating catalogs at 1000 rows. XLSX/ZIP libraries
+load on first import, not on opening Overview.
+
+Regressions: `wb-api-storage-budget.mjs` (50,000 operations, zero raw writes,
+exact totals and atomic rollback), `wb-api-read-budget.mjs` (four queries for
+twelve months, no raw reads), `file-read-budget.cjs` (1105 products and one
+trend RPC), `import-lazy-budget.cjs` (one shared first-import library load),
+and `wb-api-compact-ingestion.sql` (rollback-only database checks).
+
 ## WB Media expense-first selection
 
 WB can return `не удалось получить id баннеров размещения` from interval
