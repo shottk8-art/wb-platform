@@ -38,9 +38,9 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
   const model = mergeFinanceModels(previousModel, aggregateFinanceRows(freshRows,cursor.toString()));
   if (job.summary?.pilot) {
     const cards = new Map();
-    for (const row of freshRows) if (row.vendorCode) cards.set(String(row.vendorCode), { shop_id: shopId, article: String(row.vendorCode), name: String(row.title || '').slice(0, 300), cost_price: 0 });
+    for (const row of freshRows) if (String(row.vendorCode || '').trim()) cards.set(String(row.vendorCode), { article: String(row.vendorCode), name: String(row.title || '').slice(0, 300) });
     if (cards.size) {
-      const { error } = await admin.from('sku_costs').upsert([...cards.values()], { onConflict: 'shop_id,article', ignoreDuplicates: true });
+      const { error } = await admin.rpc('seed_cost_cards', {p_shop_id:shopId,p_cards:[...cards.values()]});
       if (error) throw new ApiError(500, 'Не удалось подготовить карточки себестоимости');
     }
   }

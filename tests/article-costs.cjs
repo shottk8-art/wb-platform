@@ -15,7 +15,7 @@ window.supabaseClient={
  rpc:async(name,args)=>{requests.push({name,args});return {data:1,error:null};},
  from(table){let shopId;
   const q={select(){return q;},eq(column,value){if(column==='shop_id')shopId=value;return q;},order(){return q;},range(){return q;},
-   insert:async()=>({error:null}),delete(){return q;},
+   insert:async()=>({error:null}),upsert:async()=>({error:null}),delete(){return q;},
    then(ok,bad){const data=shopId==='shop-a'?[{article:'Top-114',cost_price:1160,name:'Товар'},{article:'top-114',cost_price:0}]:[{article:'TOP-114',cost_price:900,name:'Другой магазин'}];return Promise.resolve({data,error:null}).then(ok,bad);}};
   return q;
  }
@@ -34,5 +34,15 @@ vm.runInNewContext(fs.readFileSync('assets/upload.js','utf8'),{window,Map,Date,c
  assert.equal(requests[1].args.p_rows[0].name,'Другой магазин','case-insensitive imported names remain shop-scoped');
  await window.WBUpload.deleteUpload('shop-a',{id:'test-upload',kind:'costs',articles:['Top-114']});
  assert.equal(requests[2].args.p_rows[0].cost_price,0,'undo also uses the atomic alias-aware save');
+ window.WBParse={
+  parseSalesReport:async()=>({skus:[{article:'Top-114',name:'Товар',bought_qty:1,revenue:10},{article:'top-114',name:'Товар',bought_qty:1,revenue:10}]}),
+  parseOzonAccruals:async()=>({periods:[{report:{year:2026,month:9},skus:[{article:'TOP-114',name:'Товар',bought_qty:1,revenue:10}]}],transactionCount:1}),
+ };
+ await window.WBUpload.uploadSalesReport('shop-a',{name:'wb.xlsx'},2026,9);
+ assert.equal(requests[3].name,'seed_cost_cards','WB files must use the server-side case-aware seeder');
+ assert.equal(requests[3].args.p_shop_id,'shop-a');
+ await window.WBUpload.uploadOzonAccruals('shop-b',{name:'ozon.xlsx'});
+ assert.equal(requests[4].name,'seed_cost_cards','Ozon files must use the same protection');
+ assert.equal(requests[4].args.p_shop_id,'shop-b');
  console.log('Case-insensitive cost UI/write paths: PASS (one row, import, save, undo, shop scoping).');
 })().catch(error=>{console.error(error);process.exitCode=1;});

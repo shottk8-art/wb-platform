@@ -47,10 +47,8 @@
     if (e1) throw e1;
 
     // заводим карточку себестоимости для новых артикулов, не трогая уже заполненные
-    const costsPayload = skus.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
-    const { error: e2 } = await sb()
-      .from("sku_costs")
-      .upsert(costsPayload, { onConflict: "shop_id,article", ignoreDuplicates: true });
+    const costsPayload = skus.map((s) => ({ article: s.article, name: s.name }));
+    const { error: e2 } = await sb().rpc("seed_cost_cards", {p_shop_id:shopId,p_cards:costsPayload});
     if (e2) throw e2;
 
     await logUpload(shopId, "wildberries", "sales", file.name, { year, month, row_count: skus.length });
@@ -117,8 +115,8 @@
     if (sales.length) {
       const { error: salesError } = await sb().from("sku_sales").upsert(sales, { onConflict: "shop_id,marketplace,year,month,article" });
       if (salesError) throw salesError;
-      const costs = sales.map((s) => ({ shop_id: shopId, article: s.article, name: s.name, cost_price: 0 }));
-      const { error: costsError } = await sb().from("sku_costs").upsert(costs, { onConflict: "shop_id,article", ignoreDuplicates: true });
+      const costs = sales.map((s) => ({ article: s.article, name: s.name }));
+      const { error: costsError } = await sb().rpc("seed_cost_cards", {p_shop_id:shopId,p_cards:costs});
       if (costsError) throw costsError;
     }
     await logUpload(shopId, "ozon", "ozon_accruals", file.name, {

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {calculate,readPages} from '../supabase/functions/analyze-results/calculations.ts';
+import {costCatalogue} from '../supabase/functions/wb-api/articles.ts';
+const costs=new Map([...costCatalogue([{article:'Top-114',cost_price:1160},{article:'top-114',cost_price:0}])].map(([key,c])=>[key,Number(c.cost_price)]));
+const result=calculate({sales_amount:4000,transfer_total:3000},[{article:'TOP-114',bought_qty:2}],costs,0);
+assert.equal(result.cogs,2320,'AI analysis must match the dashboard price regardless of article casing');
+assert.equal(result.net_profit,680);
+assert.equal(calculate({sales_amount:4000,transfer_total:3000,wb_media_spend:200},[{article:'top-114',bought_qty:2}],costs,0).net_profit,480,'media spend matches file dashboard profit');
+let queries=0;
+const many=Array.from({length:1105},(_,i)=>({article:`Sku-${i}`,cost_price:10}));
+const all=await readPages(()=>({range:async(a,b)=>{queries++;return {data:many.slice(a,b+1)};}}));
+assert.equal(all.length,1105);
+assert.equal(queries,2,'only paginated catalogue reads, no raw operations');
+await assert.rejects(()=>readPages(()=>({range:async()=>({error:new Error('read failure')})})),/read failure/);
+console.log('AI cost calculations: PASS (case, known prices, media, >1000 rows, read failures).');
