@@ -135,6 +135,8 @@
       <a href="#settings">Настройки загрузки</a>
     </aside>
 
+    <p class="hint" id="shopLoading" role="status" aria-live="polite" hidden>Загружаем данные магазина…</p>
+
     <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card settings-share-card">
@@ -495,6 +497,9 @@
   let overviewScope = "wildberries";
   let reportMarketplace = "wildberries";
   let dashboardRequest = 0;
+  let periodsRequest = 0;
+  let shopChange = 0;
+  let shopLoading = false;
   let aiAllowed = false;
   let trendMetric = "sales";
   let currentTrend = [];
@@ -553,7 +558,8 @@
     overviewSource = allowed ? sourcePreference || 'api' : 'files';
     document.getElementById('overviewDataSource').value = overviewSource;
     document.getElementById('secApiCabinet').hidden = !allowed;
-    document.getElementById('secAiAnalysis').hidden = usesApiData() || !aiAllowed;
+    document.getElementById('secAiAnalysis').hidden = shopLoading || usesApiData() || !aiAllowed;
+    document.getElementById('shopLoading').hidden = !shopLoading || activeView !== 'overview';
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
     document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
     updateOverviewLoadStatus();
@@ -674,6 +680,7 @@
     const url = `${location.origin}/s/${shop.slug}`;
     document.getElementById("shareUrl").textContent = url;
     document.getElementById("shareToggle").checked = shop.share_enabled;
+    document.getElementById("copyShareBtn").disabled = false;
     document.getElementById("copyShareBtn").onclick = () => {
       navigator.clipboard.writeText(url).then(() => toast("Ссылка скопирована"));
     };
@@ -697,21 +704,25 @@
     if(!shop || !session) return;
     window.WBApiCabinet.setContext({shopId:shop.id,allowed:apiCabinetAllowed()});
     updateOverviewSource(); ++dashboardRequest;
-    try { await refreshPeriods(); await renderCurrentPeriod(); } catch { /* status remains visible in Settings */ }
+    try { if (await refreshPeriods()) await renderCurrentPeriod(); } catch { /* status remains visible in Settings */ }
   });
   window.WBApiCabinet.subscribeStatus(updateOverviewLoadStatus);
 
   async function refreshMembers() {
+    const selectedShopId = shop?.id, generation = shopChange;
+    if (!selectedShopId) return;
     const owner = isOwner();
     const tbody = document.getElementById("membersBody");
     let members = [];
     try {
-      members = await window.WBAuth.listMembers(shop.id);
+      members = await window.WBAuth.listMembers(selectedShopId);
     } catch (e) {
+      if (shop?.id !== selectedShopId || generation !== shopChange) return;
       // участник не-владелец может не иметь права видеть список — просто скрываем раздел
       document.getElementById("secMembers").hidden = true;
       return;
     }
+    if (shop?.id !== selectedShopId || generation !== shopChange) return;
     document.getElementById("secMembers").hidden = false;
     if (!members.length) {
       tbody.innerHTML = `<tr><td colspan="3" class="empty">${owner ? "Пока никого не добавили" : "Участников пока нет"}</td></tr>`;
@@ -741,18 +752,22 @@
   }
 
   async function refreshPeriods(selectYear, selectMonth) {
-    const request = dashboardRequest;
+    if (!shop) return false;
+    // Period reads have their own revision: rendering KPIs must not cancel
+    // the newer period list started by a concurrent API status notification.
+    const request = ++periodsRequest, generation = shopChange;
+    const selectedShopId = shop.id, selectedScope = overviewScope, api = usesApiData();
     const lists = await Promise.all(overviewMarketplaces().map(async marketplace => {
-      if (marketplace === 'wildberries' && usesApiData()) {
+      if (marketplace === 'wildberries' && api) {
         try { const snapshot = await window.WBApiCabinet.overview(); return snapshot?.trend || []; }
         catch { return []; }
       }
-      return window.WBDashboard.loadPeriods(shop.id, marketplace);
+      return window.WBDashboard.loadPeriods(selectedShopId, marketplace);
     }));
-    if (request !== dashboardRequest) return;
+    if (request !== periodsRequest || generation !== shopChange || selectedShopId !== shop?.id || selectedScope !== overviewScope || api !== usesApiData()) return false;
     const unique = new Map();
     lists.flat().forEach((period) => unique.set(`${period.year}-${period.month}`, period));
-    if (usesApiData()) {
+    if (api) {
       const [year,month] = window.WBApiCabinet.currentMonth.split('-').map(Number);
       unique.set(`${year}-${month}`,{year,month,current:true});
     }
@@ -760,13 +775,14 @@
     const sel = document.getElementById("periodSelect");
     if (!periods.length) {
       sel.innerHTML = `<option value="">${usesApiData() ? 'Нет готовых периодов' : 'Загрузите все обязательные отчёты'}</option>`;
-      return;
+      return true;
     }
     sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}${p.current ? ' · текущий' : ''}</option>`).join("");
     const requested = selectYear && selectMonth ? `${selectYear}-${selectMonth}` : "";
     sel.value = periods.some((period) => `${period.year}-${period.month}` === requested)
       ? requested
       : window.WBDashboard.defaultPeriodValue(periods);
+    return true;
   }
 
   function refreshTrendChart() {
@@ -803,7 +819,39 @@
     });
   }
 
+  function setShopLoading(loading) {
+    shopLoading = loading;
+    if (loading) document.getElementById('shopLoading').textContent = 'Загружаем данные магазина…';
+    document.getElementById('shopLoading').hidden = !loading || activeView !== 'overview';
+    document.getElementById('periodSelect').disabled = loading;
+    for (const id of ['secKpis', 'secManualExpenses', 'secTrend', 'secAnalytics']) document.getElementById(id).hidden = loading;
+    updateOverviewSource();
+  }
+
+  function resetShopDisplay() {
+    periods = []; currentTrend = []; apiDisplayedPeriod = null;
+    window.WBAnalysis.reset();
+    for (const id of ['kpiRow', 'membersBody', 'costsBody', 'uploadsBody']) document.getElementById(id).replaceChildren();
+    const sel = document.getElementById('periodSelect');
+    sel.innerHTML = '<option value="">Загружаем данные магазина…</option>';
+    sel.value = '';
+    document.getElementById('shareUrl').textContent = '—';
+    document.getElementById('copyShareBtn').disabled = true;
+    document.getElementById('shareToggle').disabled = true;
+    document.getElementById('taxRateInput').value = '';
+    document.getElementById('taxRateInput').disabled = true;
+    document.getElementById('saveTaxBtn').disabled = true;
+    document.getElementById('deleteShopBtn').hidden = true;
+    const empty = window.WBDashboard.computeDerived(null, [], new Map());
+    refreshTrendChart();
+    window.WBDashboard.renderExpenses(document.getElementById('expList'), document.getElementById('expTotal'), document.getElementById('expChart'), empty, 'wildberries', null);
+    window.WBDashboard.renderSkuTable(document.getElementById('skuBody'), document.getElementById('skuFoot'), document.getElementById('skuHint'), document.getElementById('skuChart'), empty, null);
+    showManualExpenses(empty, false);
+    setShopLoading(true);
+  }
+
   function renderDashboardKpis(derived, previous, marketplace) {
+    setShopLoading(false);
     trendMetric = window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, previous, marketplace, {
       activeMetric: trendMetric,
       onSelect: selectTrendMetric,
@@ -811,6 +859,8 @@
   }
 
   async function renderCurrentPeriod() {
+    if (!shop) return;
+    const selectedShop = { ...shop };
     window.WBAnalysis.reset();
     const request = ++dashboardRequest;
     const sel = document.getElementById("periodSelect");
@@ -835,8 +885,8 @@
     }
     const [year, month] = sel.value.split("-").map(Number);
     const currentEntries = await Promise.all(marketplaces.map(async (marketplace) => {
-      const data = await window.WBDashboard.loadPeriodData(shop.id, year, month, marketplace);
-      return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } };
+      const data = await window.WBDashboard.loadPeriodData(selectedShop.id, year, month, marketplace);
+      return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } };
     }));
     if (request !== dashboardRequest) return;
     const derived = window.WBDashboard.combineDerived(currentEntries);
@@ -848,8 +898,8 @@
     let prevDerived = null;
     try {
       const previousEntries = await Promise.all(marketplaces.map(async (marketplace) => {
-        const data = await window.WBDashboard.loadPeriodData(shop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
-        return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, shop.tax_rate), shop: { ...shop, marketplace } } : null;
+        const data = await window.WBDashboard.loadPeriodData(selectedShop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
+        return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } } : null;
       }));
       const available = previousEntries.filter(Boolean);
       if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
@@ -857,7 +907,7 @@
 
     if (request !== dashboardRequest) return;
     renderDashboardKpis(derived, prevDerived, displayMarketplace);
-    const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(shop.id, shop.tax_rate, marketplace)));
+    const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(selectedShop.id, selectedShop.tax_rate, marketplace)));
     if (request !== dashboardRequest) return;
     const trend = window.WBDashboard.combineTrend(trends);
     currentTrend = trend;
@@ -932,7 +982,10 @@
   }
 
   async function refreshUploadsLog() {
-    const uploads = await window.WBUpload.listUploads(shop.id);
+    const selectedShopId = shop?.id, generation = shopChange;
+    if (!selectedShopId) return;
+    const uploads = await window.WBUpload.listUploads(selectedShopId);
+    if (shop?.id !== selectedShopId || generation !== shopChange) return;
     const tbody = document.getElementById("uploadsBody");
     if (!uploads.length) {
       tbody.innerHTML = `<tr><td colspan="6" class="empty">Загрузок пока нет</td></tr>`;
@@ -980,8 +1033,7 @@
         try {
           await window.WBUpload.deleteUpload(shop.id, upload);
           await refreshUploadsLog();
-          await refreshPeriods();
-          await renderCurrentPeriod();
+          if (await refreshPeriods()) await renderCurrentPeriod();
           await refreshCostsTable();
           toast("Загрузка отменена");
         } catch (e) {
@@ -999,7 +1051,10 @@
   }
 
   async function refreshCostsTable() {
-    const costs = await window.WBUpload.listCosts(shop.id, reportMarketplace);
+    const selectedShopId = shop?.id, marketplace = reportMarketplace, generation = shopChange;
+    if (!selectedShopId) return;
+    const costs = await window.WBUpload.listCosts(selectedShopId, marketplace);
+    if (shop?.id !== selectedShopId || marketplace !== reportMarketplace || generation !== shopChange) return;
     const tbody = document.getElementById("costsBody");
     if (!costs.length) {
       tbody.innerHTML = `<tr><td colspan="4" class="empty">Загрузите отчёт «Продажи», чтобы здесь появились артикулы</td></tr>`;
@@ -1092,8 +1147,7 @@
     await refreshMembers();
 
     fillYearMonthSelects(document.getElementById("salesYear"), document.getElementById("salesMonth"));
-    await refreshPeriods();
-    await renderCurrentPeriod();
+    if (await refreshPeriods()) await renderCurrentPeriod();
     await refreshCostsTable();
     await refreshUploadsLog();
     wireCollapsible("secTax");
@@ -1125,14 +1179,14 @@
       overviewSource=event.target.value; sourcePreference=overviewSource;
       try { localStorage.setItem(`wb-source:${shop.id}`,overviewSource); } catch { /* storage is optional */ }
       ++dashboardRequest; updateOverviewSource();
-      await refreshPeriods(); await renderCurrentPeriod();
+      if (await refreshPeriods()) await renderCurrentPeriod();
     });
     document.getElementById('overviewRefresh').addEventListener('click',async()=>{
       if(!usesApiData()) return;
       const button = document.getElementById('overviewRefresh');
       if(button.disabled) return;
       const selectedShop=shop.id, selectedScope=overviewScope, period=document.getElementById('periodSelect').value;
-      const stillSelected=()=>shop.id===selectedShop && usesApiData() && overviewScope===selectedScope && document.getElementById('periodSelect').value===period;
+      const stillSelected=()=>shop?.id===selectedShop && usesApiData() && overviewScope===selectedScope && document.getElementById('periodSelect').value===period;
       const [year,month]=period.split('-').map(Number);
       const key=year && month ? `${year}-${String(month).padStart(2,'0')}` : window.WBApiCabinet.currentMonth;
       let queued=false;
@@ -1141,7 +1195,7 @@
         const result=await window.WBApiCabinet.refreshOverview(key);
         queued=(result?.refresh_job || result?.job)?.status==='loading';
         if(!stillSelected()) return;
-        await refreshPeriods(Number(key.slice(0,4)),Number(key.slice(5))); await renderCurrentPeriod();
+        if (await refreshPeriods(Number(key.slice(0,4)),Number(key.slice(5)))) await renderCurrentPeriod();
         toast('Обновление идёт на сервере. Можно закрыть страницу.');
       } catch(error) { if(stillSelected()) toast(error.message,true); }
       finally { if(stillSelected() && !queued) { button.disabled=false; button.textContent='Обновить'; } }
@@ -1150,7 +1204,7 @@
       if(!usesApiData()) return;
       const [year,month] = document.getElementById('periodSelect').value.split('-').map(Number);
       ++dashboardRequest;
-      try { await refreshPeriods(year,month); await renderCurrentPeriod(); } catch { /* recovery remains in Settings */ }
+      try { if (await refreshPeriods(year,month)) await renderCurrentPeriod(); } catch { /* recovery remains in Settings */ }
     });
     const positionHelp = button => {
       const popover=document.getElementById(button.getAttribute('aria-controls')), rect=button.getBoundingClientRect();
@@ -1200,8 +1254,7 @@
         dashboardRequest++;
         updateScopeButtons();
         updateOverviewSource();
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         window.WBApiCabinet?.reload();
       });
     });
@@ -1214,8 +1267,7 @@
         dashboardRequest++;
         updateShareBox();
         updateScopeButtons();
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
       });
@@ -1306,8 +1358,7 @@
         updateShareBox();
         updateScopeButtons();
         await refreshMembers();
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
         toast("Магазин создан");
@@ -1333,8 +1384,7 @@
         updateShareBox();
         updateScopeButtons();
         await refreshMembers();
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
         toast("Магазин удалён");
@@ -1345,23 +1395,31 @@
 
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {
       const selectedShopId = e.target.value;
+      const generation = ++shopChange;
+      ++dashboardRequest; ++periodsRequest;
+      shop = null;
       window.WBApi?.setContext({ shopId: selectedShopId, allowed: false });
       window.WBApiCabinet?.setContext({ shopId: selectedShopId, allowed: false });
+      resetShopDisplay();
       if (activeView === "api") setActiveView("overview");
-      const shops = await window.WBAuth.listMyShops();
-      if (e.target.value !== selectedShopId) return;
-      shop = shops.find((s) => s.id === selectedShopId);
-      if (!shop) return;
-      try { localStorage.setItem("wb-selected-shop:" + session.user.id, shop.id); } catch (_) {}
-      overviewScope = "wildberries";
-      reportMarketplace = "wildberries";
-      updateShareBox();
-      updateScopeButtons();
-      await refreshMembers();
-      await refreshPeriods();
-      await renderCurrentPeriod();
-      await refreshCostsTable();
-      await refreshUploadsLog();
+      try {
+        const shops = await window.WBAuth.listMyShops();
+        if (generation !== shopChange || e.target.value !== selectedShopId) return;
+        shop = shops.find((s) => s.id === selectedShopId);
+        if (!shop) throw new Error('Магазин недоступен');
+        try { localStorage.setItem("wb-selected-shop:" + session.user.id, shop.id); } catch (_) {}
+        overviewScope = "wildberries";
+        reportMarketplace = "wildberries";
+        updateShareBox();
+        updateScopeButtons();
+        if (await refreshPeriods()) await renderCurrentPeriod();
+        if (generation !== shopChange) return;
+        await Promise.all([refreshMembers(), refreshCostsTable(), refreshUploadsLog()]);
+      } catch (error) {
+        if (generation !== shopChange) return;
+        document.getElementById('shopLoading').textContent = 'Не удалось загрузить магазин. Выберите его ещё раз.';
+        toast('Ошибка загрузки магазина: ' + error.message, true);
+      }
     });
 
     document.getElementById("shareToggle").addEventListener("change", async (e) => {
@@ -1439,9 +1497,7 @@
         status.textContent = `Готово: загружено месяцев — ${n}`; status.className = "dz-status ok";
         const sel = document.getElementById("periodSelect");
         const cur = sel.value ? sel.value.split("-").map(Number) : [null, null];
-        await refreshPeriods(cur[0], cur[1]);
-        if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
-        await renderCurrentPeriod();
+        if (await refreshPeriods(cur[0], cur[1])) await renderCurrentPeriod();
         await refreshUploadsLog();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
@@ -1456,9 +1512,7 @@
       try {
         const n = await window.WBUpload.uploadSalesReport(shop.id, file, year, month);
         status.textContent = `Готово: артикулов — ${n}`; status.className = "dz-status ok";
-        await refreshPeriods(year, month);
-        document.getElementById("periodSelect").value = `${year}-${month}`;
-        await renderCurrentPeriod();
+        if (await refreshPeriods(year, month)) await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
       } catch (e) {
@@ -1474,9 +1528,7 @@
         status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
         const sel = document.getElementById("periodSelect");
         const cur = sel.value ? sel.value.split("-").map(Number) : [null, null];
-        await refreshPeriods(cur[0], cur[1]);
-        if (!sel.value && periods.length) sel.value = `${periods[0].year}-${periods[0].month}`;
-        await renderCurrentPeriod();
+        if (await refreshPeriods(cur[0], cur[1])) await renderCurrentPeriod();
         await refreshUploadsLog();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
@@ -1489,8 +1541,7 @@
       try {
         const n = await window.WBUpload.uploadWbMedia(shop.id, file);
         status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         await refreshUploadsLog();
       } catch (e) {
         status.textContent = "Ошибка: " + e.message; status.className = "dz-status err";
@@ -1504,8 +1555,7 @@
         const n = await window.WBUpload.uploadOzonAccruals(shop.id, file);
         status.textContent = `Готово: месяцев обновлено — ${n}`; status.className = "dz-status ok";
         const sel = document.getElementById("periodSelect");
-        await refreshPeriods();
-        await renderCurrentPeriod();
+        if (await refreshPeriods()) await renderCurrentPeriod();
         await refreshCostsTable();
         await refreshUploadsLog();
       } catch (e) {

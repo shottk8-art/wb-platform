@@ -19,4 +19,8 @@ const updating=click();select.value='2026-9';button.textContent='Обновит�
 pending.resolve({job:{status:'loading'}});await updating;
 assert.equal(calls.length,3,'slow refresh cannot jump back to a month the user already left');
 assert.equal(button.disabled,false);
-console.log('Overview refresh: passed (selected month, queued-only request, repeated-click guard, private gate, stale selection).');
+pending={};button.disabled=false;select.value='2026-10';
+const oldShopRefresh=click();state.shop=null;
+pending.resolve({job:{status:'loading'}});await oldShopRefresh;
+assert.equal(calls.length,4,'switching shops cannot render a completed refresh for the abandoned shop');
+console.log('Overview refresh: passed (selected month, queued-only request, repeated-click guard, private gate, stale period/shop selection).');
