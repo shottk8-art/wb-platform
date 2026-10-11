@@ -1,6 +1,6 @@
 import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
 import { advertising, economy } from './economy.ts';
-import { mediaCampaignSelection, mediaCampaignEvidence, mediaBannersUnavailable, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
+import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -121,23 +121,21 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
       for (let checked = 0; checked < 5; checked++) {
         const id = media.campaign_ids?.[media.stats_offset || 0];
         if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(502, 'Не удалось продолжить загрузку WB Медиа');
-        const record = media.campaign_records?.find((row: any) => row.id === id);
-        if (record?.status === 8 && !record.evidence) {
+        media.campaign_records ||= [];
+        let record = media.campaign_records.find((row: any) => row.id === id);
+        if (!record) { record = { id }; media.campaign_records.push(record); }
+        // Expense-first for every status: do not prepare statistics for a
+        // campaign with proven zero spend. Lifetime spend is only a filter,
+        // never the amount attributed to this month; missing proof is unknown.
+        if (!record.evidence) {
           record.evidence = mediaCampaignEvidence(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/advert?id=${id}`), id, job.date_from, job.date_to);
         }
-        let provedZero = record?.evidence?.no_spend_in_month === true;
+        const provedZero = record.evidence.no_spend_in_month === true;
         let amount;
         if (provedZero) amount = '0.00';
         else {
           const response = await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]);
-          // WB may list a completed parent while its placements were declined.
-          // The banner error is NOT zero spend: obtain independent card proof.
-          if (mediaBannersUnavailable(response)) {
-            const evidence = record?.evidence || mediaCampaignEvidence(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/advert?id=${id}`), id, job.date_from, job.date_to);
-            if (record) record.evidence = evidence;
-            provedZero = evidence.no_spend_in_month === true;
-          }
-          try { amount = provedZero ? '0.00' : mediaIntervalAmount(response, job.date_from, job.date_to); }
+          try { amount = mediaIntervalAmount(response, job.date_from, job.date_to); }
           catch (e) {
             media.format_issue = {campaign_id:id,...mediaResponseDiagnostic(response)};
             const {error} = await admin.from('wb_api_preview_jobs').update({summary,updated_at:new Date().toISOString()}).eq('id',job.id).eq('shop_id',job.shop_id);

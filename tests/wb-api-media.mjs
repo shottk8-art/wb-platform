@@ -24,11 +24,11 @@ const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString(
 let job={id:'media-test',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,summary:{pilot:{stage:'media_list'},api_sources:{media:{status:'loading',amount:null,campaign_ids:[],list_offset:0}}}};
 let fail=false, requests=[];
 const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){if(!fail)Object.assign(job,values);return Promise.resolve({error:fail?{}:null}).then(resolve,reject);}};return q;}};
-const fetcher=async(_key,url,body)=>{requests.push({url,body});return url.includes('/adverts?')?[{advertId:11},{advertId:22}]:block([body[0].id===11?'10.10':'20.20']);};
+const fetcher=async(_key,url,body)=>{requests.push({url,body});return url.includes('/adverts?')?[{advertId:11},{advertId:22}]:url.includes('/advert?id=')?{advertId:Number(new URL(url).searchParams.get('id')),extended:{expenses:'100.00'}}:block([body[0].id===11?'10.10':'20.20']);};
 await processCabinetSource(admin,structuredClone(job),fetcher);
 assert.equal(job.summary.pilot.stage,'media_stats');assert.equal(job.summary.api_sources.media.amount,null);
 job.failure_count=3;job.error_message='old format error';
-await processCabinetSource(admin,structuredClone(job),async()=>[{interval:{begin:from,end:to},error:'Статистика в процессе получения'}]);
+await processCabinetSource(admin,structuredClone(job),async(_key,url)=>url.includes('/advert?id=')?{advertId:11,extended:{expenses:'100.00'}}:[{interval:{begin:from,end:to},error:'Статистика в процессе получения'}]);
 assert.equal(job.summary.api_sources.media.stats_offset,0,'preparing keeps campaign cursor');
 assert.equal(job.summary.api_sources.media.partial_amount,'0.00');
 assert.equal(job.summary.api_sources.media.amount,null,'preparing must not publish zero');

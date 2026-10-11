@@ -5,7 +5,7 @@ const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString(
 const job={id:'diagnostic-test',shop_id:PILOT_SHOP_ID,date_from:'2026-02-01',date_to:'2026-02-28',status:'loading',summary:{pilot:{stage:'media_stats',finance_complete:true},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{selection_version:2,campaign_ids:[1],stats_offset:0,partial_amount:'0.00'}}}};
 const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q},eq(){return q},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject)}};return q}};
 job.failure_count=3;
-await assert.rejects(()=>processCabinetSource(admin,structuredClone(job),async()=>[{interval:{begin:'2026-02-01',end:'2026-02-15'},error:'Тестовая ошибка '+token,stats:[],secret:token}]),/Не удалось проверить период/);
+await assert.rejects(()=>processCabinetSource(admin,structuredClone(job),async(_key,url)=>url.includes('/advert?id=')?{advertId:1,extended:{expenses:'100.00'}}:[{interval:{begin:'2026-02-01',end:'2026-02-15'},error:'Тестовая ошибка '+token,stats:[],secret:token}]),/Не удалось проверить период/);
 assert.ok(job.summary.api_sources.media.format_issue,'invalid response must retain a bounded shape diagnostic');
 assert.equal(job.summary.pilot.finance_complete,true);
 assert.equal(job.summary.api_sources.media.stats_offset,0);

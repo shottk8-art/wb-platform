@@ -9,7 +9,11 @@ const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString(
 let job={id:'media-stall',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,
   summary:{pilot:{stage:'media_stats'},api_sources:{media:{status:'loading',amount:null,campaign_ids:[11],stats_offset:0,partial_amount:'0.00'}}}};
 const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(){let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject);}};return q;}};
-const pending=async()=>[{interval:{begin:from,end:to},advert_id:11,error:'Статистика в процессе получения'}];
+let cardCalls=0,statsCalls=0;
+const pending=async(_key,url)=>{
+  if(url.includes('/advert?id=')){cardCalls++;return {advertId:11,extended:{expenses:'100.00'}};}
+  statsCalls++;return [{interval:{begin:from,end:to},advert_id:11,error:'Статистика в процессе получения'}];
+};
 let stopped;
 for(let tick=0;tick<25;tick++){
   try{await processCabinetSource(admin,structuredClone(job),pending);}
@@ -20,4 +24,6 @@ assert.equal(stopped.status,400,'upstream preparation timeout is resumable by th
 assert.match(stopped.message,/WB Медиа/);
 assert.equal(job.summary.api_sources.media.amount,null,'timeout is not zero spend');
 assert.equal(job.summary.api_sources.media.stats_offset,0,'never skip an unresolved campaign');
+assert.equal(cardCalls,1,'persisted expense evidence must not be refetched on every preparation retry');
+assert.equal(statsCalls,8);
 console.log('WB Media stalled preparation: bounded wait, unknown spend, preserved cursor passed.');
