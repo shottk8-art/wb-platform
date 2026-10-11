@@ -1166,7 +1166,7 @@
     const closeHelp = () => document.querySelectorAll('.metric-help.is-open').forEach(help=>{help.classList.remove('is-open');help.querySelector('button').setAttribute('aria-expanded','false');});
     document.addEventListener('click',event=>{if(!event.target.closest('.metric-help'))closeHelp();});
     document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeHelp();document.activeElement?.closest('.metric-help')?.classList.add('is-dismissed');}});
-    document.querySelectorAll('#secApiCabinet a[href^="#"]').forEach(link => link.addEventListener('click', event => {
+    document.querySelectorAll('#secApiCabinet a[href^="#"], #overviewLoading a[href^="#"]').forEach(link => link.addEventListener('click', event => {
       event.preventDefault(); setActiveView(link.getAttribute('href').slice(1));
     }));
     mobileMenuBtn.addEventListener("click", () => {
@@ -1199,6 +1199,7 @@
         overviewScope = button.dataset.scope;
         dashboardRequest++;
         updateScopeButtons();
+        updateOverviewSource();
         await refreshPeriods();
         await renderCurrentPeriod();
         window.WBApiCabinet?.reload();

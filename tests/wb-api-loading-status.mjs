@@ -59,4 +59,17 @@ ui.api=true;ui.shop={id:'b'};ui.updateOverviewLoadStatus();assert.equal(el('over
 ui.shop={id:'a'};ui.window.WBApiCabinet.syncStatus={shopId:'a',loading:false};ui.updateOverviewLoadStatus();assert.equal(el('overviewLoading').hidden,true);
 ui.window.WBApiCabinet.syncStatus={shopId:'a',error:true};ui.updateOverviewLoadStatus();assert.equal(el('overviewLoading').dataset.error,'true');
 assert.match(el('overviewLoadingText').textContent,/настройках/);
+assert.match(html,/#overviewLoading a\[href\^="#"\][\s\S]*?setActiveView\(link\.getAttribute\('href'\)\.slice\(1\)\)/,'notice link uses app routing, not a dead hash change');
+let scopeClick;
+const button={dataset:{scope:'ozon'},addEventListener:(_event,fn)=>scopeClick=fn};
+ui.document.querySelectorAll=()=>[button];ui.dashboardRequest=0;ui.overviewScope='wildberries';
+ui.updateScopeButtons=()=>{};
+ui.usesApiData=()=>ui.api && ui.overviewScope!=='ozon';
+ui.updateOverviewSource=()=>ui.updateOverviewLoadStatus();
+ui.refreshPeriods=()=>new Promise(()=>{});ui.renderCurrentPeriod=()=>{};
+const start=html.lastIndexOf('    document.querySelectorAll("#overviewScope [data-scope]").forEach');
+vm.runInContext(html.slice(start,html.indexOf('    document.querySelectorAll("#reportMarketplace',start)),ui);
+ui.window.WBApiCabinet.syncStatus={shopId:'a',loading:true};ui.updateOverviewLoadStatus();
+assert.equal(el('overviewLoading').hidden,false);
+scopeClick();assert.equal(el('overviewLoading').hidden,true,'scope hides notice synchronously, before data/network resolves');
 console.log('Overview loading: passed (initial read, background history, unchanged revision, error recovery, scoped reset, files/Ozon hidden, no extra requests).');
