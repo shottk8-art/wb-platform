@@ -17,7 +17,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261010-expense-fit1">
-<link rel="stylesheet" href="/assets/wb-api.css?v=20261010-history1">
+<link rel="stylesheet" href="/assets/wb-api.css?v=20261011-loading1">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 </head>
 <body>
@@ -128,6 +128,12 @@
         <button type="button" class="ghost overview-refresh" id="overviewRefresh" hidden title="Обновить выбранный месяц из WB; текущий месяц — по сегодняшнюю дату">Обновить</button>
       </div>
     </div>
+
+    <aside class="overview-loading" id="overviewLoading" role="status" aria-live="polite" aria-atomic="true" hidden>
+      <span class="overview-loading-spinner" aria-hidden="true"></span>
+      <div class="overview-loading-copy"><strong id="overviewLoadingTitle"></strong><p id="overviewLoadingText"></p></div>
+      <a href="#settings">Настройки загрузки</a>
+    </aside>
 
     <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
@@ -479,7 +485,7 @@
 <script src="/assets/dashboard.js?v=20261010-mobile1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261010-history1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261011-loading1"></script>
 <script>
 (function () {
   let shop = null;
@@ -550,9 +556,27 @@
     document.getElementById('secAiAnalysis').hidden = usesApiData() || !aiAllowed;
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
     document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
+    updateOverviewLoadStatus();
   }
   function usesApiData() {
     return apiCabinetAllowed() && overviewSource === 'api' && overviewScope !== 'ozon';
+  }
+
+  function updateOverviewLoadStatus() {
+    const state = window.WBApiCabinet?.syncStatus;
+    const box = document.getElementById('overviewLoading');
+    box.hidden = activeView !== 'overview' || !usesApiData() || state?.shopId !== shop?.id || !(state.checking || state.loading || state.error);
+    if (box.hidden) return;
+    box.dataset.error = String(!!state.error);
+    const title = state.error ? 'Проверьте загрузку Wildberries' : state.checking ? 'Проверяем загрузку Wildberries' : 'Загружаем данные Wildberries';
+    const text = state.error
+      ? 'Полученные данные сохранены. Проверьте статус и подключение в настройках загрузки.'
+      : state.checking ? 'Читаем состояние фоновой загрузки магазина.'
+      : 'Финансы, заказы и рекламные расходы загружаются в фоне. Показатели будут обновляться по мере готовности. Страницу можно закрыть.';
+    for (const [id,value] of [['overviewLoadingTitle',title],['overviewLoadingText',text]]) {
+      const node = document.getElementById(id);
+      if (node.textContent !== value) node.textContent = value;
+    }
   }
 
   function toast(msg, isErr) {
@@ -675,6 +699,7 @@
     updateOverviewSource(); ++dashboardRequest;
     try { await refreshPeriods(); await renderCurrentPeriod(); } catch { /* status remains visible in Settings */ }
   });
+  window.WBApiCabinet.subscribeStatus(updateOverviewLoadStatus);
 
   async function refreshMembers() {
     const owner = isOwner();
