@@ -1,6 +1,6 @@
 import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
 import { advertising, economy } from './economy.ts';
-import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaSource } from './media.ts';
+import { mediaCampaignSelection, mediaCampaignEvidence, mediaBannersUnavailable, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -53,8 +53,8 @@ async function commit(admin: any, job: any, summary: any, status = 'loading') {
   if (error) throw new ApiError(500, 'Не удалось сохранить загрузку источника');
 }
 // Durable, bounded work per cron tick; no browser-owned continuation. Media
-// permits a personal-token burst of 10; inspect at most five declined campaigns
-// (and one statistics request) per tick, under the existing shared quota.
+// permits a personal-token burst of 10; inspect at most five campaigns (at most
+// ten media calls with card fallbacks) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   if (job.shop_id !== PILOT_SHOP_ID) throw new ApiError(400, 'API-кабинет доступен только для GREEN FLOW');
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
@@ -125,8 +125,26 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
         if (record?.status === 8 && !record.evidence) {
           record.evidence = mediaCampaignEvidence(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/advert?id=${id}`), id, job.date_from, job.date_to);
         }
-        const provedZero = record?.evidence?.no_spend_in_month === true;
-        const amount = provedZero ? '0.00' : mediaIntervalAmount(await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]), job.date_from, job.date_to);
+        let provedZero = record?.evidence?.no_spend_in_month === true;
+        let amount;
+        if (provedZero) amount = '0.00';
+        else {
+          const response = await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats', [{ id, interval: { begin: job.date_from, end: job.date_to } }]);
+          // WB may list a completed parent while its placements were declined.
+          // The banner error is NOT zero spend: obtain independent card proof.
+          if (mediaBannersUnavailable(response)) {
+            const evidence = record?.evidence || mediaCampaignEvidence(await fetchMedia(`https://advert-media-api.wildberries.ru/adv/v1/advert?id=${id}`), id, job.date_from, job.date_to);
+            if (record) record.evidence = evidence;
+            provedZero = evidence.no_spend_in_month === true;
+          }
+          try { amount = provedZero ? '0.00' : mediaIntervalAmount(response, job.date_from, job.date_to); }
+          catch (e) {
+            media.format_issue = {campaign_id:id,...mediaResponseDiagnostic(response)};
+            const {error} = await admin.from('wb_api_preview_jobs').update({summary,updated_at:new Date().toISOString()}).eq('id',job.id).eq('shop_id',job.shop_id);
+            if (error) throw new ApiError(500,'Не удалось сохранить диагностику WB Медиа');
+            throw e;
+          }
+        }
         delete media.format_issue;
         if (amount === null) {
           media.pending_count = (media.pending_count || 0) + 1;

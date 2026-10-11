@@ -51,6 +51,11 @@ export function mediaCampaignEvidence(response: any, id: number, from: string, t
   return { no_spend_in_month: amount === 0n || outside, lifetime_expenses: amount === null ? null : rub(amount) };
 }
 
+export function mediaBannersUnavailable(response: any) {
+  return Array.isArray(response) && response.length === 1 && typeof response[0]?.error === 'string'
+    && /^не удалось получить id баннеров размещения(?:[.\s]|$)/i.test(response[0].error.trim());
+}
+
 export function mediaIntervalAmount(response: any, from: string, to: string) {
   // One campaign/interval per request makes coverage unambiguous. Empty/missing
   // wrappers, missing expenses and "campaign not found" are NOT proof of zero.
@@ -71,6 +76,17 @@ export function mediaIntervalAmount(response: any, from: string, to: string) {
     total += amount;
   }
   return rub(total);
+}
+
+// Private failure metadata only: never persist a raw body, headers, SKU stats
+// or arbitrary upstream fields. This distinguishes period/shape errors.
+export function mediaResponseDiagnostic(response: any) {
+  const block = Array.isArray(response) ? response[0] : null;
+  const date = (value: unknown) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(?:T[\d:.+Z-]+)?$/.test(value) ? value.slice(0,40) : null;
+  const error = typeof block?.error === 'string' ? block.error.slice(0,240)
+    .replace(/[A-Za-z0-9_./+=-]{32,}/g,'<redacted>').replace(/\S+@\S+/g,'<redacted>') : null;
+  return {response_count:Array.isArray(response)?response.length:null,begin:date(block?.interval?.begin),end:date(block?.interval?.end),
+    stats_array:Array.isArray(block?.stats),error};
 }
 
 export function mediaSource(source: any, from: string, to: string) {

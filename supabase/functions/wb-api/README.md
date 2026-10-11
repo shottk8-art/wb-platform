@@ -62,3 +62,20 @@ DRR are withheld until cashback/corrections/price-basis reconciliation is done.
 The original file-based dashboard and manual expenses are preserved.
 
 Run `node tests/wb-api.mjs` for isolated handler and calculation tests.
+
+## WB Media unavailable-banner recovery
+
+WB can return `не удалось получить id баннеров размещения` from interval
+statistics even for a parent listed as completed (status 7). This error never
+proves zero spend. The worker checks the campaign card on that specific error,
+using the same evidence rules as declined campaigns: explicit zero lifetime
+expenses, or all placements provably outside the requested month. Otherwise
+the month stays incomplete, with bounded retries and private shape diagnostics
+(no raw statistics, credentials or arbitrary upstream fields).
+
+Finance, orders, internal advertising, accumulated media money and the cursor
+survive recovery. Zero evidence is retained with its campaign; cursor and totals
+still commit together. A worker tick processes at most five campaigns (at most
+ten media requests with card fallbacks), preserving the personal-token limit.
+`node tests/wb-api-media-completed.mjs` replays the observed February response;
+`node tests/wb-api-media-diagnostic.mjs` checks safe failure metadata and retries.
