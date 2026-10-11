@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readCabinetTrend,cabinetPeriod,readCabinetStatus} from '../supabase/functions/wb-api/cabinet.ts';
-import {PILOT_SHOP_ID} from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 const now=new Date(Date.now()+3*3600000);
 const jobs=Array.from({length:12},(_,i)=>{
   const period=cabinetPeriod(new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)).toISOString().slice(0,7));

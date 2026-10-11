@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 import { mediaCampaignEvidence, mediaCampaignSelection } from '../supabase/functions/wb-api/media.ts';
 const from='2026-09-01',to='2026-09-30';
 assert.equal(mediaCampaignEvidence({advertId:11,status:8,extended:{expenses:0}},11,from,to).no_spend_in_month,true);

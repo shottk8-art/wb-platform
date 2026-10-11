@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabinet, monthSettings, readCabinetTrend, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID, PILOT_USER_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID, PILOT_USER_ID } from './fixtures/wb-api-identities.mjs';
 const from = '2026-09-01', to = '2026-09-30';
 assert.deepEqual(cabinetPeriod('2026-09'), {dateFrom:from,dateTo:to});
 for (const value of ['2026-13','2026-00','bad','2026-11','2024-01']) assert.throws(()=>cabinetPeriod(value));

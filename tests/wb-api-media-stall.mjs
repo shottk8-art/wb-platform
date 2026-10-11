@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 
 // Replay the exact production symptom: the same campaign/interval returns
 // HTTP 200 "Статистика в процессе получения" at every background tick.

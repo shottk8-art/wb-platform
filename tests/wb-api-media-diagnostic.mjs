@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 const job={id:'diagnostic-test',shop_id:PILOT_SHOP_ID,date_from:'2026-02-01',date_to:'2026-02-28',status:'loading',summary:{pilot:{stage:'media_stats',finance_complete:true},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{selection_version:2,campaign_ids:[1],stats_offset:0,partial_amount:'0.00'}}}};
 const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q},eq(){return q},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject)}};return q}};

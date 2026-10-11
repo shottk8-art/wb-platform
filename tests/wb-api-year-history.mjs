@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cabinetPeriod,readCabinet,aggregateFinanceRows} from '../supabase/functions/wb-api/cabinet.ts';
-import {PILOT_SHOP_ID} from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 import {processPage} from '../supabase/functions/wb-api/process.ts';
 
 for (const day of ['2026-01-01','2026-03-01','2026-10-10']) {

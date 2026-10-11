@@ -1,5 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { ApiError, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
+import { ApiError, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
+import { authorizeShop } from './access.ts';
 import { processPage } from './process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, readCabinetStatus, monthSettings } from './cabinet.ts';
 
@@ -85,7 +86,6 @@ Deno.serve(async (req) => {
     });
     const { data: auth, error: authError } = await userClient.auth.getUser();
     if (authError || !auth.user) throw new ApiError(401, "Сессия истекла. Войдите заново");
-    if (auth.user.id !== PILOT_USER_ID) throw new ApiError(403, "API доступен только владельцу платформы");
     const requestText = await req.text();
     if (requestText.length > 16000) throw new ApiError(400, "Слишком большой запрос");
     let body;
@@ -93,20 +93,19 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== "object") throw new ApiError(400, "Некорректный запрос");
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-    const { data: shop, error: shopError } = await admin.from("shops").select("id,owner_id").eq("id", shopId).eq("owner_id", auth.user.id).maybeSingle();
-    if (shopError || !shop) throw new ApiError(403, "Магазин не найден или вы не его владелец");
+    await authorizeShop(admin,shopId,auth.user.id,body.action);
 
     const readConnection = async () => {
       const { data, error } = await admin.from("wb_api_connections").select(CONNECTION_COLUMNS).eq("shop_id", shopId).maybeSingle();
       if (error) throw new ApiError(500, "Не удалось прочитать настройки API");
       if (!data) return null;
-      const { data: storedKey, error: keyError } = await admin.rpc("wb_api_read_key", { p_shop_id: shopId });
-      if (keyError || !storedKey) throw new ApiError(500, "Не удалось прочитать тип подключения API");
-      return { ...data, ...keyInfo(String(storedKey)) };
+      // This integration accepts personal keys only. Status reads must never
+      // decrypt credentials; WB authenticates keys on connect/check/work.
+      return { ...data, key_type: 'personal', finance_interval_seconds: 60 };
     };
     const readJob = async (jobId: string) => {
       const { data, error } = await admin.from("wb_api_preview_jobs").select(JOB_COLUMNS).eq("id", jobId).eq("shop_id", shopId).maybeSingle();
-      if (error || !data) throw new ApiError(404, "Тестовый отчёт не найден в этом магазине");
+      if (error || !data) throw new ApiError(404, "Выгрузка не найдена в этом магазине");
       return data;
     };
     const claim = async (kind: string) => {
@@ -124,7 +123,6 @@ Deno.serve(async (req) => {
       return json({ trend: await readCabinetTrend(admin, shopId) });
     }
     if (body.action === 'cabinet_settings') {
-      if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
       const period = cabinetPeriod(body.month), settings = monthSettings(body);
       const { error } = await admin.from('wb_api_month_settings').upsert({shop_id:shopId,month:period.dateFrom,...settings,updated_at:new Date().toISOString()}, {onConflict:'shop_id,month'});
       if (error) throw new ApiError(500, 'Не удалось сохранить расходы месяца');
@@ -133,7 +131,6 @@ Deno.serve(async (req) => {
     // Pure reads never decrypt the WB key or call an upstream API.
     const connection = body.action === 'cabinet' ? null : await readConnection();
     if (body.action === 'cabinet' || body.action === 'cabinet_start') {
-      if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет доступен только для GREEN FLOW');
       const period = cabinetPeriod(body.month);
       if (body.action === 'cabinet') return json({ cabinet: await readCabinet(admin, shopId, period), ...await readCabinetStatus(admin,shopId) });
       if (!connection) throw new ApiError(400, 'Сначала подключите персональный ключ в настройках');
@@ -162,7 +159,7 @@ Deno.serve(async (req) => {
       return json({ cabinet: await readCabinet(admin, shopId, period), background: true });
     }
     if (body.action === "status") {
-      const { data: jobs, error } = await admin.from("wb_api_preview_jobs").select(JOB_COLUMNS).eq("shop_id", shopId).order("created_at", { ascending: false }).limit(1);
+      const { data: jobs, error } = await admin.from("wb_api_preview_jobs").select('id,date_from,date_to,status,row_count,error_message,updated_at').eq("shop_id", shopId).order("created_at", { ascending: false }).limit(1);
       if (error) throw new ApiError(500, "Не удалось прочитать статус загрузки");
       return json({ connection, job: jobs?.[0] || null });
     }
@@ -176,10 +173,8 @@ Deno.serve(async (req) => {
       if (connection && connection.seller_id !== seller.seller_id) throw new ApiError(409, "Это ключ другого продавца. Сначала отключите текущее подключение");
       const { error } = await admin.rpc("wb_api_save_key", { p_shop_id: shopId, p_key: token, p_seller_id: seller.seller_id, p_seller_name: seller.seller_name, p_expires_at: expiresAt });
       if (error) throw new ApiError(error.code === "23505" ? 409 : 500, error.code === "23505" ? "Этот продавец WB уже подключён к другому магазину платформы" : "Не удалось сохранить ключ");
-      if (shopId === PILOT_SHOP_ID) {
-        const {error: queueError} = await admin.rpc('wb_api_queue_history');
-        if (queueError) throw new ApiError(500,'Ключ сохранён. Не удалось запустить историю; очередь повторит запуск автоматически');
-      }
+      const {error: queueError} = await admin.rpc('wb_api_queue_shop_history',{p_shop_id:shopId});
+      if (queueError) throw new ApiError(500,'Ключ сохранён. Не удалось запустить историю; очередь повторит запуск автоматически');
       return json({ connection: await readConnection() });
     }
     if (!connection) throw new ApiError(400, "Сначала подключите API магазина");

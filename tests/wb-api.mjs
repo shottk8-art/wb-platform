@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import vm from 'node:vm';
-import { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+import { ApiError, FINANCE_FIELDS, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_USER_ID, PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
+import { authorizeShop } from '../supabase/functions/wb-api/access.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -57,7 +59,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, authorizeShop, cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null, rpcCalls=[];
@@ -68,6 +70,7 @@ const chain = (table) => {
   const result = () => {
     if (operation !== 'select') dbWrites.push({ table, operation, values });
     if (table === 'shops') return { data: owner ? { id: job.shop_id, owner_id: authenticatedId } : null, error: null };
+    if (table === 'shop_members') return {data:null,error:null};
     if (table === 'wb_api_connections') return { data: { seller_id: 'seller-test', seller_name: 'Test', next_request_at: new Date().toISOString() }, error: null };
     if (table === 'wb_api_preview_jobs') {
       if (operation === 'update') Object.assign(job, values);
@@ -109,9 +112,12 @@ const invoke = async (payload, auth = true, origin = 'https://wb-platform.netlif
 };
 check(() => assert.equal(outbound.length, 0));
 assert.equal((await invoke({ action: 'status' }, false)).status, 401); assertions++;
-authenticatedId = 'different-user';
+authenticatedId = 'different-user'; owner=false;
 assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
 assert.equal(outbound.length, 0); assertions++;
+owner=true;
+assert.equal((await invoke({action:'status'})).status,200,'another shop owner is eligible without a pilot ID'); assertions++;
+assert.equal(rpcCalls.filter(c=>c.name==='wb_api_read_key').length,0,'status must not decrypt any key'); assertions++;
 authenticatedId = PILOT_USER_ID; owner = false;
 assert.equal((await invoke({ action: 'status' })).status, 403); assertions++;
 owner = true;
@@ -200,7 +206,18 @@ assert.equal(outbound.length,beforeCabinet); assertions++;
 assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:-1,external_promotion_expenses:0})).status,400); assertions++;
 assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',shop_id:'00000000-0000-4000-8000-000000000009',operational_expenses:0,external_promotion_expenses:0})).status,403); assertions++;
 authenticatedId = '00000000-0000-4000-8000-000000000099';
+owner=false;
 assert.equal((await invoke({action:'cabinet_settings',month:'2026-09',operational_expenses:0,external_promotion_expenses:0})).status,403); assertions++;
 assert.equal((await invoke({action:'cabinet_trend'})).status,403); assertions++;
-authenticatedId = PILOT_USER_ID;
+authenticatedId = PILOT_USER_ID; owner=true;
+// A second owner connects their own shop; only that shop's history is queued.
+authenticatedId='00000000-0000-4000-8000-000000000099';
+job.shop_id='00000000-0000-4000-8000-000000000009';
+upstreamStatus=200;upstreamRows={sid:'seller-test',name:'Second shop'};
+claimWait=0;
+const ownConnect=await invoke({action:'connect',api_key:storedKey});
+assert.equal(ownConnect.status,200); assertions++;
+assert.equal(rpcCalls.at(-1).name,'wb_api_queue_shop_history'); assertions++;
+assert.equal(rpcCalls.at(-1).args.p_shop_id,job.shop_id); assertions++;
+assert.ok(!JSON.stringify(ownConnect.body).includes(storedKey)); assertions++;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);

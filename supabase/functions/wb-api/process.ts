@@ -2,6 +2,7 @@ import { ApiError, FINANCE_FIELDS, mergeSummaries, pageCursor, sanitizeRows, sum
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
 export async function processPage(admin: any, job: any, shopId: string, wbFetch: any) {
+  if (job.shop_id !== shopId) throw new ApiError(403,'Загрузка относится к другому магазину');
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: shopId, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать запрос к WB');
   if (Number(wait) > 0) return { retry_after: Number(wait) };

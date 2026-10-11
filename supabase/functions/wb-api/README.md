@@ -1,67 +1,51 @@
-# WB API pilot
+# WB API production integration
 
-Only the verified immutable auth ID of @karlshott may use the endpoint, and
-only for shops owned by that account. The client-side gate is not authorization.
-This is a private, personal-token integration for the account's own sellers,
-not SaaS onboarding. Connect and worker paths accept personal WB tokens only
-(acc=3, not sandbox). JWT claims do not authenticate a key: WB still verifies it.
-Status returns only the key type and documented finance interval, never claims
-or credentials. Seller-info/ping do not prove permission for report detail.
+Every authenticated shop owner can connect a personal WB token (acc=3, not
+sandbox) in Settings. WB verifies it; local JWT claims are not authentication.
+`access.ts` authorizes each action against the exact shop owner or linked member.
+Only owners connect/check/disconnect credentials. Team members can read and
+update their shop's business data, matching existing file-report permissions.
+Public storefront visibility never grants private API access. AI permissions
+are unchanged. Ozon remains file-based.
 
-Apply `supabase/migrations/20261009190000_wb_api_test.sql` before deploying
-`wb-api`. Keys are encrypted in Supabase Vault. Neither keys nor secret IDs are
-returned by the function. Client roles have no table or RPC privileges. All RPCs
-check `auth.role() = 'service_role'` in addition to explicit grants.
+Deploy `wb-api` and apply `20261011120000_wb_api_production.sql` on top of the
+previous migrations before publishing the frontend. Keys stay encrypted in
+Vault. Client roles have no direct table, key or worker-RPC privileges. Browser
+requests require `auth.getUser()`; disabling gateway JWT verification does not
+disable application authentication. Status reads never decrypt credentials.
 
-Actions: `status`, `connect`, `check`, `disconnect`, `preview_start`, `preview_step`.
-All use POST with a valid Supabase access token; the function verifies it using
-`auth.getUser()`. JWT gateway verification is disabled for compatibility with
-asymmetric Supabase tokens, not to remove authentication.
+Connect queues only that shop's current and eleven previous months. The private
+pg_cron/pg_net dispatcher runs every minute, handling at most four shops fairly
+by next-request time and one job per seller. History reconciliation is bounded
+to ten shops per tick and at most hourly per shop. Expired connections are not
+queued or leased. Leases are random, expiring, single-use server capabilities;
+the service-role worker cannot be triggered using a browser/anonymous key.
 
-Apply `20261009210000_wb_api_background.sql` after the pilot migration.
-The preview uses the finance API, weekly reports, decimal strings, and ID-based
-pagination (50,000 operations per page). A private pg_cron/pg_net dispatcher
-checks due jobs every minute. Each worker request uses a random, single-use,
-10-minute capability; `wb_api_accept_lease` is service-role-only and rechecks
-the immutable pilot owner. Lease expiry recovers a terminated worker. Client
-`preview_step` is now read-only for backward compatibility; status polling never
-advances pagination. Closing the browser cannot stop the scheduler.
+Monthly stages: finance -> orders -> internal advertising -> WB Media. Finance
+uses daily reports for the current month, weekly for closed months, ID-based
+pagination, integer kopecks and deduplication. Cursor/totals commit together.
+Conservative 63-second scheduling and any longer WB Retry duration apply per
+shop; replacing a key does not reset cooldown. Errors have bounded retries.
+Closing the browser cannot stop the queue. `preview_step` remains read-only
+for already-open legacy clients; no test controls are exposed in the interface.
 
-The server enforces 63 seconds or the longer WB `X-Ratelimit-Retry` duration
-(seconds, including long Basic-token waits). Never shorten a genuine quota.
-Only empty/204 finalizes. Duplicate rows upsert by `(job_id, rrd_id)`. Cursor and
-partial totals update together, in exact integer kopecks; retries before cursor
-commit replace rows safely. Older pilot jobs bootstrap totals from saved rows.
-The next cursor is the last raw response row ID. Non-monotonic pages stop before
-any data writes, instead of using a maximum ID that could skip financial rows.
-Changing the key does not blindly reset an outstanding WB Retry cooldown.
-Transient failures retry with bounded backoff (five attempts), credential/data
-errors stop for operator review. Dispatch handles one job per seller at a time.
-The history button requests data since 2024-01-29 through the last closed month;
-this is provider-available history, not a promise of every financial category.
+Overview uses the familiar dashboard. Unconnected shops retain file results;
+connected shops default to API unless the user chose files. WB source preference
+is shop-scoped. Ozon always reads uploaded reports; combined mode sums selected
+WB results and Ozon files, never API plus files for the same marketplace.
+Refresh queues a replacement snapshot and preserves the previous completed
+snapshot until ready. Pure cabinet/trend reads never call WB. Trend uses stored
+finance aggregates and shared catalogue reads, not raw operation scans.
 
-Private GREEN FLOW cabinet (`#api`): `cabinet` reads one closed month's staged
-finance, SKU aggregates, orders and advertising; `cabinet_start` enqueues a durable
-monthly job. Both recheck the immutable pilot owner and exact pilot shop ID.
-The monthly worker runs finance -> all-product sales-funnel pages -> advertising
-spend. Conservative shared 63-second scheduling and provider Retry durations
-continue to apply. Errors stop safely; completed finance survives missing scope
-on subsequent sources. Cache reuse avoids another upstream request; explicit
-refresh creates a replacement snapshot, not additive data. Existing snapshots
-remain recoverable. All dates and category provenance are visible in the UI.
+Profit uses actual retrieved financial values, live cost prices/tax, money-funded
+advertising and manual operating/external promotion expenses. Missing costs or
+sources stay unknown, not zero. Bonus advertising is reference-only. Advertising
+already included in financial deductions is not deducted twice. API ingestion
+inserts new SKU costs without replacing existing costs or names; it never writes
+monthly_reports/sku_sales/uploads or changes Ozon imports. API data is not public.
 
-Media without confirmed statistics is unknown, not zero. Month-specific owner
-confirmation is preserved during refresh. Advertising cashback remains separate
-from bonuses. Null-dated spend is counted as unallocated. Corrections can change
-money but do not duplicate purchased quantities. New financial SKU cards are
-inserted with ignoreDuplicates; existing cost prices and names are untouched.
-
-The API cabinet never writes monthly_reports, sku_sales or uploads; it remains
-private even when a shop's public showcase is enabled. Net profit and combined
-DRR are withheld until cashback/corrections/price-basis reconciliation is done.
-The original file-based dashboard and manual expenses are preserved.
-
-Run `node tests/wb-api.mjs` for isolated handler and calculation tests.
+Run `node tests/wb-api.mjs`, `node tests/wb-api-access.mjs` and the other `wb-api*`
+regressions for handler, isolation, calculation, queue, read-budget and UI tests.
 
 ## WB Media expense-first selection
 

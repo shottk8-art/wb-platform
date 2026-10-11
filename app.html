@@ -147,12 +147,12 @@
 
     <section class="section app-view" id="secWbApi" data-view="settings" hidden>
       <div class="section-head">
-        <h2>API Wildberries</h2><span class="hint">личное подключение · только для @karlshott</span>
+        <h2>API Wildberries</h2><span class="hint">автоматическая загрузка · ключом управляет владелец магазина</span>
         <button class="collapse-btn" type="button" aria-expanded="true" title="Свернуть/развернуть"><svg class="icon"><use href="#icon-chevron"/></svg></button>
       </div>
       <div class="collapsible-body"><div>
         <div class="card wb-api-card">
-          <p class="wb-api-intro">Личное подключение для магазина <strong id="wbApiShopName"></strong>. Нужны категории «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Ключ хранится зашифрованным на сервере. Загрузкой месяцев GREEN FLOW можно управлять здесь, в настройках.</p>
+          <p class="wb-api-intro">Подключение Wildberries для магазина <strong id="wbApiShopName"></strong>. Вставьте персональный ключ с категориями «Финансы», «Аналитика» и «Продвижение», желательно только на чтение. Ключ хранится зашифрованным. После подключения автоматически загрузятся текущий и 11 предыдущих месяцев. Ozon загружается отдельно из файлов в разделе «Отчёты».</p>
           <div class="wb-api-key-row">
             <div class="wb-api-key-field">
               <label for="wbApiKey">Персональный API-ключ Wildberries</label>
@@ -478,7 +478,7 @@
 <script src="/assets/upload.js?v=20261009-wbmedia-period1"></script>
 <script src="/assets/dashboard.js?v=20261010-mobile1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
-<script src="/assets/wb-api.js?v=20261010-overview1"></script>
+<script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261010-history1"></script>
 <script>
 (function () {
@@ -505,7 +505,7 @@
     return !!(shop && session && shop.owner_id === session.user.id);
   }
   function apiCabinetAllowed() {
-    return isOwner() && session.user.id === 'bbb002c4-cd7a-490d-b9c0-72aed5424261' && shop.id === '63175e7a-5b26-425e-893f-68889b32f02f';
+    return !!(shop && session && window.WBApi?.connected);
   }
 
   const loading = document.getElementById("loadingScreen");
@@ -537,11 +537,14 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  let overviewSource = 'files', sourceShopId = null;
+  let overviewSource = 'files', sourceShopId = null, sourcePreference = null;
   function updateOverviewSource() {
     const allowed = apiCabinetAllowed();
-    if (sourceShopId !== shop?.id) { sourceShopId = shop?.id; overviewSource = allowed ? 'api' : 'files'; }
-    if (!allowed) overviewSource = 'files';
+    if (sourceShopId !== shop?.id) {
+      sourceShopId = shop?.id; sourcePreference = null;
+      try { const saved=localStorage.getItem(`wb-source:${shop.id}`); if(['api','files'].includes(saved)) sourcePreference=saved; } catch { /* storage is optional */ }
+    }
+    overviewSource = allowed ? sourcePreference || 'api' : 'files';
     document.getElementById('overviewDataSource').value = overviewSource;
     document.getElementById('secApiCabinet').hidden = !allowed;
     document.getElementById('secAiAnalysis').hidden = usesApiData() || !aiAllowed;
@@ -656,7 +659,7 @@
     // владелец: RLS всё равно отклонит эти действия от участника, поэтому
     // прячем элементы управления, чтобы не показывать ложные ошибки.
     const owner = isOwner();
-    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: owner && session.user.id === "bbb002c4-cd7a-490d-b9c0-72aed5424261" });
+    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
     window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
     updateOverviewSource();
     document.getElementById("deleteShopBtn").hidden = !owner;
@@ -665,6 +668,13 @@
     document.getElementById("taxRateInput").disabled = !owner;
     document.getElementById("memberAddRow").style.display = owner ? "flex" : "none";
   }
+
+  window.WBApi.subscribe(async()=>{
+    if(!shop || !session) return;
+    window.WBApiCabinet.setContext({shopId:shop.id,allowed:apiCabinetAllowed()});
+    updateOverviewSource(); ++dashboardRequest;
+    try { await refreshPeriods(); await renderCurrentPeriod(); } catch { /* status remains visible in Settings */ }
+  });
 
   async function refreshMembers() {
     const owner = isOwner();
@@ -1087,7 +1097,9 @@
     syncMobileSidebar();
     mobileLayout.addEventListener("change", syncMobileSidebar);
     document.getElementById('overviewDataSource').addEventListener('change',async event=>{
-      overviewSource=event.target.value; ++dashboardRequest; updateOverviewSource();
+      overviewSource=event.target.value; sourcePreference=overviewSource;
+      try { localStorage.setItem(`wb-source:${shop.id}`,overviewSource); } catch { /* storage is optional */ }
+      ++dashboardRequest; updateOverviewSource();
       await refreshPeriods(); await renderCurrentPeriod();
     });
     document.getElementById('overviewRefresh').addEventListener('click',async()=>{

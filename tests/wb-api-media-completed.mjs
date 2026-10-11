@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 // Actual WB failure for completed GREEN FLOW placement 421854 (February).
 const unavailable=[{error:'не удалось получить id баннеров размещения. Возможно, размещение находится в статусе «Отклонено»'}];

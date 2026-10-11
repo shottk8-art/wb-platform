@@ -1,4 +1,4 @@
-import { ApiError, PILOT_SHOP_ID, PILOT_USER_ID, cents, rub, summarize, validateKey, validatePeriod } from './core.ts';
+import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
 import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
 
@@ -56,7 +56,7 @@ async function commit(admin: any, job: any, summary: any, status = 'loading') {
 // permits a personal-token burst of 10; inspect at most five campaigns (at most
 // ten media calls with card fallbacks) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
-  if (job.shop_id !== PILOT_SHOP_ID) throw new ApiError(400, 'API-кабинет доступен только для GREEN FLOW');
+  validateShopId(job.shop_id);
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать загрузку');
   if (Number(wait) > 0) return { retry_after: Number(wait) };
@@ -191,8 +191,9 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
 }
 
 export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string, catalog?: any) {
-  const { data: shop, error: shopError } = catalog ? {data:catalog.shop,error:null} : await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).eq('owner_id', PILOT_USER_ID).single();
-  if (shopError || !shop || shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
+  validateShopId(shopId);
+  const { data: shop, error: shopError } = catalog ? {data:catalog.shop,error:null} : await admin.from('shops').select('id,name,tax_rate').eq('id', shopId).single();
+  if (shopError || !shop || shop.id !== shopId) throw new ApiError(403, 'API-кабинет недоступен');
   const { data: settingsRows, error: settingsError } = catalog ? {data:catalog.settings.filter((s:any)=>s.month===period.dateFrom),error:null} : await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
   const settings = { operational_expenses: settingsRows?.[0]?.operational_expenses ?? '0.00', external_promotion_expenses: settingsRows?.[0]?.external_promotion_expenses ?? '0.00' };
@@ -267,7 +268,7 @@ export function monthSettings(body: any) {
 
 // Poll metadata only: no summary/order arrays, finance model or raw operations.
 export async function readCabinetStatus(admin: any, shopId: string) {
-  if (shopId !== PILOT_SHOP_ID) throw new ApiError(403,'API-кабинет недоступен');
+  validateShopId(shopId);
   const {data,error} = await admin.from('wb_api_preview_jobs')
     .select('id,date_from,date_to,status,row_count,stage:summary->pilot->>stage')
     .eq('shop_id',shopId).order('created_at',{ascending:false});
@@ -279,11 +280,11 @@ export async function readCabinetStatus(admin: any, shopId: string) {
 }
 
 export async function readCabinetTrend(admin: any, shopId: string) {
-  if (shopId !== PILOT_SHOP_ID) throw new ApiError(403, 'API-кабинет недоступен');
+  validateShopId(shopId);
   const { data: jobs, error } = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,summary,row_count,cursor_id,finance_model,updated_at,error_message').eq('shop_id', shopId).eq('status', 'complete').order('created_at', {ascending:false});
   if (error) throw new ApiError(500, 'Не удалось прочитать динамику');
   const [shopResult,settingsResult,costsResult] = await Promise.all([
-    admin.from('shops').select('id,name,tax_rate').eq('id',shopId).eq('owner_id',PILOT_USER_ID).single(),
+    admin.from('shops').select('id,name,tax_rate').eq('id',shopId).single(),
     admin.from('wb_api_month_settings').select('month,operational_expenses,external_promotion_expenses').eq('shop_id',shopId),
     admin.from('sku_costs').select('article,cost_price').eq('shop_id',shopId),
   ]);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from '../supabase/functions/wb-api/media.ts';
 import { processCabinetSource, readCabinet, monthSettings, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
-import { PILOT_SHOP_ID } from '../supabase/functions/wb-api/core.ts';
+import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 const from='2026-09-01',to='2026-09-30';
 const block=(expenses)=>[{interval:{begin:from,end:to},stats:expenses.map(expenses=>({expenses,price:999999,daily_stats:[{expenses:888888}]}))}];
 assert.deepEqual(mediaCampaignPage(null),[]);
