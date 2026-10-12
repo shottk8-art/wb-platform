@@ -485,7 +485,7 @@
 <script src="/assets/dashboard.js?v=20261011-article-case1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
-<script src="/assets/wb-api-cabinet.js?v=20261011-performance1"></script>
+<script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
 <script>
 (function () {
   let shop = null;
@@ -1032,6 +1032,7 @@
       refreshButton.disabled = refreshing;
       refreshButton.textContent = refreshing ? 'Обновляется…' : 'Обновить';
       help.textContent = 'Продажи — с учётом возвратов. Чистая прибыль — после удержаний, себестоимости, налога и денежных расходов. Бонусы и рекламный кэшбэк не уменьшают прибыль. ' + (derived.missing?.length ? derived.missing.join('. ') : '');
+      if (snapshot.cabinet?.sources?.media?.source === 'wb_financial_deductions') help.textContent += ' WB Медиа: удержания из финансового отчёта API за выбранный период. Они учитываются один раз. Даты признания расходов могут отличаться от выписки рекламного кабинета.';
       if (key === window.WBApiCabinet.currentMonth) help.textContent += ' Текущий месяц — предварительные данные WB по ' + (snapshot.cabinet?.period?.dateTo || 'сегодняшнюю дату') + '. Источники обновляются с задержкой. Сравнение неполного месяца с полным не показывается.';
       if (refreshing) help.textContent += ' Новая выгрузка идёт на сервере; готовые цифры появятся автоматически.';
       if (job?.status === 'error') help.textContent += ' Обновление остановлено: ' + (job.error_message || 'проверьте подключение в настройках') + '.';

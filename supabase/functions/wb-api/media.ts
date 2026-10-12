@@ -1,5 +1,29 @@
 import { ApiError, cents, rub } from './core.ts';
 
+// WB's financial API also supplies billed Media services in deduction rows.
+// A campaign-card/list zero must never erase these actual charges. This source
+// follows financial-report recognition, not the spending statement's dates.
+// No file/manual fallback and no addition of overlapping campaign statistics.
+export const isMediaDeduction = (label: unknown) => /(?:вб|wb)[.\s]*(?:медиа|media)(?=$|[^\p{L}\p{N}_])/iu.test(String(label || ''));
+export function mediaFinancialSource(deductions: any, complete: boolean, from: string, to: string, fetchedAt: string | null = null, model?: any) {
+  if (!complete) return null;
+  const total = model?.totals?.wbMediaDeductions;
+  if (total != null && (cents(total) !== 0n || Number(model.media_deduction_count) > 0)) {
+    return { status: 'downloaded', amount: rub(cents(total)), date_from: from, date_to: to,
+      source: 'wb_financial_deductions', recognition: 'financial_report', fetched_at: fetchedAt };
+  }
+  if (!Array.isArray(deductions)) return null;
+  const rows = deductions.filter(row => isMediaDeduction(row?.label));
+  if (!rows.length) return null;
+  let amount = 0n;
+  for (const row of rows) {
+    if (row.amount == null) throw new ApiError(502, 'WB не вернул сумму финансового удержания за медиа');
+    amount += cents(row.amount);
+  }
+  return { status: 'downloaded', amount: rub(amount), date_from: from, date_to: to,
+    source: 'wb_financial_deductions', recognition: 'financial_report', fetched_at: fetchedAt };
+}
+
 // Official WB Media list + interval statistics. Budget/price and nested daily
 // impressions are not expenses and must never be summed a second time.
 // https://dev.wildberries.ru/docs/openapi/promotion#tag/statistics/operation/postV1Stats

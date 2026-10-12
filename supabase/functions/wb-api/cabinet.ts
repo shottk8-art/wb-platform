@@ -1,7 +1,7 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
-import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource } from './media.ts';
+import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -71,6 +71,18 @@ async function commit(admin: any, job: any, summary: any, status = 'loading') {
 // ten media calls with card fallbacks) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   validateShopId(job.shop_id);
+  const financialMedia = mediaFinancialSource(job.summary?.deductions, !!job.summary?.pilot?.finance_complete,
+    job.date_from, job.date_to, job.updated_at ?? null, job.finance_model);
+  // Repair just Media from the already downloaded financial API snapshot.
+  // Do not restart finance/orders/ads or query zero-expense campaigns again.
+  if (financialMedia && ['media_list','media_stats'].includes(job.summary?.pilot?.stage)) {
+    const summary = structuredClone(job.summary);
+    summary.api_sources ||= {};
+    summary.api_sources.media = financialMedia;
+    summary.pilot.stage = 'done';
+    await commit(admin, job, summary, 'complete');
+    return { retry_after: 0 };
+  }
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать загрузку');
   if (Number(wait) > 0) return { retry_after: Number(wait) };
@@ -101,9 +113,9 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Для рекламных затрат включите категорию «Продвижение» в персональном ключе'); throw e; }
     summary.api_sources ||= {};
     summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to);
-    summary.api_sources.media = { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
-    pilot.stage = 'media_list';
-    await commit(admin, job, summary);
+    summary.api_sources.media = financialMedia || { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
+    pilot.stage = financialMedia ? 'done' : 'media_list';
+    await commit(admin, job, summary, financialMedia ? 'complete' : 'loading');
   } else if (pilot.stage === 'media_list' || pilot.stage === 'media_stats') {
     summary.api_sources ||= {};
     const media = summary.api_sources.media ||= { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
@@ -187,11 +199,12 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
   const summarized = summarize(rows).totals;
   const totals = Object.fromEntries(['retailAmount','forPay','deliveryService','paidStorage','paidAcceptance','penalty','deduction','cashbackAmount','cashbackDiscount','cashbackCommissionChange'].map(key=>[key,summarized[key] || '0.00']));
   const products = new Map<string, any>();
-  let additional = 0n, advertisingDeductions = 0n, bought = 0;
+  let additional = 0n, advertisingDeductions = 0n, wbMediaDeductions = 0n, mediaDeductionCount = 0, bought = 0;
   for (const p of rows) {
     additional += cents(p.additionalPayment);
     const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
     if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) advertisingDeductions += cents(p.deduction);
+    if (p.deduction != null && isMediaDeduction(label)) { wbMediaDeductions += cents(p.deduction); mediaDeductionCount++; }
     const article = String(p.vendorCode || p.nmId || '');
     if (!article) continue;
     const row = products.get(article) || {article,name:text(p.title),bought_qty:0,for_pay:0n,revenue:0n};
@@ -201,8 +214,8 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
     row.for_pay += BigInt(sign)*cents(p.forPay); row.revenue += BigInt(sign)*cents(p.retailAmount);
     products.set(article,row);
   }
-  return {version:1,cursor_id:cursor,row_count:rows.length,bought_qty:bought,
-    totals:{...totals,additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions)},
+  return {version:1,cursor_id:cursor,row_count:rows.length,bought_qty:bought,media_deduction_count:mediaDeductionCount,
+    totals:{...totals,additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions),wbMediaDeductions:rub(wbMediaDeductions)},
     products:[...products.values()].map(p=>({...p,for_pay:rub(p.for_pay),revenue:rub(p.revenue)}))};
 }
 
@@ -221,6 +234,7 @@ export function mergeFinanceModels(previous: any, page: any) {
   const keys = new Set([...Object.keys(previous.totals), ...Object.keys(page.totals)]);
   return {version:1, cursor_id:page.cursor_id, row_count:previous.row_count + page.row_count,
     bought_qty:previous.bought_qty + page.bought_qty,
+    media_deduction_count:(previous.media_deduction_count || 0) + (page.media_deduction_count || 0),
     totals:Object.fromEntries([...keys].map(key=>[key,rub(cents(previous.totals[key]) + cents(page.totals[key]))])),
     products:[...products.values()]};
 }
@@ -272,7 +286,8 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const prices = costCatalogue(costs || []);
   const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
-  const media = mediaSource(sources.media, period.dateFrom, period.dateTo);
+  const media = mediaFinancialSource(job.summary?.deductions, financialComplete, period.dateFrom, period.dateTo, job.updated_at ?? null, model)
+    || mediaSource(sources.media, period.dateFrom, period.dateTo);
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
