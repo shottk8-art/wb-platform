@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const html=readFileSync(new URL('../app.html',import.meta.url),'utf8');
+const css=readFileSync(new URL('../assets/wb-api.css',import.meta.url),'utf8');
+assert.match(css,/\.overview-loading \[hidden\][^}]*display:none !important/,'mobile flex layout must not reveal hidden background-sync links');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject}};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 

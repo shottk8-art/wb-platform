@@ -52,7 +52,7 @@
 .overview-refresh[hidden] { display:none; }
 .overview-refresh:disabled { cursor:progress; }
 .overview-loading { display:flex; align-items:flex-start; gap:14px; padding:18px 20px; margin:0 0 28px; border-radius:16px; background:var(--surface); border:1px solid var(--line); color:var(--ink); }
-.overview-loading[hidden] { display:none !important; }
+.overview-loading[hidden], .overview-loading [hidden] { display:none !important; }
 .overview-loading-copy { flex:1; min-width:0; }
 .overview-loading strong { display:block; font-size:14px; font-weight:600; line-height:1.5; }
 .overview-loading p { margin:4px 0 0; color:var(--ink-soft); font-size:13px; line-height:1.6; }
