@@ -204,7 +204,7 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
     additional += cents(p.additionalPayment);
     const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
     if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) advertisingDeductions += cents(p.deduction);
-    if (p.deduction != null && isMediaDeduction(label)) { wbMediaDeductions += cents(p.deduction); mediaDeductionCount++; }
+    if (cents(p.deduction) !== 0n && isMediaDeduction(label)) { wbMediaDeductions += cents(p.deduction); mediaDeductionCount++; }
     const article = String(p.vendorCode || p.nmId || '');
     if (!article) continue;
     const row = products.get(article) || {article,name:text(p.title),bought_qty:0,for_pay:0n,revenue:0n};
@@ -326,7 +326,7 @@ export async function readCabinetStatus(admin: any, shopId: string) {
   const jobs = (data || []).map((j:any)=>({id:j.id,date_from:j.date_from,date_to:j.date_to,status:j.status,row_count:j.row_count,stage:j.stage}));
   return {history_loading:jobs.some((j:any)=>j.status==='loading'),
     jobs,
-    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage])
+    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage,'media-finance-v1'])
       .sort((a:any,b:any)=>a[0].localeCompare(b[0])))};
 }
 

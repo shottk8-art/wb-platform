@@ -22,6 +22,7 @@ price='0.70';tax=5;
 assert.equal((await readCabinetTrend(admin,PILOT_SHOP_ID))[0].profit,2500,'cached finance must not freeze current cost prices or tax');
 const status=await readCabinetStatus(admin,PILOT_SHOP_ID);
 assert.equal(status.history_loading,false);assert.equal(JSON.parse(status.revision).length,12);
+assert.ok(JSON.parse(status.revision).every(row=>row[5]==='media-finance-v1'),'open clients must invalidate pre-fix financial caches once');
 jobs[0].row_count++;
 assert.equal((await readCabinetStatus(admin,PILOT_SHOP_ID)).revision,status.revision,'page progress must not invalidate completed chart data');
 await assert.rejects(()=>readCabinetStatus(admin,'another-shop'));

@@ -52,4 +52,7 @@ assert.equal(merged.totals.wbMediaDeductions,'0.00');
 assert.equal(merged.media_deduction_count,2);
 assert.equal(mediaFinancialSource(undefined,true,from,to,null,merged).amount,'0.00','explicit offsetting financial charges prove billed zero');
 assert.equal(mediaFinancialSource([{label:'WB Медиа',amount:-5}],true,from,to).amount,'-5.00','media refunds retain their sign');
+const empty=aggregateFinanceRows([{deduction:0,bonusTypeName:'WB Медиа'}]);
+assert.equal(empty.media_deduction_count,0,'zero-valued labels are not actual billed expenses');
+assert.equal(mediaFinancialSource(undefined,true,from,to,null,empty),null,'empty finance must not replace campaign spend with zero');
 console.log('Financial WB Media: all-shop recovery, profit/DRR and no double deduction passed.');
