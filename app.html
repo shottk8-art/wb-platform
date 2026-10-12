@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=20261010-expense-fit1">
+<link rel="stylesheet" href="/assets/styles.css?v=20261012-orders1">
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 </head>
@@ -480,9 +480,9 @@
 <script src="/assets/auth.js"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
-<script src="/assets/parse.js?v=20261011-performance1"></script>
-<script src="/assets/upload.js?v=20261011-article-case2"></script>
-<script src="/assets/dashboard.js?v=20261011-article-case1"></script>
+<script src="/assets/parse.js?v=20261012-orders1"></script>
+<script src="/assets/upload.js?v=20261012-orders1"></script>
+<script src="/assets/dashboard.js?v=20261012-orders1"></script>
 <script src="/assets/analysis.js?v=20261007-ai2"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -963,7 +963,7 @@
       if (request !== dashboardRequest) return;
       renderDashboardKpis(derived, prevDerived, displayMarketplace);
       showManualExpenses(derived, overviewScope !== "all");
-      const trend = window.WBDashboard.combineTrend(trends);
+      const trend = window.WBDashboard.combineTrend(trends, overviewScope !== 'all');
       currentTrend = trend;
       refreshTrendChart();
       window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
@@ -1020,7 +1020,7 @@
         };
         if(data.report) derived=merge(derived,data);
         if(previous && prevData.report) previous=merge(previous,prevData);
-        trend=window.WBDashboard.combineTrend([snapshot.trend.map(p=>({...p,ads:p.mediaAds==null ? null : p.internalAds+p.mediaAds+(p.externalAds || 0)})),ozonTrend]);
+        trend=window.WBDashboard.combineTrend([snapshot.trend.map(p=>({...p,ads:p.mediaAds==null ? null : p.internalAds+p.mediaAds+(p.externalAds || 0)})),ozonTrend],false);
         trend=trend.map(p=>{const api=snapshot.trend.find(a=>a.year===p.year && a.month===p.month);return api ? {...p,...(api.profit==null?{profit:null}:{}),...(api.drrOrders==null?{drrOrders:null}:{}),...(api.drrSales==null?{drrSales:null}:{})} : p;});
       }
       if(request !== dashboardRequest) return;

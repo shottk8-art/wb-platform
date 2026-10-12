@@ -85,7 +85,7 @@ async function main() {
   let selected = '';
   const interactive = cards(d, null, 'wildberries', { activeMetric: 'drrOrders', onSelect: (key) => { selected = key; } });
   assert.equal(interactive.active, 'drrOrders');
-  assert.equal(interactive.length, 9);
+  assert.equal(interactive.length, 10);
   for (const card of interactive) {
     assert.match(card.html, /<button /);
     assert.match(card.html, /aria-controls="trendChart"/);

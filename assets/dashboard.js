@@ -129,7 +129,7 @@
       const ordersAmount = report.orders_amount || 0;
       return {
         year: report.year, month: report.month, sales: salesAmount, profit: d.netProfit-Number(cogs),
-        orders: ordersAmount,
+        orders: marketplace === 'ozon' ? null : ordersAmount,
         quantity: report.bought_qty || 0,
         transfer: report.transfer_total || 0,
         internalAds: report.ads_spend || 0,
@@ -178,7 +178,11 @@
     const manualExpenses = (rep.operational_expenses || 0) + (rep.external_promotion_expenses || 0);
     const netProfit = (rep.transfer_total || 0) - ads - cogs - tax - manualExpenses;
 
-    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit };
+    // Accruals describe sales, not every placed order (including unredeemed).
+    const ordersSummary = report && rep.marketplace !== 'ozon'
+      ? { amount: rep.orders_amount ?? null, qty: rep.orders_qty ?? null }
+      : { amount: null, qty: null };
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary };
   }
 
   function assignAbc(rows) {
@@ -197,7 +201,7 @@
     const c = cabinet || {}, f = c.finance || {}, e = c.economy || {}, s = c.sources || {};
     const n = value => value == null || value === '' ? null : Number(value);
     const rep = {
-      sales_amount:n(f.retailAmount), orders_amount:n(s.orders?.amount), bought_qty:n(f.bought_qty),
+      sales_amount:n(f.retailAmount), orders_amount:n(s.orders?.amount), orders_qty:n(s.orders?.count), bought_qty:n(f.bought_qty),
       transfer_total:n(e.payout), transfer_goods:n(f.forPay),
       delivery_cost:n(f.deliveryService), storage_cost:n(f.paidStorage), fines:n(f.penalty), acceptance_ops:n(f.paidAcceptance),
       other_fees:n(f.deduction), damage_comp:0, return_comp:0,
@@ -223,6 +227,7 @@
     ];
     return {rep,commission,skuRows,cogs,tax,netProfit:n(c.net_profit),ads:e.advertising_total == null ? null : n(e.internal_ads)+n(s.media?.amount),
       manualExpenses:(rep.operational_expenses || 0)+(rep.external_promotion_expenses || 0),expenses,
+      ordersSummary: s.orders?.status === 'downloaded' ? {amount:rep.orders_amount,qty:rep.orders_qty} : {amount:null,qty:null},
       rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,missing:e.missing || []};
   }
 
@@ -249,16 +254,21 @@
     });
     skuRows.sort((a, b) => b.bought_qty - a.bought_qty);
     assignAbc(skuRows);
-    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit };
+    const ordersSummary = {};
+    for (const field of ['amount', 'qty']) {
+      const values = entries.map(({derived,shop}) => shop?.marketplace === 'ozon' ? null : derived.ordersSummary?.[field]);
+      ordersSummary[field] = values.every(value => Number.isFinite(value)) ? values.reduce((sum,value) => sum+value,0) : null;
+    }
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary };
   }
 
-  function combineTrend(lists) {
+  function combineTrend(lists, ordersComplete = true) {
     const periods = new Map();
     lists.flat().forEach((row) => {
       const key = `${row.year}-${row.month}`;
       const current = periods.get(key) || { year: row.year, month: row.month };
       ["sales", "profit", "orders", "ads", "quantity", "transfer", "internalAds", "mediaAds", "promo"].forEach((field) => {
-        current[field] = (current[field] || 0) + (row[field] || 0);
+        current[field] = field === 'orders' && (!ordersComplete || row[field] == null || current[field] === null) ? null : (current[field] || 0) + (row[field] || 0);
       });
       periods.set(key, current);
     });
@@ -337,10 +347,16 @@
     const rates = d.rates || advertisingRatios(d.rep);
     const prevRates = prevD ? prevD.rates || advertisingRatios(prevD.rep) : null;
     const advertisingHint = marketplace === "ozon" ? "Продвижение Ozon + внешняя реклама" : "Внутренняя + медийная + внешняя реклама";
+    // Ozon has no all-orders source yet, including months without accrual rows.
+    const unknownOrders = marketplace === 'ozon' || marketplace === 'all';
+    const orders = unknownOrders ? {amount:null,qty:null} : d.ordersSummary || {amount:d.rep.orders_amount,qty:d.rep.orders_qty};
+    const previousOrders = prevD ? unknownOrders ? {amount:null,qty:null} : prevD.ordersSummary || {amount:prevD.rep.orders_amount,qty:prevD.rep.orders_qty} : null;
     const cards = [
-      { metric: "sales", label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽" },
-      { metric: "quantity", label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт." },
-      { metric: "transfer", label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽" },
+      { metric: "orders", label: "Заказы", value: orders.amount, prev: previousOrders?.amount, unit: "₽", className: " kpi--summary kpi--orders", quantity: orders.qty, previousQuantity: previousOrders?.qty,
+        hint: marketplace === 'ozon' ? 'Отчёт по начислениям Ozon не содержит всех заказов.' : marketplace === 'all' && orders.amount == null ? 'Нет полных данных о заказах обеих площадок. Отчёт по начислениям Ozon не содержит всех заказов.' : 'Сумма заказов и количество заказанных единиц товара, включая невыкупленные. Это не число уникальных корзин.' },
+      { metric: "sales", label: "Сумма продаж", value: d.rep.sales_amount, prev: prevD ? prevD.rep.sales_amount : null, unit: "₽", className: " kpi--summary" },
+      { metric: "quantity", label: "Выкупили", value: d.rep.bought_qty, prev: prevD ? prevD.rep.bought_qty : null, unit: "шт.", className: " kpi--summary" },
+      { metric: "transfer", label: marketplace === "all" ? "К выплате после удержаний" : marketplace === "ozon" ? "К выплате после удержаний (Ozon)" : "Итого к перечислению (WB)", value: d.rep.transfer_total, prev: prevD ? prevD.rep.transfer_total : null, unit: "₽", className: " kpi--summary" },
       { metric: "profit", label: "Чистая прибыль", value: d.netProfit, prev: prevD ? prevD.netProfit : null, unit: "₽", hero: true },
       {
         metric: "internalAds",
@@ -348,14 +364,14 @@
         value: d.isApi ? d.rep.ads_spend : d.rep.ads_spend || 0,
         prev: prevD ? prevD.isApi ? prevD.rep.ads_spend : prevD.rep.ads_spend || 0 : null,
         unit: "₽", lowerIsBetter: true,
-        className: marketplace === "ozon" ? " kpi--advertising-wide" : "",
+        className: marketplace === "ozon" ? " kpi--advertising-wide" : " kpi--advertising",
       },
       {
         metric: "mediaAds",
         label: "Медийная реклама",
         value: d.isApi ? d.rep.wb_media_spend : d.rep.wb_media_spend || 0,
         prev: prevD ? prevD.isApi ? prevD.rep.wb_media_spend : prevD.rep.wb_media_spend || 0 : null,
-        unit: "₽", lowerIsBetter: true, hideForOzon: true,
+        unit: "₽", lowerIsBetter: true, hideForOzon: true, className: " kpi--advertising",
       },
       { metric: "drrOrders", label: "ДРР (заказа)", value: rates.drrOrders, prev: prevRates ? prevRates.drrOrders : null,
         unit: "%", lowerIsBetter: true, className: " kpi--rate kpi--rate-first",
@@ -377,10 +393,12 @@
       const asContent = (html) => interactive ? html.replace(/<div\b/g, "<span").replace(/<\/div>/g, "</span>") : html;
       const card = el(`
         <${tag} class="kpi${heroClass}${c.className || ""}${interactive ? " kpi--interactive" + (c.metric === activeMetric ? " is-selected" : "") : ""}"
-          ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart" title="Показать на графике: ${escapeHtml(c.label)}"` : ""}>
+          ${c.hint ? `title="${escapeHtml(c.hint)}"` : interactive ? `title="Показать на графике: ${escapeHtml(c.label)}"` : ""}
+          ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
           <${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}>
           ${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}
+          ${c.metric === 'orders' ? `<${block} class="kpi-secondary"><span>Заказано: <span class="kpi-quantity">${c.quantity == null ? '—' : fmtQty.format(Math.round(c.quantity))}</span>${c.quantity == null ? '' : ' шт.'}</span>${asContent(renderDeltaChip(c.quantity,c.previousQuantity,'шт.'))}</${block}>${c.value == null || c.quantity == null ? `<${block} class="kpi-extra">${marketplace === 'ozon' || marketplace === 'all' ? 'Нет полных данных о заказах' : 'Нет данных о количестве заказов'}</${block}>` : ''}` : ''}
           ${asContent(c.extra || "")}
         </${tag}>
       `);
@@ -388,6 +406,7 @@
       container.appendChild(card);
       if (focusedMetric === c.metric) card.focus?.({preventScroll:true});
       if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
+      if (c.metric === 'orders' && c.quantity != null) animateKpiNumber(card.querySelector('.kpi-quantity'),c.previousQuantity ?? 0,c.quantity,'шт.');
     });
     return activeMetric;
   }

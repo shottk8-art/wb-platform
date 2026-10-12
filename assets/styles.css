@@ -650,7 +650,13 @@ table.costs th,table.sku th{font-size:11px;}
 .kpi-label{font-size:13px; letter-spacing:0; margin-bottom:12px;}
 .kpi-value{font-family:var(--font-data); font-size:25px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums lining-nums;}
 .kpi--hero{grid-column:span 6; min-height:156px; padding:23px 24px; background:#1d1d1f;}
-.kpi:nth-child(5),.kpi:nth-child(6){grid-column:span 3;}
+.kpi.kpi--summary,.kpi.kpi--advertising{grid-column:span 3;}
+.kpi--summary{container-type:inline-size; justify-content:flex-start;}
+.kpi--summary .kpi-label{min-height:2.8em;}
+.kpi--summary .kpi-value{font-size:clamp(20px,12cqi,25px);}
+.kpi-secondary{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin-top:10px; font-size:13px; line-height:1.5; color:var(--ink-soft);}
+.kpi-quantity{font-weight:600; font-variant-numeric:tabular-nums;}
+.kpi-secondary .kpi-delta{margin-top:0;}
 .kpi.kpi--advertising-wide{grid-column:span 6;}
 .kpi.kpi--rate{grid-column:span 4;}
 .kpi.kpi--rate-first{grid-column:1 / span 4;}
@@ -682,7 +688,7 @@ footer.note{max-width:72ch; margin:56px 0 0; padding-top:22px; border-top:1px so
 
 @media (max-width:1100px){
   .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .kpi,.kpi--hero,.kpi:nth-child(5),.kpi:nth-child(6),.kpi.kpi--rate,.kpi.kpi--advertising-wide{grid-column:span 1;}
+  .kpi,.kpi--hero,.kpi.kpi--summary,.kpi.kpi--advertising,.kpi.kpi--rate,.kpi.kpi--advertising-wide{grid-column:span 1;}
   .kpi.kpi--rate-first{grid-column:1;}
   .kpi--hero{grid-column:span 2;}
   .upload-grid{grid-template-columns:1fr;}

@@ -15,8 +15,8 @@ screen.hidden=false;
 const rows=[{article:'chlorophill/450new',name:'Хлорофилл жидкий пищевой',bought_qty:854,revenue:1182101,cost_price:398,total_cost:339892,profit:842209,abc:'A'},
 {article:'magnesium/90',name:'Магний В6 Хелат 400 мг Бисглицинат (глицинат)',bought_qty:28,revenue:24950,cost_price:251,total_cost:7028,profit:17922,abc:'C'},
 {article:'very-long-article-code-without-spaces-1234567890',name:'Очень длинное название товара для проверки переноса текста на маленьком экране',bought_qty:100001,revenue:99999999,cost_price:1,total_cost:100001,profit:-12345678,abc:'B'}];
-const d={skuRows:rows,expenses:[['Себестоимость товара',696198],['Очень длинное название удержания маркетплейса',238988],['WB Продвижение',226553]],rep:{sales_amount:2231708,bought_qty:1455,transfer_total:1826845,ads_spend:226553,wb_media_spend:0,ads_promo_spend:77511},netProfit:792508,rates:{drrOrders:6.3,drrSales:10.2}};
-const prev={...d,skuRows:rows.map(r=>({...r,bought_qty:r.bought_qty-12,revenue:r.revenue-46687,profit:r.profit-59423})),expenses:[['Себестоимость товара',481112],['Очень длинное название удержания маркетплейса',291552],['WB Продвижение',242868]]};
+const d={skuRows:rows,expenses:[['Себестоимость товара',696198],['Очень длинное название удержания маркетплейса',238988],['WB Продвижение',226553]],rep:{orders_amount:66640095,orders_qty:22998,sales_amount:2231708,bought_qty:1455,transfer_total:1826845,ads_spend:226553,wb_media_spend:0,ads_promo_spend:77511},netProfit:792508,rates:{drrOrders:6.3,drrSales:10.2}};
+const prev={...d,rep:{...d.rep,orders_amount:52258000,orders_qty:19000},skuRows:rows.map(r=>({...r,bought_qty:r.bought_qty-12,revenue:r.revenue-46687,profit:r.profit-59423})),expenses:[['Себестоимость товара',481112],['Очень длинное название удержания маркетплейса',291552],['WB Продвижение',242868]]};
 if(byId('skuBody')) WBDashboard.renderSkuTable(byId('skuBody'),byId('skuFoot'),byId('skuHint'),byId('skuChart'),d,prev);
 if(byId('expList')) WBDashboard.renderExpenses(byId('expList'),byId('expTotal'),byId('expChart'),d,'wildberries',prev);
 if(byId('kpiRow')) WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries');

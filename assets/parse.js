@@ -23,6 +23,13 @@
     return isNaN(n) ? 0 : n;
   }
 
+  // Unknown markers are not zero. Used for order metrics, not legacy fees.
+  function optionalNum(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const number = Number(typeof value === 'number' ? value : String(value).replace(/\s/g,'').replace(',','.'));
+    return Number.isFinite(number) ? number : null;
+  }
+
   const libraries = new Map();
   function loadLibrary(globalName,url) {
     if(window[globalName]) return Promise.resolve();
@@ -149,6 +156,7 @@
       day: colIndex(header, "День"),
       sales: colIndex(header, "Сумма продаж"),
       orders: colIndex(header, "Сумма заказов"),
+      orderedQty: colIndex(header, "Заказано, шт."),
       bought: colIndex(header, "Выкупили"),
       transferGoods: colIndex(header, "К перечислению за товар"),
       delivery: colIndex(header, "Стоимость доставки"),
@@ -162,6 +170,7 @@
     };
 
     const rows = [];
+    if (i.orders < 0) throw new Error('В сводном отчёте отсутствует колонка «Сумма заказов». Скачайте полный отчёт Wildberries.');
     for (let r = headerIdx + 1; r < aoa.length; r++) {
       const row = aoa[r];
       if (!row) continue;
@@ -173,11 +182,15 @@
       const year = parseInt(row[i.year], 10);
       const monthNum = parseInt(month, 10);
       if (!year || !monthNum) continue;
+      const ordersAmount = optionalNum(row[i.orders]);
+      if (ordersAmount == null) throw new Error(`В сводном отчёте нет суммы заказов за ${monthNum}.${year}. Скачайте полную выгрузку Wildberries.`);
+      const orderedQty = i.orderedQty < 0 ? null : optionalNum(row[i.orderedQty]);
       rows.push({
         year,
         month: monthNum,
         sales_amount: num(row[i.sales]),
-        orders_amount: num(row[i.orders]),
+        orders_amount: ordersAmount,
+        orders_qty: Number.isSafeInteger(orderedQty) && orderedQty >= 0 ? orderedQty : null,
         bought_qty: Math.round(num(row[i.bought])),
         transfer_goods: num(row[i.transferGoods]),
         delivery_cost: num(row[i.delivery]),
