@@ -1,6 +1,8 @@
 (function () {
+  let generation = 0;
   const root = () => document.getElementById("aiAnalysisCard");
   function reset() {
+    ++generation;
     const card = root(); if (!card) return;
     card.dataset.state = "idle";
     card.querySelector("#aiAnalysisResult").hidden = true;
@@ -20,10 +22,12 @@
     });
   }
   async function analyze(context) {
+    const request = ++generation;
     const card = root(), button = card.querySelector("#aiAnalyzeBtn"), intro = card.querySelector("#aiAnalysisIntro"), result = card.querySelector("#aiAnalysisResult"), error = card.querySelector("#aiAnalysisError");
     button.disabled = true; button.querySelector("span").textContent = "Анализирую…"; card.dataset.state = "loading"; result.hidden = true; error.hidden = true;
     try {
       const { data, error: invokeError } = await window.supabaseClient.functions.invoke("analyze-results", { body: context });
+      if (request !== generation) return;
       if (invokeError) {
         let message = data?.error;
         if (!message && invokeError.context?.json) {
@@ -41,8 +45,9 @@
       caveats.parentElement.hidden = !analysis.caveats?.length;
       intro.hidden = true; result.hidden = false; button.querySelector("span").textContent = data.cached ? "Анализ актуален" : "Обновить анализ";
     } catch (cause) {
+      if (request !== generation) return;
       card.dataset.state = "error"; error.textContent = cause.message || "Не удалось выполнить анализ"; error.hidden = false; button.querySelector("span").textContent = "Попробовать снова";
-    } finally { button.disabled = false; }
+    } finally { if (request === generation) button.disabled = false; }
   }
   window.WBAnalysis = { analyze, reset };
 })();

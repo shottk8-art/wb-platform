@@ -483,7 +483,7 @@
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
 <script src="/assets/dashboard.js?v=20261012-no-orders1"></script>
-<script src="/assets/analysis.js?v=20261007-ai2"></script>
+<script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
 <script>
@@ -558,7 +558,7 @@
     overviewSource = allowed ? sourcePreference || 'api' : 'files';
     document.getElementById('overviewDataSource').value = overviewSource;
     document.getElementById('secApiCabinet').hidden = !allowed;
-    document.getElementById('secAiAnalysis').hidden = shopLoading || overviewPending || !!overviewLoadError || usesApiData() || !aiAllowed;
+    document.getElementById('secAiAnalysis').hidden = shopLoading || overviewPending || !!overviewLoadError || !aiAllowed;
     document.getElementById('shopLoading').hidden = !shopLoading || activeView !== 'overview';
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
     document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
@@ -1190,7 +1190,7 @@
     session = await window.WBAuth.waitForSession(4000);
     if (!session) { location.href = "/index.html"; return; }
     const meta = session.user.user_metadata || {};
-    aiAllowed = String(meta.telegram_username || "").replace(/^@/, "").toLowerCase() === "karlshott";
+    aiAllowed = await window.WBAdmin.isAdmin().catch(() => false);
     document.getElementById("secAiAnalysis").hidden = !aiAllowed;
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
@@ -1225,9 +1225,7 @@
     const initialView = location.hash.replace(/^#/, "");
     setActiveView(VIEW_META[initialView] ? initialView : "overview", false);
 
-    window.WBAdmin.isAdmin().then((admin) => {
-      document.getElementById("adminLink").hidden = !admin;
-    }).catch(() => {});
+    document.getElementById("adminLink").hidden = !aiAllowed;
 
     document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });
@@ -1513,11 +1511,11 @@
     document.getElementById("periodSelect").addEventListener("change", () => renderCurrentPeriod(true));
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
-      if (!aiAllowed) return;
+      if (!aiAllowed || shopLoading || overviewPending || overviewLoadError) return;
       const period = document.getElementById("periodSelect").value;
       if (!period) return toast("Сначала загрузите отчёты за полный период", true);
       const [year, month] = period.split("-").map(Number);
-      await window.WBAnalysis.analyze({ shop_id: shop.id, year, month, marketplace: overviewScope });
+      await window.WBAnalysis.analyze({ shop_id: shop.id, year, month, marketplace: overviewScope, source: usesApiData() ? 'api' : 'files' });
     });
 
     const manualExpenseInputs = [document.getElementById("operationalExpensesInput"), document.getElementById("externalPromotionInput")];
