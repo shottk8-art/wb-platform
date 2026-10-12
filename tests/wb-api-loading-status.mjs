@@ -44,7 +44,7 @@ assert.equal(window.WBApiCabinet.syncStatus.loading,false,'late response cannot 
 
 const html=readFileSync(new URL('../app.html',import.meta.url),'utf8');
 assert.match(html,/id="overviewLoading" role="status" aria-live="polite"/);
-const ui={window:{WBApiCabinet:{syncStatus:{shopId:'a',loading:true}}},document:{getElementById:el},shop:{id:'a'},activeView:'overview',api:true,usesApiData(){return this.api;}};
+const ui={overviewPending:false,overviewLoadError:'',scopeLabel:()=> 'Ozon',window:{WBApiCabinet:{syncStatus:{shopId:'a',loading:true}}},document:{getElementById:el},shop:{id:'a'},activeView:'overview',api:true,usesApiData(){return this.api;}};
 // A simple closure avoids binding-dependent helper behavior in the VM.
 ui.usesApiData=()=>ui.api;
 vm.createContext(ui);
@@ -67,9 +67,12 @@ ui.updateScopeButtons=()=>{};
 ui.usesApiData=()=>ui.api && ui.overviewScope!=='ozon';
 ui.updateOverviewSource=()=>ui.updateOverviewLoadStatus();
 ui.refreshPeriods=()=>new Promise(()=>{});ui.renderCurrentPeriod=()=>{};
+ui.reloadOverview=()=>{ui.overviewPending=true;ui.updateOverviewLoadStatus();return ui.refreshPeriods();};
 const start=html.lastIndexOf('    document.querySelectorAll("#overviewScope [data-scope]").forEach');
 vm.runInContext(html.slice(start,html.indexOf('    document.querySelectorAll("#reportMarketplace',start)),ui);
 ui.window.WBApiCabinet.syncStatus={shopId:'a',loading:true};ui.updateOverviewLoadStatus();
 assert.equal(el('overviewLoading').hidden,false);
-scopeClick();assert.equal(el('overviewLoading').hidden,true,'scope hides notice synchronously, before data/network resolves');
+scopeClick();assert.equal(el('overviewLoading').hidden,false,'Ozon has its own local loader while the old WB notice is replaced');
+assert.match(el('overviewLoadingTitle').textContent,/Ozon/);
+assert.equal(el('overviewLoadingSettings').hidden,true,'local data read must not be confused with background WB synchronization');
 console.log('Overview loading: passed (initial read, background history, unchanged revision, error recovery, scoped reset, files/Ozon hidden, no extra requests).');

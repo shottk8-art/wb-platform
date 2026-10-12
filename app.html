@@ -132,7 +132,7 @@
     <aside class="overview-loading" id="overviewLoading" role="status" aria-live="polite" aria-atomic="true" hidden>
       <span class="overview-loading-spinner" aria-hidden="true"></span>
       <div class="overview-loading-copy"><strong id="overviewLoadingTitle"></strong><p id="overviewLoadingText"></p></div>
-      <a href="#settings">Настройки загрузки</a>
+      <a id="overviewLoadingSettings" href="#settings">Настройки загрузки</a>
     </aside>
 
     <p class="hint" id="shopLoading" role="status" aria-live="polite" hidden>Загружаем данные магазина…</p>
@@ -498,6 +498,8 @@
   let periodsRequest = 0;
   let shopChange = 0;
   let shopLoading = false;
+  let overviewPending = false;
+  let overviewLoadError = '';
   let aiAllowed = false;
   let trendMetric = "sales";
   let currentTrend = [];
@@ -556,7 +558,7 @@
     overviewSource = allowed ? sourcePreference || 'api' : 'files';
     document.getElementById('overviewDataSource').value = overviewSource;
     document.getElementById('secApiCabinet').hidden = !allowed;
-    document.getElementById('secAiAnalysis').hidden = shopLoading || usesApiData() || !aiAllowed;
+    document.getElementById('secAiAnalysis').hidden = shopLoading || overviewPending || !!overviewLoadError || usesApiData() || !aiAllowed;
     document.getElementById('shopLoading').hidden = !shopLoading || activeView !== 'overview';
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
     document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
@@ -569,6 +571,15 @@
   function updateOverviewLoadStatus() {
     const state = window.WBApiCabinet?.syncStatus;
     const box = document.getElementById('overviewLoading');
+    const local = overviewPending || !!overviewLoadError;
+    document.getElementById('overviewLoadingSettings').hidden = local;
+    if (local) {
+      box.hidden = activeView !== 'overview';
+      box.dataset.error = String(!!overviewLoadError);
+      document.getElementById('overviewLoadingTitle').textContent = overviewLoadError ? 'Не удалось загрузить данные' : `Загружаем данные · ${scopeLabel()}`;
+      document.getElementById('overviewLoadingText').textContent = overviewLoadError || 'Показатели, графики и товары появятся, когда загрузка завершится.';
+      return;
+    }
     box.hidden = activeView !== 'overview' || !usesApiData() || state?.shopId !== shop?.id || !(state.checking || state.loading || state.error);
     if (box.hidden) return;
     box.dataset.error = String(!!state.error);
@@ -817,16 +828,57 @@
     });
   }
 
+  function setOverviewPending(pending, error = '') {
+    overviewPending = pending;
+    overviewLoadError = error;
+    document.getElementById('periodSelect').disabled = pending || shopLoading;
+    if (pending || !usesApiData() || error) document.getElementById('overviewRefresh').disabled = pending;
+    for (const id of ['secKpis', 'secTrend', 'secAnalytics']) document.getElementById(id).setAttribute('aria-busy', String(pending));
+    updateOverviewSource();
+  }
+
+  function beginOverviewLoad() {
+    apiDisplayedPeriod = null;
+    currentTrend = [];
+    window.WBAnalysis.reset();
+    const empty = window.WBDashboard.fromApiCabinet(null);
+    // Nulls produce dashes; replacing nodes also stops the old number animation.
+    window.WBDashboard.renderKPI(document.getElementById('kpiRow'), empty, null, overviewScope);
+    refreshTrendChart();
+    window.WBDashboard.renderExpenses(document.getElementById('expList'), document.getElementById('expTotal'), document.getElementById('expChart'), empty, overviewScope, null);
+    window.WBDashboard.renderSkuTable(document.getElementById('skuBody'), document.getElementById('skuFoot'), document.getElementById('skuHint'), document.getElementById('skuChart'), empty, null);
+    document.getElementById('expList').innerHTML = '<div class="analytics-empty">—</div>';
+    document.getElementById('skuBody').innerHTML = '<tr><td colspan="5" class="empty">Загружаем товары…</td></tr>';
+    document.getElementById('trendEmpty').textContent = 'Загружаем динамику…';
+    showManualExpenses(empty, false);
+    setOverviewPending(true);
+  }
+
+  async function reloadOverview() {
+    const request = ++dashboardRequest;
+    beginOverviewLoad();
+    try {
+      const refreshed = await refreshPeriods();
+      if (request !== dashboardRequest) return;
+      if (refreshed) await renderCurrentPeriod();
+    } catch (error) {
+      if (request !== dashboardRequest) return;
+      setOverviewPending(false, 'Повторите выбор площадки или периода. Если ошибка сохраняется, проверьте подключение к интернету.');
+    }
+  }
+
   function setShopLoading(loading) {
     shopLoading = loading;
     if (loading) document.getElementById('shopLoading').textContent = 'Загружаем данные магазина…';
     document.getElementById('shopLoading').hidden = !loading || activeView !== 'overview';
-    document.getElementById('periodSelect').disabled = loading;
+    document.getElementById('periodSelect').disabled = loading || overviewPending;
     for (const id of ['secKpis', 'secManualExpenses', 'secTrend', 'secAnalytics']) document.getElementById(id).hidden = loading;
     updateOverviewSource();
   }
 
   function resetShopDisplay() {
+    overviewPending = false; overviewLoadError = '';
+    for (const id of ['secKpis', 'secTrend', 'secAnalytics']) document.getElementById(id).setAttribute('aria-busy', 'false');
     periods = []; currentTrend = []; apiDisplayedPeriod = null;
     window.WBAnalysis.reset();
     for (const id of ['kpiRow', 'membersBody', 'costsBody', 'uploadsBody']) document.getElementById(id).replaceChildren();
@@ -856,62 +908,73 @@
     });
   }
 
-  async function renderCurrentPeriod() {
+  async function renderCurrentPeriod(reset = false) {
     if (!shop) return;
+    if (reset) beginOverviewLoad();
     const selectedShop = { ...shop };
     window.WBAnalysis.reset();
     const request = ++dashboardRequest;
     const sel = document.getElementById("periodSelect");
     const marketplaces = overviewMarketplaces();
     const displayMarketplace = overviewScope;
-    if (usesApiData()) {
-      return renderApiPeriod(sel.value, request);
-    }
-    // Не оставляем график предыдущего магазина/площадки во время загрузки.
-    currentTrend = [];
-    refreshTrendChart();
-    if (!sel.value) {
-      // магазин без единого загруженного периода — явно сбрасываем панель,
-      // иначе остаются данные, отрисованные для предыдущего магазина
-      const empty = window.WBDashboard.computeDerived(null, [], new Map());
-      renderDashboardKpis(empty, null, displayMarketplace);
-      refreshTrendChart();
-      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace, null);
-      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty, null);
-      showManualExpenses(empty, false);
-      return;
-    }
-    const [year, month] = sel.value.split("-").map(Number);
-    const currentEntries = await Promise.all(marketplaces.map(async (marketplace) => {
-      const data = await window.WBDashboard.loadPeriodData(selectedShop.id, year, month, marketplace);
-      return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } };
-    }));
-    if (request !== dashboardRequest) return;
-    const derived = window.WBDashboard.combineDerived(currentEntries);
-    showManualExpenses(derived, overviewScope !== "all");
-
-    // сравнение с предыдущим календарным месяцем (себестоимость и ставку
-    // налога берём текущие — они не привязаны к периоду, истории не хранят)
-    const prevDate = new Date(year, month - 2, 1);
-    let prevDerived = null;
+    let loadError = '';
     try {
-      const previousEntries = await Promise.all(marketplaces.map(async (marketplace) => {
-        const data = await window.WBDashboard.loadPeriodData(selectedShop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
-        return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } } : null;
+      if (usesApiData()) {
+        return await renderApiPeriod(sel.value, request);
+      }
+      // Не оставляем график предыдущего магазина/площадки во время загрузки.
+      currentTrend = [];
+      refreshTrendChart();
+      if (overviewPending) document.getElementById('trendEmpty').textContent = 'Загружаем динамику…';
+      if (!sel.value) {
+        // магазин без единого загруженного периода — явно сбрасываем панель,
+        // иначе остаются данные, отрисованные для предыдущего магазина
+        const empty = window.WBDashboard.computeDerived(null, [], new Map());
+        renderDashboardKpis(empty, null, displayMarketplace);
+        refreshTrendChart();
+        window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), empty, displayMarketplace, null);
+        window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), empty, null);
+        showManualExpenses(empty, false);
+        return;
+      }
+      const [year, month] = sel.value.split("-").map(Number);
+      const currentEntries = await Promise.all(marketplaces.map(async (marketplace) => {
+        const data = await window.WBDashboard.loadPeriodData(selectedShop.id, year, month, marketplace);
+        return { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } };
       }));
-      const available = previousEntries.filter(Boolean);
-      if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
-    } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
+      if (request !== dashboardRequest) return;
+      const derived = window.WBDashboard.combineDerived(currentEntries);
 
-    if (request !== dashboardRequest) return;
-    renderDashboardKpis(derived, prevDerived, displayMarketplace);
-    const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(selectedShop.id, selectedShop.tax_rate, marketplace)));
-    if (request !== dashboardRequest) return;
-    const trend = window.WBDashboard.combineTrend(trends);
-    currentTrend = trend;
-    refreshTrendChart();
-    window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
-    window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
+      // сравнение с предыдущим календарным месяцем (себестоимость и ставку
+      // налога берём текущие — они не привязаны к периоду, истории не хранят)
+      const prevDate = new Date(year, month - 2, 1);
+      let prevDerived = null;
+      try {
+        const previousEntries = await Promise.all(marketplaces.map(async (marketplace) => {
+          const data = await window.WBDashboard.loadPeriodData(selectedShop.id, prevDate.getFullYear(), prevDate.getMonth() + 1, marketplace);
+          return data.report ? { derived: window.WBDashboard.computeDerived(data.report, data.skus, data.costMap, selectedShop.tax_rate), shop: { ...selectedShop, marketplace } } : null;
+        }));
+        const available = previousEntries.filter(Boolean);
+        if (available.length) prevDerived = window.WBDashboard.combineDerived(available);
+      } catch (e) { /* нет данных за прошлый месяц — сравнение не показываем */ }
+
+      if (request !== dashboardRequest) return;
+      const trends = await Promise.all(marketplaces.map((marketplace) => window.WBDashboard.loadTrendData(selectedShop.id, selectedShop.tax_rate, marketplace)));
+      if (request !== dashboardRequest) return;
+      renderDashboardKpis(derived, prevDerived, displayMarketplace);
+      showManualExpenses(derived, overviewScope !== "all");
+      const trend = window.WBDashboard.combineTrend(trends);
+      currentTrend = trend;
+      refreshTrendChart();
+      window.WBDashboard.renderExpenses(document.getElementById("expList"), document.getElementById("expTotal"), document.getElementById("expChart"), derived, displayMarketplace, prevDerived);
+      window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
+    } catch (error) {
+      if (request !== dashboardRequest) return;
+      loadError = 'Повторите выбор площадки или периода. Если ошибка сохраняется, проверьте подключение к интернету.';
+      if (!overviewPending) beginOverviewLoad();
+    } finally {
+      if (request === dashboardRequest && overviewPending) setOverviewPending(false, loadError);
+    }
   }
 
   function paintApiDashboard(derived, previous, trend, ready) {
@@ -925,7 +988,7 @@
   async function renderApiPeriod(period, request) {
     const empty = window.WBDashboard.fromApiCabinet(null);
     const displayKey = `${shop.id}:${overviewScope}:${period}`;
-    if(!period || apiDisplayedPeriod !== displayKey) paintApiDashboard(empty,null,[],false);
+    if(!overviewPending && (!period || apiDisplayedPeriod !== displayKey)) paintApiDashboard(empty,null,[],false);
     const help = document.getElementById('overviewHelpText');
     help.textContent = period ? 'Показатели обновляются.' : 'Нет данных за полный месяц. Выберите готовый период или загрузите его в настройках.';
     if(!period) return;
@@ -976,6 +1039,7 @@
       if(request !== dashboardRequest) return;
       help.textContent = 'Не удалось прочитать показатели. Проверьте подключение и обновите расчёт в настройках.';
       document.getElementById('trendEmpty').textContent = 'Не удалось загрузить данные';
+      throw error;
     }
   }
 
@@ -1176,8 +1240,8 @@
     document.getElementById('overviewDataSource').addEventListener('change',async event=>{
       overviewSource=event.target.value; sourcePreference=overviewSource;
       try { localStorage.setItem(`wb-source:${shop.id}`,overviewSource); } catch { /* storage is optional */ }
-      ++dashboardRequest; updateOverviewSource();
-      if (await refreshPeriods()) await renderCurrentPeriod();
+      updateOverviewSource();
+      await reloadOverview();
     });
     document.getElementById('overviewRefresh').addEventListener('click',async()=>{
       if(!usesApiData()) return;
@@ -1249,11 +1313,9 @@
     document.querySelectorAll("#overviewScope [data-scope]").forEach((button) => {
       button.addEventListener("click", async () => {
         overviewScope = button.dataset.scope;
-        dashboardRequest++;
         updateScopeButtons();
         updateOverviewSource();
-        if (await refreshPeriods()) await renderCurrentPeriod();
-        window.WBApiCabinet?.reload();
+        await reloadOverview();
       });
     });
 
@@ -1262,10 +1324,9 @@
         const marketplace = button.dataset.marketplace;
         reportMarketplace = marketplace;
         overviewScope = marketplace;
-        dashboardRequest++;
         updateShareBox();
         updateScopeButtons();
-        if (await refreshPeriods()) await renderCurrentPeriod();
+        await reloadOverview();
         await refreshCostsTable();
         await refreshUploadsLog();
       });
@@ -1448,7 +1509,7 @@
       } catch (e) { toast("Ошибка: " + e.message, true); }
     });
 
-    document.getElementById("periodSelect").addEventListener("change", renderCurrentPeriod);
+    document.getElementById("periodSelect").addEventListener("change", () => renderCurrentPeriod(true));
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
       if (!aiAllowed) return;

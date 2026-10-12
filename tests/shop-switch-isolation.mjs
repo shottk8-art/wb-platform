@@ -10,7 +10,7 @@ function fixture() {
   const elements=new Map(), lists=[], loads=[], paints=[];
   const el=id=>{
     if(!elements.has(id)) elements.set(id,{value:'',innerHTML:'',textContent:'',hidden:false,disabled:false,dataset:{},events:{},
-      addEventListener(event,fn){this.events[event]=fn;},replaceChildren(){this.innerHTML='';this.textContent='';}});
+      addEventListener(event,fn){this.events[event]=fn;},setAttribute(){},replaceChildren(){this.innerHTML='';this.textContent='';}});
     return elements.get(id);
   };
   el('shopSwitch').value='clariskin';
@@ -19,7 +19,7 @@ function fixture() {
   for(const id of ['membersBody','costsBody','uploadsBody']) el(id).innerHTML='rows of toplash';
   let notify;
   const state={console,shop:{id:'toplash'},session:{user:{id:'owner'}},activeView:'overview',overviewScope:'wildberries',reportMarketplace:'wildberries',
-    dashboardRequest:0,periodsRequest:0,shopChange:0,shopLoading:false,apiDisplayedPeriod:'toplash:wildberries:2026-10',periods:[],currentTrend:[],
+    dashboardRequest:0,periodsRequest:0,shopChange:0,shopLoading:false,overviewPending:false,overviewLoadError:'',apiDisplayedPeriod:'toplash:wildberries:2026-10',periods:[],currentTrend:[],
     document:{getElementById:el},localStorage:{setItem(){}},
     window:{WBAuth:{listMyShops:()=>{const d=deferred();lists.push(d);return d.promise;}},WBAnalysis:{reset(){}},
       WBApi:{setContext(){},subscribe:fn=>notify=fn},WBApiCabinet:{setContext(){},currentMonth:'2026-10'},

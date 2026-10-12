@@ -12,7 +12,7 @@ assert.match(html,/aria-controls="overviewHelpText"/);
 const elements=new Map();
 const el=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',value:''});return elements.get(id);};
 const source=html.slice(html.indexOf('  function updateOverviewSource()'),html.indexOf('  function toast('));
-const state={window:{WBApiCabinet:{}},document:{getElementById:el},shop:{id:'green'},activeView:'overview',overviewScope:'wildberries',overviewSource:'files',sourceShopId:null,aiAllowed:true,allowed:true,shopLoading:false};
+const state={overviewPending:false,overviewLoadError:'',window:{WBApiCabinet:{}},document:{getElementById:el},shop:{id:'green'},activeView:'overview',overviewScope:'wildberries',overviewSource:'files',sourceShopId:null,aiAllowed:true,allowed:true,shopLoading:false};
 state.apiCabinetAllowed=()=>state.allowed;vm.createContext(state);vm.runInContext(source,state);
 state.updateOverviewSource();
 assert.equal(state.overviewSource,'api');
