@@ -26,7 +26,7 @@ assert.ok(Math.abs(cabinet.finance.retailAmount-d.netProfit-signedExpenses)<0.01
 const noWithheld=structuredClone(cabinet);delete noWithheld.finance.advertisingDeductions;
 assert.ok(api.fromApiCabinet(noWithheld).expenses.every(([,amount])=>amount!=null),'known zero already-withheld ads remains zero even when no row had that charge');
 const rows=[];api.renderKPI({innerHTML:'',appendChild:card=>rows.push(card)},d,null,'wildberries');
-assert.equal(rows.length,10,'familiar KPI grid plus requested orders card');
+assert.equal(rows.length,9,'familiar KPI grid without the removed orders card');
 assert.ok(rows.some(row=>row.html.includes('kpi--hero')));
 const missing=structuredClone(cabinet);missing.net_profit=null;missing.cogs=null;missing.sources.media.amount=null;missing.economy.advertising_total=null;missing.economy.drr_orders=missing.economy.drr_sales=null;missing.products[0].cost_price=null;
 const unknown=api.fromApiCabinet(missing);

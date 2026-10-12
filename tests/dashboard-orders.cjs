@@ -16,36 +16,33 @@ vm.runInContext(fs.readFileSync(path.join(root,'assets/dashboard.js'),'utf8'),co
 const api = window.WBDashboard;
 const derive = (report) => api.computeDerived(report,[],new Map(),0);
 const report = {marketplace:'wildberries',orders_amount:2000,orders_qty:20,bought_qty:7,sales_amount:700};
-function card(d,previous=null,marketplace='wildberries',interaction){
+function cards(d,previous=null,marketplace='wildberries',interaction){
   const container = {innerHTML:'',children:[],appendChild(c){this.children.push(c);}};
   api.renderKPI(container,d,previous,marketplace,interaction);
-  return container.children.find(c=>c.html.includes('kpi--orders'));
+  return container.children;
 }
 const current=derive(report),previous=derive({...report,orders_amount:1000,orders_qty:10});
-const orders=card(current,previous);
-assert.equal(orders.nodes['.kpi-number'].textContent,'2\u00a0000');
-assert.equal(orders.nodes['.kpi-quantity'].textContent,'20');
-assert.match(orders.html,/\+1\u00a0000 ₽ · 100.0%/);
-assert.match(orders.html,/\+10 шт. · 100.0%/);
-assert.doesNotMatch(orders.html,/Заказано:.*>7<\/span>/);
-assert.match(card(derive({...report,orders_qty:null})).html,/kpi-quantity">—/);
-const zero=card(derive({...report,orders_amount:0,orders_qty:0}),previous);
-assert.equal(zero.nodes['.kpi-number'].textContent,'0');
-assert.equal(zero.nodes['.kpi-quantity'].textContent,'0');
-assert.match(zero.html,/−10 шт. · 100.0%/);
+for(const scope of ['wildberries','ozon','all']) {
+  for(const interaction of [undefined,{activeMetric:'orders',onSelect(){}}]) {
+    for(const d of [current,derive({...report,orders_qty:null}),api.fromApiCabinet(null)]) {
+      const rendered=cards(d,previous,scope,interaction);
+      const html=rendered.map(c=>c.html).join('');
+      assert.doesNotMatch(html,/kpi--orders|kpi-quantity|Заказано:|kpi-label">Заказы|data-trend-metric="orders"/,'orders card is absent in every scope and loading/public/private state');
+      assert.match(html,/kpi-label">Сумма продаж/);
+      assert.match(html,/ДРР \(заказа\)/,'the DRR card stays visible');
+      if(interaction) assert.match(html,/data-trend-metric="sales" aria-pressed="true"/,'removed selection falls back to sales');
+    }
+  }
+}
 
 const cabinet = {sources:{orders:{status:'downloaded',amount:'66640095.00',count:22998}},finance:{bought_qty:18451}};
 const fromApi=api.fromApiCabinet(cabinet);
 assert.equal(fromApi.ordersSummary.amount,66640095);
 assert.equal(fromApi.ordersSummary.qty,22998);
 assert.equal(fromApi.rep.bought_qty,18451,'orders do not alter financial sales');
-assert.equal(card(fromApi).nodes['.kpi-quantity'].textContent,'22\u00a0998');
-assert.match(card(api.fromApiCabinet(null)).html,/kpi-number">—/);
-assert.match(card(api.fromApiCabinet(null)).html,/kpi-quantity">—/);
 assert.equal(api.fromApiCabinet({sources:{orders:{...cabinet.sources.orders,status:'loading'}}}).ordersSummary.amount,null);
 const ozon=derive({...report,marketplace:'ozon'});
 assert.equal(ozon.ordersSummary.amount,null,'accrual sales cannot stand in for all placed orders');
-assert.match(card(ozon,null,'ozon').html,/Нет полных данных о заказах/);
 const combined=api.combineDerived([{derived:fromApi,shop:{marketplace:'wildberries'}},{derived:ozon,shop:{marketplace:'ozon'}}]);
 assert.equal(combined.ordersSummary.amount,null,'mixed totals must not silently omit Ozon orders');
 assert.equal(combined.ordersSummary.qty,null);
@@ -54,19 +51,17 @@ assert.equal(api.combineTrend([[{year:2026,month:9,orders:1000}],[{year:2026,mon
 const disjoint=api.combineTrend([[{year:2026,month:9,orders:1000}],[{year:2026,month:8,orders:null}]],false);
 assert.ok(disjoint.every(row=>row.orders==null && row.drrOrders==null),'combined coverage is incomplete even in disjoint months');
 assert.equal(api.combineTrend([[{year:2026,month:9,orders:1000}],[]],false)[0].orders,null,'empty Ozon month is not proof of zero orders');
-assert.match(card(fromApi,null,'all').html,/kpi-number">—/,'API scope all cannot expose a partial WB-only total');
 let selected;
-const button=card(current,previous,'wildberries',{activeMetric:'orders',onSelect:metric=>selected=metric});
+const button=cards(current,previous,'wildberries',{activeMetric:'sales',onSelect:metric=>selected=metric})[0];
 button.events.click();
-assert.equal(selected,'orders');
+assert.equal(selected,'sales');
 assert.match(button.html,/aria-pressed="true"/);
 assert.doesNotMatch(button.html,/<div/,'no block div inside button');
-assert.doesNotMatch(orders.html,/<button/,'public storefront remains read-only');
+assert.doesNotMatch(cards(current)[0].html,/<button/,'public storefront remains read-only');
 window.matchMedia=()=>({matches:false});
-const animated=card(current,previous);
+const animated=cards(current,previous)[0];
 while(frames.length)frames.shift()(720);
-assert.equal(animated.nodes['.kpi-number'].textContent,'2\u00a0000');
-assert.equal(animated.nodes['.kpi-quantity'].textContent,'20');
+assert.equal(animated.nodes['.kpi-number'].textContent,'700','remaining KPI animation is preserved');
 
 // Actual WB header names from the user-provided summary; basket count differs.
 let aoa = [['Год','Месяц','День','Сумма заказов по розничным ценам с учётом согласованной скидки, руб.','Заказано, шт.','Количество заказов','Выкупили','Итого к перечислению'],
@@ -115,5 +110,5 @@ vm.runInContext(fs.readFileSync(path.join(root,'assets/parse.js'),'utf8'),contex
   assert.equal(undo.payload.ads_spend,undefined,'undo cannot clear independently imported ads');
   window.supabaseClient={rpc:async()=>({data:[{report,cogs:0}]})};
   assert.equal((await api.loadTrendData('shop',0,'ozon'))[0].orders,null);
-  console.log('PASS: orders card, independent amount/quantity deltas, API/file mapping, missing/zero, Ozon/combined coverage, click and count animation');
+  console.log('PASS: orders card removed in every scope and surface; API/file mapping, DRR, coverage and remaining KPI interactions preserved');
 })().catch(error=>{console.error(error);process.exitCode=1;});
