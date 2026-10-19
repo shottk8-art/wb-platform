@@ -35,6 +35,9 @@ assert(!client.slice(client.indexOf('form.onsubmit=e=>'),client.indexOf("root.qu
 assert(client.includes("if(step===1)billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:"));
 assert(client.includes('data-payment-plans'));assert(client.includes("skip.hidden=['processing','result'].includes(screen)&&outcome==='success'"));
 const css=fs.readFileSync('assets/client-start.css','utf8');assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('client-success-draw'));assert(css.includes('font-size:16px'));assert(!/animation[^;\n]*infinite/.test(css));
+assert(client.includes('srcset="/assets/illustrations/seller-economics-480.webp 480w, /assets/illustrations/seller-economics-960.webp 960w"'));
+assert(client.includes('width="960" height="960" alt=""'));assert(css.includes('client-success-contour'));assert(css.includes('--market-color:var(--violet)'));
+for(const size of [480,960]){const file=fs.readFileSync(`assets/illustrations/seller-economics-${size}.webp`);assert(file.length<100000);assert.equal(file.toString('ascii',0,4),'RIFF');assert.equal(file.toString('ascii',8,12),'WEBP');}
 const routeSource=app.slice(app.indexOf('  async function selectReportMarketplace('),app.indexOf('  async function init()'));
 const calls=[],route={reportMarketplace:'wildberries',overviewScope:'wildberries',updateShareBox:()=>calls.push('share'),updateScopeButtons:()=>calls.push('scope'),reloadOverview:async()=>calls.push('overview'),refreshCostsTable:async()=>calls.push('costs'),refreshUploadsLog:async()=>calls.push('uploads')};
 vm.createContext(route);vm.runInContext(routeSource,route);

@@ -16,5 +16,5 @@ http.createServer((req,res)=>{
   }
   const file=path.resolve(root,'.'+decodeURIComponent(u.pathname));
   if(!file.startsWith(root+path.sep)||(!u.pathname.startsWith('/assets/')&&u.pathname!=='/demo.html')){res.writeHead(404).end();return;}
-  try{const data=fs.readFileSync(file);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream');res.end(data);}catch{res.writeHead(404).end();}
+  try{const data=fs.readFileSync(file);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream');res.end(data);}catch{res.writeHead(404).end();}
 }).listen(4182,'127.0.0.1',()=>console.log('Client-only fixture: http://127.0.0.1:4182/client-preview.html'));
