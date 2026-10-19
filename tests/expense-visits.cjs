@@ -99,4 +99,10 @@ assert.match(el('expHeroDelta').innerHTML,/к предыдущему перио�
 list.onclick({target:buttons[13]});
 assert.equal(el('expCenterLabel').textContent,'Статья 13');
 assert.doesNotMatch(list.html,/exp-track/,'reference uses linked legend, not old progress tracks');
-console.log('Expense Total visits: PASS (signed totals/tooltips, unknowns, comparisons, all categories, focus/click/keyboard, reduced motion, disposal).');
+const countBefore=charts.length;let payload;
+window.WBExpenseTraffic={render:options=>{payload=options;return true;}};
+draw([['Товар',800],['Возмещение',-200],['Реклама',100]],null,true);
+assert.equal(payload.total,700);assert.equal(payload.chartTotal,1100);assert.equal(payload.items.length,3);assert.ok(payload.items.some(i=>i.value===-200));
+assert.match(list.html,/exp-pct/,'percentages share the existing real expense rows');
+assert.equal(charts.length,countBefore,'Traffic presentation does not instantiate another Chart.js doughnut');
+console.log('Expense totals/Traffic bridge: PASS (signed totals, magnitude denominator, unknowns, comparisons, all categories, focus/keyboard, fallback and no duplicate chart).');

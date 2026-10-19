@@ -562,12 +562,22 @@
         <div role="listitem">
           <button type="button" class="exp-row" data-expense-index="${index}" aria-label="${escapeHtml(label)}: ${fmtMoney.format(Math.round(value))} ₽; ${pct.toFixed(1)}% ${unknownItems.length ? 'от известных сумм по модулю' : 'от суммы статей по модулю'}" aria-pressed="false">
             <span class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></span>
+            <strong class="exp-pct">${pct > 0 && pct < .1 ? '&lt;0,1' : fmtCompact.format(pct)}%</strong>
             <span class="exp-meta"><strong>${fmtMoney.format(Math.round(value))} ₽</strong>${renderExpenseDelta(value, prior)}</span>
           </button>
         </div>`;
     }).join("") + unknownItems.map(([label]) => `<div role="listitem" class="exp-row exp-row--unknown"><span class="exp-name"><i></i><span>${escapeHtml(label)}</span></span><span class="exp-meta"><strong>—</strong><span>Нет данных</span></span></div>`).join('');
     if (!visibleItems.length && !unknownItems.length) listEl.innerHTML = `<div class="analytics-empty">Расходов за этот период пока нет</div>`;
     totalEl.textContent = totalText;
+
+    const shareBasis = unknownItems.length ? 'Доли известных статей по модулю' : 'Доли статей по модулю';
+    const basisEl = document.getElementById('expBasis');
+    if (basisEl) { basisEl.hidden = !unknownItems.length && !visibleItems.some(item=>item.value<0); basisEl.textContent = unknownItems.length ? 'Доли известных сумм' : 'Доли по модулю'; basisEl.title = 'На кольце сравниваются абсолютные значения статей. Возвраты и компенсации уменьшают итог из API и показаны в списке со знаком минус.'; }
+    canvas.setAttribute('aria-label', `Структура расходов. ${shareBasis}: сумма абсолютных значений ${fmtMoney.format(Math.round(chartTotal))} ₽. Возвраты и компенсации показаны со знаком минус в списке. Выберите статью в списке, чтобы увидеть её долю.`);
+    if (window.WBExpenseTraffic) {
+      if (charts.pie) { charts.pie.destroy(); charts.pie = null; }
+      if (window.WBExpenseTraffic.render({ canvas, listEl, items:chartItems, chartTotal, total, totalText, unknownItems, centerValue, centerLabel, paletteForTheme })) return;
+    }
 
     if (charts.pie) charts.pie.destroy();
     let activeIndex = -1;
@@ -600,10 +610,6 @@
       buttons[next]?.focus();
     };
     canvas.onpointerleave = resetExpense;
-    const shareBasis = unknownItems.length ? 'Доли известных статей по модулю' : 'Доли статей по модулю';
-    const basisEl = document.getElementById('expBasis');
-    if (basisEl) { basisEl.hidden = !unknownItems.length && !visibleItems.some(item=>item.value<0); basisEl.textContent = unknownItems.length ? 'Доли известных сумм' : 'Доли по модулю'; basisEl.title = 'На кольце сравниваются абсолютные значения статей. Возвраты и компенсации уменьшают итог из API и показаны в списке со знаком минус.'; }
-    canvas.setAttribute('aria-label', `Структура расходов. ${shareBasis}: сумма абсолютных значений ${fmtMoney.format(Math.round(chartTotal))} ₽. Возвраты и компенсации показаны со знаком минус в списке. Выберите статью в списке, чтобы увидеть её долю.`);
     selectExpense(chartItems.length ? 0 : -2);
     pie = charts.pie = new Chart(canvas, {
       type: "doughnut",

@@ -11,7 +11,8 @@ const fixture = `
 <script src="/assets/reference.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/trend-interaction.js?v=20261019-trend2"></script>
-<script src="/assets/dashboard.js?v=20261019-trend1"></script>
+<script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
+<script src="/assets/dashboard.js?v=20261019-traffic1"></script>
 <script src="/assets/period-range.js?v=20261019-trend1"></script>
 <script>
 const byId=id=>document.getElementById(id);
