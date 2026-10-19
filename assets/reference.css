@@ -105,14 +105,32 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel #secondaryKpiRow .kpi-label{margin-bottom:12px}
 .corbel .expense-panel{width:100%;margin-bottom:16px}
 .corbel .expense-panel .expense-card{padding:0;height:auto}
-.corbel .expense-panel .exp-body{display:grid;grid-template-columns:210px minmax(0,1fr);gap:30px;align-items:center;padding:20px}
-.corbel .expense-panel .exp-chart{width:210px;height:220px}
-.corbel .expense-panel #expList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px;max-height:330px;overflow:auto;padding-right:8px}
-.corbel .expense-panel .exp-row{display:block;padding:12px 0}
-.corbel .expense-panel .exp-name{font-size:12px;margin-bottom:6px}
-.corbel .expense-panel .exp-meta{font-size:11px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;justify-content:flex-start}
-.corbel .expense-panel .exp-track{height:4px;margin:7px 0}
-.corbel .expense-panel .exp-meta strong{font-size:12px}
+.corbel .expense-card>.panel-heading{margin-bottom:0}
+.corbel .expense-card>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.corbel .expense-card .exp-body{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:18px;align-items:center;padding:12px 20px 20px}
+.corbel .expense-card .exp-content{min-width:0}
+.corbel .expense-card .exp-summary{margin-bottom:14px}
+.corbel .expense-card #expHeroTotal{display:block;font-family:var(--font-display);font-size:27px;font-weight:600;line-height:1.2;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.corbel .expense-card #expHeroDelta{display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;margin-top:3px;font-size:12px;color:var(--ink-mute)}
+.corbel .expense-card #expHeroDelta>.expense-delta--summary{margin:0;font-weight:500;font-size:12px}
+.corbel .expense-card .exp-sales-share{font-size:12px;color:var(--ink-mute);margin-top:3px}
+.corbel .expense-card .exp-chart{width:168px;height:168px;max-width:none;margin:0;justify-self:center}
+.corbel .expense-card .exp-basis{position:absolute;top:100%;width:100%;text-align:center;margin:4px 0 0;font-size:11px;color:var(--ink-mute)}
+.corbel .expense-card #expList{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;max-height:330px;overflow:auto;padding:2px;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+.corbel .expense-card .exp-row{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:center;gap:12px;width:100%;min-height:44px;padding:7px 8px;border:0;border-radius:9px;background:transparent;box-shadow:none;color:var(--ink);text-align:left;font:inherit;cursor:pointer;transition:background-color .22s ease-out}
+.corbel .expense-card .exp-row[aria-pressed="true"],.corbel .expense-card .exp-row:hover,.corbel .expense-card .exp-row:focus-visible{background:var(--accent-soft);transform:none}
+.corbel .expense-card .exp-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.corbel .expense-card .exp-row--unknown{cursor:default;color:var(--ink-mute)}
+.corbel .expense-card .exp-name{font-size:13px;line-height:1.5;margin:0;color:var(--ink-soft);align-self:start;padding-top:1px}
+.corbel .expense-card .exp-name span{white-space:normal;overflow-wrap:anywhere;overflow:visible}
+.corbel .expense-card .exp-name i{width:9px;height:9px;border-radius:3px;margin-top:5px;align-self:flex-start}
+.corbel .expense-card .exp-row--unknown .exp-name i{border:1px solid var(--ink-mute);background:transparent}
+.corbel .expense-card .exp-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right;font-size:12px}
+.corbel .expense-card .exp-meta strong{font-size:13px;font-weight:600}
+.corbel .expense-card .expense-delta{font-size:11px;font-weight:500;margin:0}
+.corbel .expense-card .expense-delta .icon{flex:none}
+.corbel .expense-card .exp-chart-center strong{font-size:25px;font-weight:600;line-height:1.2;max-width:110px}
+.corbel .expense-card .exp-chart-center span{max-width:100px;max-height:48px;overflow:hidden;text-align:center;line-height:1.35;font-size:11px;overflow-wrap:anywhere;margin-top:4px}
 .corbel .analytics-summary strong{font-family:var(--font-display);font-size:25px;font-weight:600;letter-spacing:-.02em}
 .corbel .analytics-summary>div{padding:16px 20px}
 .corbel .sku-card .skubar{height:180px}
@@ -212,10 +230,15 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
   .corbel #secondaryKpiRow>.kpi:last-child:nth-child(odd){grid-column:1/-1!important}
   .corbel #secondaryKpiRow .kpi-value{font-size:23px}
   .corbel #secondaryKpiRow .kpi-extra{font-size:12px}
-  .corbel .expense-panel .exp-body{grid-template-columns:1fr;padding:14px;gap:10px}
-  .corbel .expense-panel .exp-chart{width:100%;height:180px}
-  .corbel .expense-panel #expList{grid-template-columns:1fr;max-height:330px;padding:0}
-  .corbel .expense-panel .exp-meta{font-size:12px}
+  .corbel .expense-card .exp-body{grid-template-columns:minmax(0,1fr);padding:14px;gap:18px}
+  .corbel .expense-card .exp-content{display:contents}
+  .corbel .expense-card .exp-summary{grid-row:1;margin:0}
+  .corbel .expense-card .exp-chart{grid-row:2;width:168px;height:168px}
+  .corbel .expense-card #expList{grid-row:3;max-height:none;padding:2px;gap:3px}
+  .corbel .expense-card .exp-row{padding:9px 6px;gap:8px}
+  .corbel .expense-card .exp-meta{max-width:155px}
+  .corbel .expense-card .expense-delta{font-size:11px;white-space:normal}
+  .corbel .expense-card .exp-name{font-size:13px}
   .corbel .profile-grid{padding:20px 16px}
   .corbel .profile-fields{grid-template-columns:1fr}
   .corbel .profile-identity{flex-direction:row;text-align:left;justify-content:flex-start}

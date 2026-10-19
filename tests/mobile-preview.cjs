@@ -10,7 +10,7 @@ const fixture = `
 <script src="/assets/corbel-components.js?v=20261019-reference6"></script>
 <script src="/assets/reference.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="/assets/dashboard.js?v=20261019-range3"></script>
+<script src="/assets/dashboard.js?v=20261019-expenses1"></script>
 <script src="/assets/period-range.js?v=20261019-range2"></script>
 <script>
 const byId=id=>document.getElementById(id);
@@ -24,6 +24,9 @@ const rows=[{article:'chlorophill/450new',name:'Хлорофилл жидкий 
 {article:'very-long-article-code-without-spaces-1234567890',name:'Очень длинное название товара для проверки переноса текста на маленьком экране',bought_qty:100001,revenue:99999999,cost_price:1,total_cost:100001,profit:-12345678,abc:'B'}];
 const d={skuRows:rows,expenses:[['Себестоимость товара',696198],['Очень длинное название удержания маркетплейса',238988],['WB Продвижение',226553]],rep:{orders_amount:66640095,orders_qty:22998,sales_amount:2231708,bought_qty:1455,transfer_total:1826845,ads_spend:226553,wb_media_spend:0,ads_promo_spend:77511},netProfit:792508,rates:{drrOrders:6.3,drrSales:10.2}};
 const prev={...d,rep:{...d.rep,orders_amount:52258000,orders_qty:19000},skuRows:rows.map(r=>({...r,bought_qty:r.bought_qty-12,revenue:r.revenue-46687,profit:r.profit-59423})),expenses:[['Себестоимость товара',481112],['Очень длинное название удержания маркетплейса',291552],['WB Продвижение',242868]]};
+if(location.search.includes('expenses=long')){d.isApi=true;prev.isApi=true;d.expenses.push(['Логистика',56000],['WB Media',28000],['Налог',25000],['Хранение',6200],['Операционные расходы',4500],['Компенсация скидок WB',-11000],['Реклама уже в удержаниях',-6200]);}
+if(location.search.includes('expenses=unknown')){d.isApi=true;d.expenses.push(['WB Media',null]);}
+if(location.search.includes('expenses=empty')){d.expenses=[];prev.expenses=[];}
 if(byId('skuBody')) WBDashboard.renderSkuTable(byId('skuBody'),byId('skuFoot'),byId('skuHint'),byId('skuChart'),d,prev);
 if(byId('expList')) WBDashboard.renderExpenses(byId('expList'),byId('expTotal'),byId('expChart'),d,'wildberries',prev);
 const trend=Array.from({length:12},(_,i)=>({year:i<2?2025:2026,month:(i+10)%12+1,sales:1250000+i*91000,profit:260000+i*47000,quantity:800+i*60,transfer:900000+i*77000,internalAds:100000+i*11000,mediaAds:10000+i*2000,promo:20000+i*1000,drrOrders:5+i*.15,drrSales:7+i*.2}));
@@ -99,7 +102,8 @@ http.createServer((req,res)=>{
     const selected=url.searchParams.get('view');
     const view=['overview','settings','account','reports','costs','team'].includes(selected)?selected:route;
     res.setHeader('Content-Type','text/html');res.setHeader('Cache-Control','no-store');
-    res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0}iframe{display:block;border:0}</style></head><body><iframe title="Responsive seller workspace" width="'+width+'" height="'+height+'" src="/app.html?still=1&amp;assets=6#'+view+'"></iframe></body></html>');return;
+    const expenses=['long','unknown','empty'].includes(url.searchParams.get('expenses'))?'&amp;expenses='+url.searchParams.get('expenses'):'';
+    res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0}iframe{display:block;border:0}</style></head><body><iframe title="Responsive seller workspace" width="'+width+'" height="'+height+'" src="/app.html?still=1&amp;assets=6'+expenses+'#'+view+'"></iframe></body></html>');return;
   }
   const file=path.resolve(root,'.'+pathname);
   if(!file.startsWith(root+path.sep)||(!pathname.startsWith('/assets/')&&!['/app.html','/index.html','/admin.html'].includes(pathname))){res.writeHead(404).end();return;}

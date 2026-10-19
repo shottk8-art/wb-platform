@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
-<link rel="stylesheet" href="/assets/reference.css?v=20261019-range2">
+<link rel="stylesheet" href="/assets/reference.css?v=20261019-expenses1">
 <script src="/assets/corbel.js?v=20261019-reference4"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-reference6" defer></script>
@@ -436,20 +436,24 @@
     <section class="section app-view" id="secAnalytics" data-view="overview">
       <div class="grid-2">
         <div>
-          <div class="section-head expense-section-head"><h2>Структура расходов <span class="metric-help"><button type="button" class="help-button" aria-label="Как показаны расходы" aria-expanded="false" aria-controls="expensesHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="expensesHelpText" role="tooltip">Итог учитывает возвраты и компенсации со знаком минус. Диаграмма показывает размер каждой статьи. Если часть сумм неизвестна, итог не рассчитывается.</span></span></h2></div>
+          <div class="section-head expense-section-head"><h2>Структура расходов <span class="metric-help"><button type="button" class="help-button" aria-label="Как показаны расходы" aria-expanded="false" aria-controls="expensesHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="expensesHelpText" role="tooltip">Итог из API учитывает возвраты и компенсации со знаком минус. Доли на кольце — от суммы абсолютных значений известных статей, а не от итоговых расходов. Неизвестная сумма показана прочерком, а не нулём.</span></span></h2></div>
           <div class="card analytics-card expense-card">
-            <div class="analytics-summary">
-              <div><span>Всего расходов</span><strong class="mono" id="expHeroTotal">—</strong><div id="expHeroDelta"></div></div>
-              <div><span>Доля от продаж</span><strong id="expSalesShare">—</strong></div>
-            </div>
             <div class="exp-body">
+              <div class="exp-content">
+                <div class="exp-summary">
+                  <strong id="expHeroTotal">—</strong>
+                  <div id="expHeroDelta"></div>
+                  <div class="exp-sales-share"><span id="expSalesShare">—</span> от суммы продаж</div>
+                </div>
+                <div id="expList" role="list" aria-label="Статьи расходов"></div>
+              </div>
               <div class="exp-chart">
                 <canvas id="expChart" role="img" aria-label="Диаграмма структуры расходов за выбранный период"></canvas>
-                <div class="exp-chart-center" aria-hidden="true"><strong id="expCenterValue">—</strong><span>расходы</span></div>
+                <div class="exp-chart-center" aria-hidden="true"><strong id="expCenterValue">—</strong><span id="expCenterLabel">нет данных</span></div>
+                <p class="exp-basis" id="expBasis" hidden></p>
               </div>
-              <div id="expList"></div>
             </div>
-            <div class="exp-total-row"><span>Итого расходов</span><span class="mono" id="expTotal">—</span></div>
+            <span class="sr-only" id="expTotal">—</span>
           </div>
         </div>
         <div>
@@ -521,7 +525,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/dashboard.js?v=20261019-range3"></script>
+<script src="/assets/dashboard.js?v=20261019-expenses1"></script>
 <script src="/assets/period-range.js?v=20261019-range2"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>

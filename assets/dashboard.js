@@ -517,7 +517,7 @@
     const colorDir = rawDir === "up" ? "down" : rawDir === "down" ? "up" : "flat";
     const icon = rawDir === "up" ? "icon-trend-up" : rawDir === "down" ? "icon-trend-down" : "icon-trend-flat";
     const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
-    const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "новая статья";
+    const pct = prevValue !== 0 ? `${fmtCompact.format(Math.abs(diff) / Math.abs(prevValue) * 100)}%` : diff === 0 ? "0%" : "ранее 0 ₽";
     return `<span class="expense-delta expense-delta--${colorDir}${className ? ` ${className}` : ""}">
       <svg class="icon icon-sm" aria-hidden="true"><use href="#${icon}"/></svg>
       <span>${sign}${fmtMoney.format(Math.abs(Math.round(diff)))} ₽ · ${pct}</span>
@@ -525,7 +525,10 @@
   }
 
   function renderExpenses(listEl, totalEl, canvas, d, marketplace, prevD) {
-    const palette = ["#2a45cc", "#93a3ec", "#3f9c86", "#7a5aa6", "#c98a1e", "#c86e5d", "#7587bf", "#4f94a0", "#ac8e68", "#b06f91", "#8e94a9", "#9781bf", "#00a6a6"];
+    const paletteForTheme = () => document.documentElement?.dataset.theme === 'dark'
+      ? ["#7088f0", "#b1bdf5", "#5cc0a6", "#b39bd6", "#e4bd75", "#f08c78", "#a3b2e4", "#79bdc7", "#d4b68d", "#d3a0bf", "#b2bad3", "#bfabe0", "#65caca"]
+      : ["#2a45cc", "#93a3ec", "#3f9c86", "#7a5aa6", "#c98a1e", "#c86e5d", "#7587bf", "#4f94a0", "#ac8e68", "#b06f91", "#8e94a9", "#9781bf", "#00a6a6"];
+    const palette = paletteForTheme();
     const items = expenseItems(d, marketplace);
     const prevItems = prevD ? new Map(expenseItems(prevD, marketplace)) : null;
     const chartTotal = items.reduce((s,it)=>s+Math.abs(it[1] || 0),0);
@@ -535,71 +538,115 @@
       .filter((item) => Math.abs(item.value) > 0.005)
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
       .map((item, index) => ({ ...item, color: palette[index % palette.length] }));
-    const chartItems = visibleItems.length > 6
-      ? [
-          ...visibleItems.slice(0, 5),
-          {
-            label: "Прочие расходы",
-            value: visibleItems.slice(5).reduce((sum, item) => sum + Math.abs(item.value), 0),
-            color: "#c7c7cc",
-          },
-        ]
-      : visibleItems;
+    // Each row has its own segment: corrections keep their signed amounts in
+    // the legend; the ring compares magnitudes, never a second expense total.
+    const chartItems = visibleItems;
+    const unknownItems = items.filter(([,value]) => value == null);
     const salesShare = total != null && (d.rep.sales_amount || 0) > 0 ? (total / d.rep.sales_amount) * 100 : null;
     const totalText = total == null ? '—' : `${fmtMoney.format(Math.round(total))} ₽`;
 
     const heroTotal = document.getElementById("expHeroTotal");
     const shareEl = document.getElementById("expSalesShare");
     const centerValue = document.getElementById("expCenterValue");
+    const centerLabel = document.getElementById("expCenterLabel");
     if (heroTotal) heroTotal.textContent = totalText;
-    if (shareEl) shareEl.textContent = salesShare == null ? "—" : `${salesShare.toFixed(1)}%`;
-    if (centerValue) centerValue.textContent = total == null ? '—' : fmtShort.format(Math.round(total));
+    if (shareEl) shareEl.textContent = salesShare == null ? "—" : `${salesShare.toFixed(1).replace('.', ',')}%`;
     const heroDelta = document.getElementById("expHeroDelta");
-    if (heroDelta) heroDelta.innerHTML = total == null ? '' : renderExpenseDelta(total, prevTotal, "expense-delta--summary");
+    const comparison = window.WBRange?.active ? 'к предыдущему периоду' : 'к прошлому месяцу';
+    if (heroDelta) heroDelta.innerHTML = total == null || prevTotal == null ? '' : `<span class="exp-comparison-label">${comparison}</span>${renderExpenseDelta(total, prevTotal, "expense-delta--summary")}`;
 
-    listEl.innerHTML = visibleItems.length ? visibleItems.map(({ label, value, color }) => {
+    listEl.innerHTML = visibleItems.map(({ label, value, color }, index) => {
       const pct = chartTotal > 0 ? Math.abs(value / chartTotal) * 100 : 0;
+      const prior = prevItems ? prevItems.has(label) ? prevItems.get(label) : 0 : null;
       return `
-        <div class="exp-row">
-          <div class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></div>
-          <div class="exp-track"><div class="exp-fill" style="--expense-color:${color};--expense-width:${Math.max(2, pct).toFixed(1)}%"></div></div>
-          <div class="exp-meta">
-            <strong>${fmtMoney.format(Math.round(value))} ₽</strong>
-            <span>${pct.toFixed(1)}%</span>
-            ${renderExpenseDelta(Math.abs(value), prevItems ? Math.abs(prevItems.get(label) || 0) : null)}
-          </div>
+        <div role="listitem">
+          <button type="button" class="exp-row" data-expense-index="${index}" aria-label="${escapeHtml(label)}: ${fmtMoney.format(Math.round(value))} ₽; ${pct.toFixed(1)}% ${unknownItems.length ? 'от известных сумм по модулю' : 'от суммы статей по модулю'}" aria-pressed="false">
+            <span class="exp-name"><i style="--expense-color:${color}"></i><span>${escapeHtml(label)}</span></span>
+            <span class="exp-meta"><strong>${fmtMoney.format(Math.round(value))} ₽</strong>${renderExpenseDelta(value, prior)}</span>
+          </button>
         </div>`;
-    }).join("") : `<div class="analytics-empty">Расходов за этот период пока нет</div>`;
+    }).join("") + unknownItems.map(([label]) => `<div role="listitem" class="exp-row exp-row--unknown"><span class="exp-name"><i></i><span>${escapeHtml(label)}</span></span><span class="exp-meta"><strong>—</strong><span>Нет данных</span></span></div>`).join('');
+    if (!visibleItems.length && !unknownItems.length) listEl.innerHTML = `<div class="analytics-empty">Расходов за этот период пока нет</div>`;
     totalEl.textContent = totalText;
 
     if (charts.pie) charts.pie.destroy();
-    charts.pie = new Chart(canvas, {
+    let activeIndex = -1;
+    let pie;
+    let interacted = false;
+    const buttons = [...listEl.querySelectorAll('[data-expense-index]')];
+    const selectExpense = (index) => {
+      if (activeIndex === index) return;
+      activeIndex = index;
+      const item = chartItems[index];
+      if (centerValue) centerValue.textContent = item ? `${(Math.abs(item.value) / chartTotal * 100).toFixed(1).replace('.', ',')}%` : '—';
+      if (centerLabel) { centerLabel.textContent = item ? item.label : unknownItems.length ? 'нет данных' : 'нет расходов'; centerLabel.title = centerLabel.textContent; }
+      buttons.forEach((button,i) => button.setAttribute('aria-pressed', String(i === index)));
+      if (!pie) return;
+      interacted = true;
+      pie.data.datasets[0].backgroundColor = chartItems.map((row,i) => i === index ? row.color : `${row.color}80`);
+      pie.setActiveElements(item ? [{ datasetIndex: 0, index }] : []);
+      pie.update('active');
+    };
+    const rowIndex = event => { const row = event.target.closest?.('[data-expense-index]'); return row && listEl.contains(row) ? Number(row.dataset.expenseIndex) : null; };
+    listEl.onpointerover = listEl.onfocusin = listEl.onclick = event => { const index = rowIndex(event); if (index != null) selectExpense(index); };
+    const resetExpense = () => { const focused = buttons.indexOf(document.activeElement); selectExpense(focused >= 0 ? focused : chartItems.length ? 0 : -2); };
+    listEl.onpointerleave = resetExpense;
+    listEl.onfocusout = event => { if (!listEl.contains(event.relatedTarget)) selectExpense(chartItems.length ? 0 : -2); };
+    listEl.onkeydown = event => {
+      if (!['ArrowDown','ArrowUp','Home','End'].includes(event.key)) return;
+      const index = rowIndex(event); if (index == null) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length-1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next]?.focus();
+    };
+    canvas.onpointerleave = resetExpense;
+    const shareBasis = unknownItems.length ? 'Доли известных статей по модулю' : 'Доли статей по модулю';
+    const basisEl = document.getElementById('expBasis');
+    if (basisEl) { basisEl.hidden = !unknownItems.length && !visibleItems.some(item=>item.value<0); basisEl.textContent = unknownItems.length ? 'Доли известных сумм' : 'Доли по модулю'; basisEl.title = 'На кольце сравниваются абсолютные значения статей. Возвраты и компенсации уменьшают итог из API и показаны в списке со знаком минус.'; }
+    canvas.setAttribute('aria-label', `Структура расходов. ${shareBasis}: сумма абсолютных значений ${fmtMoney.format(Math.round(chartTotal))} ₽. Возвраты и компенсации показаны со знаком минус в списке. Выберите статью в списке, чтобы увидеть её долю.`);
+    selectExpense(chartItems.length ? 0 : -2);
+    pie = charts.pie = new Chart(canvas, {
       type: "doughnut",
       data: {
         labels: chartItems.map((i) => i.label),
         datasets: [{
-          data: chartItems.map((i) => Math.abs(i.value)),
-          backgroundColor: chartItems.map((i) => i.color),
+          data: chartItems.length ? chartItems.map((i) => Math.abs(i.value)) : [1],
+          backgroundColor: chartItems.length ? chartItems.map((i) => i.color) : [getComputedStyle(document.body).getPropertyValue('--surface-2').trim() || '#eeeef1'],
           borderColor: getComputedStyle(document.body).getPropertyValue('--surface').trim() || '#ffffff',
-          borderWidth: 3,
-          hoverBorderWidth: 3,
-          spacing: 1,
-          hoverOffset: 3,
-          borderRadius: 7,
+          borderWidth: 2,
+          hoverBorderWidth: 2,
+          spacing: 0,
+          hoverOffset: 2,
+          borderRadius: 0,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 1200, easing: "easeOutCubic" },
+        transitions: { active: { animation: { duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 280, easing: 'easeOutCubic' } } },
+        onHover: (_event, elements) => { if (elements.length && chartItems[elements[0].index]) selectExpense(elements[0].index); },
+        onClick: (_event, elements) => { const index=elements[0]?.index; if (index != null) { selectExpense(index); buttons[index]?.focus(); } },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${chartTotal > 0 ? ((ctx.parsed / chartTotal) * 100).toFixed(1) : 0}%` } },
+          tooltip: { enabled: !!chartItems.length, callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(chartItems[ctx.dataIndex].value)} ₽ · ${chartTotal > 0 ? ((ctx.parsed / chartTotal) * 100).toFixed(1) : 0}% по модулю` } },
         },
-        cutout: "78%",
-        radius: "88%",
+        cutout: "72%",
+        radius: "91%",
       },
     });
+    // Appearance-only repaint: preserve the selected category without fetching
+    // or recalculating any financial data when the user changes theme.
+    pie.sellerExpenseTheme = () => {
+      const colors = paletteForTheme();
+      chartItems.forEach((item,i) => {
+        item.color = colors[i % colors.length];
+        buttons[i]?.querySelector?.('i')?.style.setProperty('--expense-color',item.color);
+      });
+      pie.data.datasets[0].backgroundColor = chartItems.length
+        ? chartItems.map((item,i)=>!interacted || i===activeIndex ? item.color : `${item.color}80`)
+        : [getComputedStyle(document.body).getPropertyValue('--surface-2').trim()];
+    };
   }
 
   function trendBarColors(canvas, rows, color) {
@@ -841,7 +888,10 @@
         if(axis.ticks)axis.ticks.color=muted;
         if(axis.grid && grid)axis.grid.color=grid;
       }
-      if(chart.config.type==='doughnut')chart.data.datasets.forEach(ds=>ds.borderColor=css.getPropertyValue('--surface').trim());
+      if(chart.config.type==='doughnut'){
+        chart.data.datasets.forEach(ds=>ds.borderColor=css.getPropertyValue('--surface').trim());
+        chart.sellerExpenseTheme?.();
+      }
       chart.data.datasets.forEach(ds=>{
         if(ds.sellerMetric){
           const color=getTrendMetric(ds.sellerMetric).color;
