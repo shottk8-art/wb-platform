@@ -8,16 +8,19 @@ function fixture(saved,blocked=false,withButtons=false){
   const choices=withButtons?['light','dark'].map(theme=>Object.assign(element(),{dataset:{themeChoice:theme}})):[];
   const toggles=withButtons?[element()]:[];
   for(const id of ['profileName','profileTelegram','profileRole','profileTelegramLink'])elements.set(id,element());
-  const root={dataset:{}},avatars=[element()],names=[element()];
-  const context={document:{documentElement:root,readyState:'complete',getElementById:id=>elements.get(id),querySelector:()=>null,querySelectorAll:selector=>selector==='[data-profile-avatar]'?avatars:selector==='[data-profile-name]'?names:selector==='[data-theme-choice]'?choices:selector==='[data-theme-toggle]'?toggles:buttons},window:{dispatchEvent:e=>events.push(e)},localStorage:{getItem(){if(blocked)throw Error('unavailable');return saved},setItem(k,v){if(blocked)throw Error('unavailable');writes.push([k,v])}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}}};
+  const root={dataset:{}},avatars=[element()],names=[element()],favicon=element();
+  const context={document:{documentElement:root,readyState:'complete',getElementById:id=>elements.get(id),querySelector:selector=>selector==='link[data-app-favicon]'?favicon:null,querySelectorAll:selector=>selector==='[data-profile-avatar]'?avatars:selector==='[data-profile-name]'?names:selector==='[data-theme-choice]'?choices:selector==='[data-theme-toggle]'?toggles:buttons},window:{dispatchEvent:e=>events.push(e)},localStorage:{getItem(){if(blocked)throw Error('unavailable');return saved},setItem(k,v){if(blocked)throw Error('unavailable');writes.push([k,v])}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}}};
   vm.createContext(context);vm.runInContext(source,context);
-  return {api:context.window.WBShell,root,events,writes,elements,avatars,names,choices,toggles};
+  return {api:context.window.WBShell,root,events,writes,elements,avatars,names,choices,toggles,favicon};
 }
 const f=fixture('dark');
 assert.equal(f.root.dataset.theme,'dark');
+assert.match(f.favicon.attrs.href,/icon-dark\.svg/,'saved theme selects its favicon on startup');
 f.api.applyTheme('light');assert.equal(f.root.dataset.theme,'light');assert.equal(f.writes[0][0],'seller-appearance');assert.equal(f.writes[0][1],'light');assert.equal(f.events[0].type,'seller:themechange');
+assert.match(f.favicon.attrs.href,/icon-light\.svg/,'manual theme change updates the tab icon too');
 f.api.applyTheme('invalid');assert.equal(f.writes.length,1);
 const privateMode=fixture('dark',true);privateMode.api.applyTheme('dark');assert.equal(privateMode.root.dataset.theme,'dark');
+assert.match(privateMode.favicon.attrs.href,/icon-dark\.svg/,'blocked storage does not block the matching icon');
 f.api.setProfile({user_metadata:{full_name:'Карл Шотт',telegram_username:'karlshott'}},true);
 assert.equal(f.avatars[0].textContent,'КШ');assert.equal(f.elements.get('profileRole').value,'Владелец магазина');assert.equal(f.elements.get('profileTelegramLink').href,'https://t.me/karlshott');
 f.api.setProfile({user_metadata:{full_name:'<img onerror=attack>',telegram_username:'javascript:attack'}},false);
@@ -29,5 +32,5 @@ pending[0]();assert.equal(rapid.root.dataset.theme,'light','superseded dark call
 pending[1]();assert.equal(rapid.root.dataset.theme,'light','latest light choice survives pending transition');
 rapid.toggles[0].handlers.click();rapid.toggles[0].handlers.click();
 pending[2]();pending[3]();assert.equal(rapid.root.dataset.theme,'light','two rapid toggles return to initial appearance');
-for(const file of ['app.html','index.html','admin.html']){const html=readFileSync(new URL('../'+file,import.meta.url),'utf8');assert.match(html,/assets\/corbel.css/);assert.match(html,/assets\/corbel.js/);assert.doesNotMatch(html,/fonts.googleapis.com/)}
+for(const file of ['app.html','index.html','admin.html']){const html=readFileSync(new URL('../'+file,import.meta.url),'utf8');assert.match(html,/assets\/corbel.css/);assert.match(html,/assets\/corbel.js/);assert.doesNotMatch(html,/fonts.googleapis.com/);assert.match(html,/data-app-favicon/);assert.match(html,/class="brandmark-light" src="\/assets\/icons\/icon-light\.svg/);assert.match(html,/class="brandmark-dark" src="\/assets\/icons\/icon-dark\.svg/)}
 console.log('Appearance: PASS (both themes, persistence, blocked storage, account identity, link safety, shared surfaces; no network).');

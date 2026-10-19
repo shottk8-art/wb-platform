@@ -22,6 +22,7 @@
     });
     document.querySelectorAll('[data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.themeChoice===theme)));
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#0f1430':'#dfe4f4');
+    document.querySelector('link[data-app-favicon]')?.setAttribute('href',`/assets/icons/icon-${theme}.svg?v=20261019-icon1`);
   }
   function setProfile(user,owner){
     const meta=user?.user_metadata || {},name=String(meta.full_name || meta.telegram_username || 'Пользователь');
