@@ -142,10 +142,35 @@
     const trend = document.getElementById('secTrend'), expense = document.querySelector('.expense-card');
     if (!trend || !expense || document.querySelector('.overview-chart-deck')) return;
     const expenseSection = expense.parentElement;
-    const deck = document.createElement('section'); deck.className = 'overview-chart-deck app-view'; deck.dataset.view = 'overview';
+    const deck = document.createElement('section'); deck.id = 'secOverviewCharts'; deck.className = 'overview-chart-deck app-view'; deck.dataset.view = 'overview';
     deck.classList.toggle('is-active', trend.classList.contains('is-active'));
     trend.before(deck); trend.classList.remove('app-view', 'is-active'); trend.removeAttribute('hidden');
-    expenseSection.classList.add('expense-panel'); deck.append(expenseSection, trend);
+    const gauge = document.createElement('div'); gauge.className = 'card profitability-card';
+    gauge.innerHTML = `<h2>Рентабельность <span class="gauge-info" title="Чистая прибыль ÷ сумма продаж × 100%. Это фактическая доля прибыли, не рейтинг магазина.">i</span></h2>
+      <div class="gauge-figure"><svg id="profitabilityGauge" viewBox="0 0 320 190" role="img" aria-label="Рентабельность: недостаточно данных">
+      <defs><linearGradient id="profitGradient"><stop stop-color="#93a3ec"/><stop offset="1" stop-color="#2a45cc"/></linearGradient></defs>
+      <g class="gauge-ticks"></g><path class="gauge-track" d="M40 154 A120 120 0 0 1 280 154"/>
+      <path class="gauge-arc" id="profitabilityArc" pathLength="100" d="M40 154 A120 120 0 0 1 280 154"/>
+      <circle id="profitabilityMarker" cx="40" cy="154" r="9" visibility="hidden"/></svg>
+      <div class="gauge-number"><strong id="profitabilityValue">—</strong><span class="gauge-delta" id="profitabilityDelta"></span><small>% от суммы продаж</small></div></div>
+      <h3 id="profitabilityCaption">Заполните недостающие данные</h3><p id="profitabilityNote">Для расчёта нужны продажи и чистая прибыль.</p>
+      <button class="gauge-details" type="button">Структура расходов <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>`;
+    for (let i=0;i<=40;i++) {
+      const angle=Math.PI-i/40*Math.PI, tick=document.createElementNS('http://www.w3.org/2000/svg','line');
+      const inner=i%5===0?135:139, outer=146;
+      tick.setAttribute('x1',String(160+inner*Math.cos(angle)));tick.setAttribute('y1',String(154-inner*Math.sin(angle)));
+      tick.setAttribute('x2',String(160+outer*Math.cos(angle)));tick.setAttribute('y2',String(154-outer*Math.sin(angle)));
+      tick.dataset.gaugeTick=String(i);gauge.querySelector('.gauge-ticks').append(tick);
+    }
+    expenseSection.classList.add('expense-panel'); expenseSection.id='secExpenseSummary';
+    deck.append(gauge, trend);
+    gauge.querySelector('button').addEventListener('click',()=>expenseSection.scrollIntoView({behavior:reduce()?'instant':'smooth',block:'start'}));
+    const advertising=document.createElement('section'); advertising.className='section app-view advertising-section';advertising.dataset.view='overview';advertising.id='secAdvertising';
+    advertising.classList.toggle('is-active',deck.classList.contains('is-active'));
+    const advertisingHeading=document.createElement('div');advertisingHeading.className='section-head';
+    const h2=document.createElement('h2');h2.textContent='Реклама и продвижение';advertisingHeading.append(h2);
+    const second=document.createElement('div');second.id='secondaryKpiRow';second.className='kpi-row secondary-kpis';advertising.append(advertisingHeading,second);deck.after(advertising);
+    [...document.querySelectorAll('#kpiRow>.kpi')].slice(4).forEach(card=>second.append(card));
     [expenseSection, trend, document.querySelector('.sku-card')?.parentElement].filter(Boolean).forEach(section => {
       const heading = section.querySelector('.section-head'), card = section.querySelector('.card');
       if (heading && card) { heading.classList.add('panel-heading'); card.prepend(heading); }

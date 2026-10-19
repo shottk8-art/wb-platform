@@ -16,6 +16,8 @@ function fixture() {
   el('shopSwitch').value='clariskin';
   el('periodSelect').value='2026-10';
   el('kpiRow').textContent='sales of toplash';
+  el('secondaryKpiRow').textContent='ads of toplash';
+  el('profitabilityValue').textContent='profitability of toplash';
   for(const id of ['membersBody','costsBody','uploadsBody']) el(id).innerHTML='rows of toplash';
   let notify;
   const state={console,shop:{id:'toplash'},session:{user:{id:'owner'}},activeView:'overview',overviewScope:'wildberries',reportMarketplace:'wildberries',
@@ -25,7 +27,7 @@ function fixture() {
       WBApi:{setContext(){},subscribe:fn=>notify=fn},WBApiCabinet:{setContext(){},currentMonth:'2026-10'},
       WBDashboard:{loadPeriods:(shop,marketplace)=>{const d=deferred();loads.push({...d,shop,marketplace});return d.promise;},
         formatPeriod:(y,m)=>`${y}-${m}`,defaultPeriodValue:p=>`${p[0].year}-${p[0].month}`,
-        computeDerived:()=>({rep:{}}),renderExpenses(){},renderSkuTable(){}}},
+        computeDerived:()=>({rep:{}}),renderExpenses(){},renderSkuTable(){},renderProfitability(){el('profitabilityValue').textContent='—';}}},
     setActiveView(){},updateShareBox(){},updateOverviewSource(){},updateScopeButtons(){},apiCabinetAllowed:()=>false,usesApiData:()=>false,
     overviewMarketplaces:()=>state.overviewScope==='all'?['wildberries','ozon']:[state.overviewScope],
     refreshMembers:async()=>{},refreshCostsTable:async()=>{},refreshUploadsLog:async()=>{},refreshTrendChart(){},showManualExpenses(){},toast(){},
@@ -44,6 +46,10 @@ function fixture() {
 {
   const f=fixture(); const switching=f.switchTo('clariskin');
   assert.equal(f.el('kpiRow').textContent,'','previous store KPI is removed synchronously');
+  assert.equal(f.el('secondaryKpiRow').textContent,'','previous store advertising is removed synchronously');
+  assert.equal(f.el('profitabilityValue').textContent,'—','previous store profitability is removed synchronously');
+  assert.equal(f.el('secOverviewCharts').hidden,true);
+  assert.equal(f.el('secAdvertising').hidden,true);
   assert.equal(f.el('periodSelect').disabled,true);
   assert.equal(f.state.dashboardRequest,1,'old renders are cancelled immediately');
   for(const id of ['membersBody','costsBody','uploadsBody']) assert.doesNotMatch(f.el(id).innerHTML,/toplash/);

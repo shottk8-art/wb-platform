@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-19T08:38:05Z",
+  "generatedAt": "2026-10-19T10:22:07.530Z",
   "title": "Design System: Панель продавца",
   "extensions": {
     "colorMeta": {
@@ -696,42 +696,65 @@
       }
     },
     "typographyMeta": {
+      "display": {
+        "displayName": "Число рентабельности",
+        "purpose": "Bricolage Grotesque, 38 px / 600; Manrope покрывает кириллицу."
+      },
       "headline": {
         "displayName": "Заголовок страницы",
-        "purpose": "23 px desktop, 22 px ≤900 px, 20 px ≤600 px."
+        "purpose": "Bricolage Grotesque, 22 px / 600 desktop; 21 px ≤900, 20 px ≤600."
       },
       "title": {
-        "displayName": "Заголовок секции",
-        "purpose": "16 px desktop, 15 px ≤900 px."
+        "displayName": "Заголовок панели",
+        "purpose": "Bricolage Grotesque, 15 px / 600; русские глифы берутся из Manrope."
       },
       "body": {
         "displayName": "Рабочий текст",
-        "purpose": "Общий текст интерфейса; основной язык русский."
+        "purpose": "Instrument Sans, 14 px / 400, line-height 1.45; Manrope используется для отсутствующих глифов."
       },
       "label": {
         "displayName": "Подпись KPI",
-        "purpose": "Подпись перед значением; не отдельный декоративный kicker."
+        "purpose": "Instrument Sans, 12 px / 400, line-height 1.4; кириллица через Manrope."
+      },
+      "navigation": {
+        "displayName": "Навигация",
+        "purpose": "Instrument Sans, 13 px / 500; активная строка 600, кириллица через Manrope."
       },
       "metric": {
-        "displayName": "Финансовая метрика",
-        "purpose": "Manrope, табличные цифры, одна строка вместе с единицей."
+        "displayName": "Основной KPI",
+        "purpose": "Bricolage Grotesque / --font-data, 27 px / 600 desktop; 24 px 901–1100, 26 px 601–900, 24 px ≤600. Единицы используют --font-sans."
       }
     },
     "shadows": [
       {
         "name": "surface",
         "value": "none",
-        "purpose": "Карточки, KPI и dropzone."
+        "purpose": "Рабочие карточки, KPI и dropzone."
       },
       {
         "name": "selected-segment",
         "value": "0 1px 3px #161b3014",
-        "purpose": "Активный сегмент и вкладка."
+        "purpose": "Существующие активные вкладки и сегменты."
+      },
+      {
+        "name": "appearance-selected",
+        "value": "0 1px 3px #10182820",
+        "purpose": "Небольшой выбранный сегмент темы из reference.css."
       },
       {
         "name": "help-popover",
         "value": "0 15px 40px -15px #0005",
         "purpose": "Перекрывающая подсказка."
+      },
+      {
+        "name": "select-popover",
+        "value": "0 12px 32px -12px #0b102a55",
+        "purpose": "Список опций combobox."
+      },
+      {
+        "name": "finder",
+        "value": "0 24px 60px -20px #0b102a70",
+        "purpose": "Локальный поиск разделов."
       },
       {
         "name": "modal",
@@ -748,27 +771,47 @@
       {
         "name": "ease",
         "value": "cubic-bezier(.16,1,.3,1)",
-        "purpose": "CSS --ease."
+        "purpose": "Действующий CSS --ease."
       },
       {
         "name": "control-transition",
         "value": "200ms",
-        "purpose": "Цвет, граница, transform кнопок."
+        "purpose": "Цвет, граница и transform обычных кнопок."
       },
       {
         "name": "workspace-enter",
-        "value": "900ms expo-out / 200ms exit",
-        "purpose": "Отменяемый выход и вход разделов; первое полотно 1100ms, masked title 800ms +20ms/letter."
+        "value": "900ms / 200ms exit",
+        "purpose": "Отменяемый переход разделов; вход с шагом 70ms и задержкой до 280ms. Первое полотно 1100ms."
+      },
+      {
+        "name": "masked-heading",
+        "value": "800ms + 20ms/letter",
+        "purpose": "Маска заголовка, задержка до 300ms; reduced-motion сохраняет обычный текст."
+      },
+      {
+        "name": "nav-pill",
+        "value": "650ms",
+        "purpose": "Движение активного раздела; сегменты 550ms, hover-плашка 420ms."
+      },
+      {
+        "name": "theme-circle",
+        "value": "620ms cubic-bezier(.65,0,.35,1)",
+        "purpose": "View Transition от кнопки; fallback сразу применяет тему."
       },
       {
         "name": "kpi-count-and-trend",
         "value": "1200ms easeOutCubic",
-        "purpose": "Обновление чисел и тренда."
+        "purpose": "Реальные значения и месячный тренд; у столбцов шаг задержки 35ms, максимум 385ms."
+      },
+      {
+        "name": "gauge-arc",
+        "value": "1200ms cubic-bezier(.65,0,.35,1)",
+        "purpose": "Только заполнение дуги фактической рентабельности; риски 600ms."
       },
       {
         "name": "expenses",
         "value": "1200ms easeOutCubic",
-        "purpose": "Doughnut расходов."
+        "purpose": "Doughnut реальных расходов."
       },
       {
         "name": "sku",
@@ -776,19 +819,24 @@
         "purpose": "Горизонтальная диаграмма SKU."
       },
       {
-        "name": "theme-circle",
-        "value": "620ms cubic-bezier(.65,0,.35,1)",
-        "purpose": "View Transition, круг от кнопки; fallback без движения."
+        "name": "finder",
+        "value": "450ms cubic-bezier(.34,1.56,.64,1)",
+        "purpose": "Вход локального поиска; без API-запросов."
       },
       {
-        "name": "nav-pill",
-        "value": "650ms expo-out",
-        "purpose": "Перемещение и растяжение текущего раздела; hover420ms, segmented550ms."
+        "name": "select-popover",
+        "value": "400ms cubic-bezier(.34,1.56,.64,1)",
+        "purpose": "Вход существующего списка опций."
+      },
+      {
+        "name": "modal",
+        "value": "500ms desktop / 550ms phone",
+        "purpose": "Выход 200ms desktop / 320ms phone; телефонный лист при ≤600px."
       },
       {
         "name": "reduced-motion",
         "value": "prefers-reduced-motion: reduce",
-        "purpose": "Без CSS-переходов и входа секций; конечные числа сразу, графики animation:false, прокрутка мгновенная."
+        "purpose": "Без пространственных эффектов и CSS-переходов; конечные числа сразу, диаграммы animation:false. Активные анимации отменяются при смене настройки."
       }
     ],
     "breakpoints": [
@@ -801,24 +849,12 @@
         "value": "760px"
       },
       {
-        "name": "drawer-max",
+        "name": "drawer-and-overview-stack-max",
         "value": "900px"
       },
       {
-        "name": "compact-desktop-max",
+        "name": "narrow-rail-max",
         "value": "1100px"
-      },
-      {
-        "name": "kpi-four-plus-five-min",
-        "value": "1101px"
-      },
-      {
-        "name": "analytics-two-columns-min",
-        "value": "1101px"
-      },
-      {
-        "name": "wide-canvas-min",
-        "value": "1900px"
       }
     ],
     "tonalRampNote": "Восемь ступеней OKLCH синтезированы только для preview, без альфы; это не токены приложения."
@@ -828,114 +864,123 @@
       "name": "Основная кнопка",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Основное действие. Цвета наследуют light/dark через brand и on-brand.",
+      "description": "Действующий brand / on-brand в обеих темах, вес 600.",
       "html": "<button class=\"ds-primary\" type=\"button\">Сохранить</button>",
-      "css": ".ds-primary{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;font-weight:650;min-height:40px;padding:9px 16px;border:1px solid var(--brand,#161b30);border-radius:9px;background:var(--brand,#161b30);color:var(--on-brand,#fff);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-primary:hover:not(:disabled){background:var(--accent,#2a45cc);border-color:var(--accent,#2a45cc);color:#fff}.ds-primary:active:not(:disabled){transform:translateY(1px)}.ds-primary:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+      "css": ".ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:13px;font-weight:600;min-height:40px;padding:9px 16px;border:1px solid var(--brand,#161b30);border-radius:9px;background:var(--brand,#161b30);color:var(--on-brand,#fff);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s var(--ease,cubic-bezier(.16,1,.3,1))}.ds-primary:hover:not(:disabled){background:var(--accent,#2a45cc);border-color:var(--accent,#2a45cc);color:#fff}.ds-primary:active:not(:disabled){transform:translateY(1px)}.ds-primary:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
     },
     {
       "name": "Вторичная кнопка",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "Дополнительное действие на спокойной поверхности.",
+      "description": "Дополнительное действие на surface с тематическими hover/focus.",
       "html": "<button class=\"ds-ghost\" type=\"button\">Отмена</button>",
-      "css": ".ds-ghost{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;font-weight:500;min-height:40px;padding:9px 14px;border:1px solid var(--line-strong,#161b3029);border-radius:9px;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-ghost:hover:not(:disabled){background:var(--surface-2,#f2f4f7);border-color:var(--ink-mute,#676d84);color:var(--ink,#161b30)}.ds-ghost:active:not(:disabled){transform:translateY(1px)}.ds-ghost:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+      "css": ".ds-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:13px;font-weight:500;min-height:40px;padding:9px 14px;border:1px solid var(--line-strong,#161b3029);border-radius:9px;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s var(--ease,cubic-bezier(.16,1,.3,1))}.ds-ghost:hover:not(:disabled){background:var(--surface-2,#f2f4f7);border-color:var(--ink-mute,#676d84)}.ds-ghost:active:not(:disabled){transform:translateY(1px)}.ds-ghost:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-ghost{transition:none}}"
     },
     {
       "name": "Поле",
       "kind": "input",
       "refersTo": "input",
-      "description": "Общее редактируемое поле; readonly-профиль использует surface-2.",
-      "html": "<label class=\"ds-label\" for=\"ds-shop\">Название магазина</label><input class=\"ds-input\" id=\"ds-shop\" placeholder=\"Название\">",
-      "css": ".ds-label{display:block;margin-bottom:5px;font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:12.5px;font-weight:600;color:var(--ink-soft,#4b5168)}.ds-input{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;min-height:40px;padding:10px 12px;background:var(--surface,#fff);color:var(--ink,#161b30);border:1px solid var(--line-strong,#161b3029);border-radius:9px;caret-color:var(--accent,#2a45cc)}.ds-input::placeholder{color:var(--ink-mute,#676d84);opacity:1}.ds-input:focus{border-color:var(--accent,#2a45cc);box-shadow:0 0 0 3px var(--accent-soft,#e4e9fb);outline:0}.ds-input:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-input[readonly]{background:var(--surface-2,#f2f4f7);color:var(--ink-soft,#4b5168)}@media(max-width:600px){.ds-input{font-size:16px}}"
+      "description": "Общее поле; readonly-профиль использует surface-2 / ink-soft.",
+      "html": "<label class=\"ds-label\" for=\"ds-name\">Имя</label><input class=\"ds-input\" id=\"ds-name\" readonly aria-readonly=\"true\" value=\"—\">",
+      "css": ".ds-label{display:block;margin-bottom:5px;font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:12px;font-weight:600;color:var(--ink-soft,#4b5168)}.ds-input{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:14px;min-height:40px;padding:10px 12px;background:var(--surface,#fff);color:var(--ink,#161b30);border:1px solid var(--line-strong,#161b3029);border-radius:9px;caret-color:var(--accent,#2a45cc)}.ds-input::placeholder{color:var(--ink-mute,#676d84);opacity:1}.ds-input:focus{border-color:var(--accent,#2a45cc);box-shadow:0 0 0 3px var(--accent-soft,#e4e9fb);outline:0}.ds-input:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-input[readonly]{background:var(--surface-2,#f2f4f7);color:var(--ink-soft,#4b5168)}@media(max-width:600px){.ds-input{font-size:16px}}"
     },
     {
       "name": "Активная навигация",
       "kind": "nav",
       "refersTo": "nav",
-      "description": "Полоса навигации; разметка содержит встроенную существующую SVG-иконку.",
+      "description": "Строка меню 13 px / 500; выбранная 600. Статический образец существующего выбранного состояния.",
       "html": "<nav class=\"ds-nav\" aria-label=\"Рабочее пространство\"><a class=\"ds-nav-link\" href=\"#overview\" aria-current=\"page\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"4\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.5\"/></svg>Обзор</a></nav>",
-      "css": ".ds-nav{background:var(--page,#dfe4f4);padding:14px;width:236px}.ds-nav-link{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;font-weight:550;display:flex;align-items:center;gap:11px;min-height:42px;padding:5px 10px;border:1px solid transparent;border-radius:12px;color:var(--ink-soft,#4b5168);text-decoration:none}.ds-nav-link:hover{background:color-mix(in srgb,var(--surface,#fff) 45%,transparent);color:var(--ink,#161b30)}.ds-nav-link[aria-current=page]{background:color-mix(in srgb,var(--surface,#fff) 62%,transparent);border-color:color-mix(in srgb,var(--accent,#2a45cc) 22%,transparent);color:var(--ink,#161b30);font-weight:700}.ds-nav-icon{width:28px;height:28px;padding:6px;border-radius:8px;fill:none;stroke:currentColor;stroke-width:1.7;background:var(--accent,#2a45cc);color:#fff;flex:none}.ds-nav-link:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}"
+      "css": ".ds-nav{background:var(--page,#dfe4f4);padding:14px;width:236px}.ds-nav-link{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;min-height:40px;padding:5px 10px;border:1px solid transparent;border-radius:12px;color:var(--ink-soft,#4b5168);text-decoration:none}.ds-nav-link:hover{background:color-mix(in srgb,var(--surface,#fff) 45%,transparent);color:var(--ink,#161b30)}.ds-nav-link[aria-current=page]{background:color-mix(in srgb,var(--surface,#fff) 62%,transparent);border-color:color-mix(in srgb,var(--accent,#2a45cc) 22%,transparent);color:var(--ink,#161b30);font-weight:600}.ds-nav-icon{width:28px;height:28px;padding:6px;border-radius:8px;fill:none;stroke:currentColor;stroke-width:1.7;background:var(--accent,#2a45cc);color:#fff;flex:none}.ds-nav-link:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}"
     },
     {
-      "name": "Благоприятная дельта",
+      "name": "Благоприятная дельта KPI",
       "kind": "chip",
       "refersTo": "chip-up",
-      "description": "Смысл изменения задаётся метрикой; статичный образец без вымышленной суммы.",
+      "description": "Цвет зависит от смысла метрики. Образец без вымышленной суммы.",
       "html": "<span class=\"ds-chip\"><svg class=\"ds-chip-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 15 6-6 4 4 5-7M15 6h5v5\"/></svg>Рост прибыли</span>",
-      "css": ".ds-chip{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:5px;background:var(--good-bg,#e0efe9);color:var(--good,#2b7a64);font-size:11px;line-height:1.5;font-weight:600}.ds-chip-icon{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8}@media(max-width:600px){.ds-chip{font-size:12px;padding:2px 4px}}"
+      "css": ".ds-chip{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);display:inline-flex;align-items:center;gap:4px;padding:1px 5px;border-radius:5px;background:var(--good-bg,#e0efe9);color:var(--good,#2b7a64);font-size:11px;line-height:1.5;font-weight:500}.ds-chip-icon{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8}@media(max-width:600px){.ds-chip{font-size:12px}}"
     },
     {
-      "name": "Карточка настроек",
+      "name": "Рабочая карточка",
       "kind": "card",
       "refersTo": "card",
-      "description": "Плоская поверхность с отступом 20 px, без декоративного подъёма.",
-      "html": "<section class=\"ds-card\"><strong class=\"ds-card-title\">Публичная витрина</strong><p class=\"ds-card-copy\">Ссылка на магазин в режиме просмотра</p></section>",
-      "css": ".ds-card{font-family:var(--font-sans,Manrope,system-ui,sans-serif);padding:20px;border:1px solid var(--line-strong,#161b3029);border-radius:16px;background:var(--surface,#fff);color:var(--ink,#161b30);box-shadow:none}.ds-card-title{font-size:16px;font-weight:700}.ds-card-copy{font-size:12px;line-height:1.6;color:var(--ink-mute,#676d84)}@media(max-width:600px){.ds-card{padding:16px}}"
+      "description": "Плоская панель с отступом 20 px и текущим заголовком 15 px / 600.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">Структура расходов</h2><p class=\"ds-card-copy\">Расходов за этот период пока нет</p></section>",
+      "css": ".ds-card{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);padding:20px;border:1px solid var(--line-strong,#161b3029);border-radius:16px;background:var(--surface,#fff);color:var(--ink,#161b30);box-shadow:none}.ds-card-title{font-family:var(--font-display,'Bricolage Grotesque',Manrope,'Instrument Sans',ui-sans-serif,system-ui,sans-serif);font-size:15px;font-weight:600;letter-spacing:-.025em;margin:0 0 14px}.ds-card-copy{font-size:12px;line-height:1.5;color:var(--ink-mute,#676d84)}"
     },
     {
-      "name": "Выбранный KPI",
+      "name": "Основной KPI с нижним сравнением",
       "kind": "button",
       "refersTo": "kpi-selected",
-      "description": "Ячейка связанной панели. Прочерк сохраняет смысл неизвестного значения; preview не подключает график.",
-      "html": "<button class=\"ds-kpi\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-kpi-label\">Сумма продаж</span><span class=\"ds-kpi-value\">—</span><span class=\"ds-kpi-action\">Смотреть динамику</span></button>",
-      "css": ".ds-kpi{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:flex;flex-direction:column;text-align:left;min-height:184px;padding:18px 20px 16px;border:1px solid var(--line,#161b3017);border-radius:0;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s}.ds-kpi:hover{background:var(--surface-2,#f2f4f7)}.ds-kpi:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-kpi-label{font-size:13px;color:var(--ink-soft,#4b5168);margin-bottom:16px}.ds-kpi-value{font-size:26px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}.ds-kpi-action{margin-top:auto;padding-top:12px;border-top:1px dashed var(--line-strong,#161b3029);font-size:12px;color:var(--accent,#2a45cc);text-decoration:underline;text-underline-offset:3px}"
+      "description": "Число отдельно от сравнения; пустая область мини-графика не имитирует историю.",
+      "html": "<button class=\"ds-kpi\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-kpi-label\">Сумма продаж</span><span class=\"ds-kpi-value\">—</span><span class=\"ds-kpi-comparison\"><span class=\"ds-kpi-comparison-copy\"><span class=\"ds-kpi-comparison-label\">Нет данных для сравнения</span></span><span class=\"ds-kpi-mini\" aria-hidden=\"true\"></span></span><span class=\"ds-kpi-action\">Смотреть динамику<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14m-5-5 5 5-5 5\"/></svg></span></button>",
+      "css": ".ds-kpi{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);display:flex;flex-direction:column;gap:0;text-align:left;min-height:190px;padding:18px 20px 16px;border:1px solid var(--line,#161b3017);border-radius:0;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s}.ds-kpi:hover{background:color-mix(in srgb,var(--accent-soft,#e4e9fb) 32%,var(--surface,#fff))}.ds-kpi:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-kpi-label{font-size:12px;font-weight:400;line-height:1.4;color:var(--ink-soft,#4b5168);margin-bottom:14px}.ds-kpi-value{font-family:var(--font-display,'Bricolage Grotesque',Manrope,'Instrument Sans',ui-sans-serif,system-ui,sans-serif);font-size:27px;font-weight:600;line-height:1.2;letter-spacing:-.03em;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;margin-bottom:8px}.ds-kpi-comparison{display:flex;align-items:center;gap:6px;min-height:44px;margin-bottom:10px;width:100%}.ds-kpi-comparison-copy{display:block;min-width:0}.ds-kpi-comparison-label{display:block;font-size:11px;line-height:1.3;color:var(--ink-mute,#676d84);margin-top:4px}.ds-kpi-mini{height:40px;flex:0 0 72px;margin-left:auto}.ds-kpi-action{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-top:auto;padding-top:12px;min-height:29px;border-top:1px dashed var(--line-strong,#161b3029);font-size:12px;font-weight:500;color:var(--accent,#2a45cc);text-decoration:underline;text-underline-offset:3px}.ds-kpi-action svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;transition:transform .25s}.ds-kpi:hover .ds-kpi-action svg{transform:translateX(3px)}@media(max-width:1100px) and (min-width:901px){.ds-kpi{padding:16px 12px}.ds-kpi-value{font-size:24px}.ds-kpi-mini{flex-basis:32px}}@media(max-width:900px) and (min-width:601px){.ds-kpi{min-height:168px}.ds-kpi-value{font-size:26px}}@media(max-width:600px){.ds-kpi{min-height:170px;padding:16px 12px}.ds-kpi-value{font-size:24px}.ds-kpi-mini{display:none}.ds-kpi-action{font-size:11px}}@media(prefers-reduced-motion:reduce){.ds-kpi,.ds-kpi-action svg{transition:none}}"
     },
     {
-      "name": "Выбор оформления",
+      "name": "Фактическая рентабельность",
+      "kind": "custom",
+      "refersTo": "profitability",
+      "description": "Исходное unknown-состояние без вымышленного рейтинга. Рабочее приложение рассчитывает netProfit/sales×100 и поясняет его в копейках.",
+      "html": "<section class=\"ds-gauge\"><h2>Рентабельность</h2><div class=\"ds-gauge-figure\"><svg viewBox=\"0 0 320 190\" role=\"img\" aria-label=\"Рентабельность: недостаточно данных\"><path class=\"ds-gauge-track\" d=\"M40 154 A120 120 0 0 1 280 154\"/></svg><div class=\"ds-gauge-number\"><strong>—</strong><small>% от суммы продаж</small></div></div><h3>Заполните недостающие данные</h3><p>Для расчёта нужны продажи и чистая прибыль.</p><button class=\"ds-gauge-details\" type=\"button\">Структура расходов<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12h14m-5-5 5 5-5 5\"/></svg></button></section>",
+      "css": ".ds-gauge{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);display:flex;flex-direction:column;height:365px;padding:20px;border:1px solid var(--line-strong,#161b3029);border-radius:16px;background:var(--surface,#fff);color:var(--ink,#161b30);overflow:hidden}.ds-gauge h2,.ds-gauge h3{font-family:var(--font-display,'Bricolage Grotesque',Manrope,'Instrument Sans',ui-sans-serif,system-ui,sans-serif);font-size:15px;font-weight:600;letter-spacing:-.025em}.ds-gauge h2{line-height:20px;margin:0}.ds-gauge h3{line-height:1.3;margin:0 0 7px}.ds-gauge-figure{position:relative;min-height:0;height:205px;margin:3px 0 4px}.ds-gauge-figure svg{display:block;width:100%;height:100%;overflow:visible}.ds-gauge-track{fill:none;stroke:var(--surface-2,#f2f4f7);stroke-width:20;stroke-linecap:round}.ds-gauge-number{position:absolute;top:54%;left:0;right:0;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 7px;text-align:center;line-height:1}.ds-gauge-number strong{font-family:var(--font-display,'Bricolage Grotesque',Manrope,'Instrument Sans',ui-sans-serif,system-ui,sans-serif);font-size:38px;font-weight:600;letter-spacing:-.04em}.ds-gauge-number small{width:100%;font-size:11px;line-height:1.2;color:var(--ink-mute,#676d84);margin-top:7px}.ds-gauge p{font-size:12px;line-height:1.5;color:var(--ink-soft,#4b5168);margin:0 0 12px}.ds-gauge-details{display:flex;align-items:center;justify-content:space-between;padding:0;min-height:24px;margin-top:auto;width:100%;background:none;border:0;color:var(--ink-soft,#4b5168);font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:12px;text-decoration:underline;text-decoration-color:var(--line-strong,#161b3029);text-underline-offset:3px;cursor:pointer}.ds-gauge-details svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;transition:transform .25s}.ds-gauge-details:hover{color:var(--accent,#2a45cc)}.ds-gauge-details:hover svg{transform:translateX(3px)}.ds-gauge-details:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(max-width:900px){.ds-gauge{height:350px}}@media(prefers-reduced-motion:reduce){.ds-gauge-details svg{transition:none}}"
+    },
+    {
+      "name": "Компактный выбор темы",
       "kind": "button",
       "refersTo": "appearance-selected",
-      "description": "Состояние выбора темы; обработчик localStorage остаётся в приложении, preview показывает стили.",
-      "html": "<button class=\"ds-appearance\" type=\"button\" aria-pressed=\"true\"><svg class=\"ds-appearance-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z\"/></svg>Тёмная</button>",
-      "css": ".ds-appearance{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;display:flex;align-items:center;gap:10px;min-width:130px;padding:14px;border:1px solid var(--line-strong,#161b3029);border-radius:9px;text-align:left;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-appearance[aria-pressed=true]{border-color:var(--accent,#2a45cc);background:var(--accent-soft,#e4e9fb);color:var(--accent,#2a45cc)}.ds-appearance:active{transform:translateY(1px)}.ds-appearance:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-appearance-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
-    },
-    {
-      "name": "Загрузка отчёта",
-      "kind": "custom",
-      "description": "Dropzone с тематическим наведением. Preview не загружает файл.",
-      "html": "<div class=\"ds-upload\" role=\"button\" tabindex=\"0\" aria-label=\"Загрузить отчёт\"><strong>Отчёт маркетплейса</strong><p class=\"ds-upload-hint\">Перетащите файл или выберите его</p></div>",
-      "css": ".ds-upload{font-family:var(--font-sans,Manrope,system-ui,sans-serif);background:var(--surface,#fff);color:var(--ink,#161b30);border:1px dashed var(--line-strong,#161b3029);border-radius:16px;min-height:210px;padding:25px 20px;text-align:center;cursor:pointer;box-shadow:none}.ds-upload:hover,.ds-upload.ds-dragover{background:var(--accent-soft,#e4e9fb);border-color:var(--accent,#2a45cc);transform:none;box-shadow:none}.ds-upload:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-upload strong{font-size:14px;font-weight:650}.ds-upload-hint{font-size:12px;line-height:1.65;color:var(--ink-mute,#676d84)}@media(max-width:600px){.ds-upload{min-height:190px;padding:22px 18px}}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+      "description": "Небольшой горизонтальный сегмент, не preview-плитки. Это только образец стилей; локальное применение темы остаётся в приложении.",
+      "html": "<div class=\"ds-appearance-row\"><span>Тема</span><div class=\"ds-appearance-options\" role=\"group\" aria-label=\"Тема оформления\"><button class=\"ds-appearance-option\" type=\"button\" aria-pressed=\"true\">Светлая</button><button class=\"ds-appearance-option\" type=\"button\" aria-pressed=\"false\">Тёмная</button></div></div>",
+      "css": ".ds-appearance-row{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px;font-size:14px;font-weight:500;color:var(--ink,#161b30)}.ds-appearance-options{display:flex;flex-wrap:nowrap;gap:0;padding:3px;border-radius:9px;background:var(--surface-2,#f2f4f7)}.ds-appearance-option{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:13px;font-weight:400;display:flex;align-items:center;gap:10px;flex:none;min-width:0;padding:6px 12px;min-height:30px;border:0;border-radius:7px;background:transparent;color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,transform .2s}.ds-appearance-option[aria-pressed=true]{background:var(--surface,#fff);color:var(--ink,#161b30);box-shadow:0 1px 3px #10182820}.ds-appearance-option:active{transform:translateY(1px)}.ds-appearance-option:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-appearance-option{transition:none}}"
     },
     {
       "name": "Заголовок и наведение SKU",
       "kind": "custom",
-      "description": "Последняя коррекция специфичности в приложении: заголовок и hovered td используют surface-2 в обеих темах.",
-      "html": "<table class=\"ds-sku\"><thead><tr><th>Артикул</th><th>Продажи</th></tr></thead><tbody><tr><td>Артикул</td><td>—</td></tr></tbody></table>",
-      "css": ".ds-sku{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;width:100%;border-collapse:collapse;background:var(--surface,#fff);color:var(--ink,#161b30)}.ds-sku th{padding:10px 14px;background:var(--surface-2,#f2f4f7);color:var(--ink-soft,#4b5168);font-size:11px;font-weight:650;letter-spacing:.025em;border-bottom:1px solid var(--line,#161b3017);backdrop-filter:none}.ds-sku td{padding:10px 14px;border-bottom:1px solid var(--line,#161b3017);background:transparent}.ds-sku tbody tr:hover,.ds-sku tbody tr:hover td{background:var(--surface-2,#f2f4f7)}"
+      "description": "Текущий reference.css: заголовок panel, hover строки/ячеек accent-soft; данные не вымышлены.",
+      "html": "<table class=\"ds-sku\"><thead><tr><th>Артикул</th><th>Продажи</th></tr></thead><tbody><tr><td>—</td><td>—</td></tr></tbody></table>",
+      "css": ".ds-sku{font-family:var(--font-sans,'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif);font-size:13px;width:100%;border-collapse:collapse;background:var(--surface,#fff);color:var(--ink,#161b30)}.ds-sku th{padding:10px 14px;background:var(--panel,#f6f7f9);color:var(--ink-soft,#4b5168);font-size:11px;font-weight:500;letter-spacing:0;border-bottom:1px solid var(--line,#161b3017);backdrop-filter:none}.ds-sku td{padding:10px 14px;border-bottom:1px solid var(--line,#161b3017);background:transparent}.ds-sku tbody tr:hover,.ds-sku tbody tr:hover td{background:var(--accent-soft,#e4e9fb)}"
     }
   ],
   "narrative": {
-    "northStar": "Вложенное финансовое полотно",
-    "overview": "Спокойная, плотная рабочая среда: лавандовая навигационная полоса обрамляет отдельное скруглённое полотно, а индиго отмечает выбор. Светлая и тёмная темы равноправны; иерархия строится на тоне поверхности, границах и типографике. Это одобренная замена прежней светлой Apple-стилистики.\n\nОриентир — закреплённый [Corbel dashboard](https://demo.codeandchill.store/corbel/#/dashboard), направление — [.impeccable/surfaces/app-html.md](.impeccable/surfaces/app-html.md). Адаптация написана самостоятельно, непосредственно в коде; платный исходник шаблона не импортировался. Документ фиксирует реализованную систему платформы без утверждения точного клонирования Corbel. Продуктовые ограничения, текущие API и файловая поддержка Ozon определяются [CONTEXT.md](CONTEXT.md).\n\nИсточники фиксации от 19 октября 2026: assets/corbel.css, assets/corbel.js, app.html, общий assets/dashboard.js и наследуемые assets/styles.css, assets/responsive.css. Просмотрены .impeccable/review/desktop.jpg, account-desktop-dark.jpg (1440×1000), overview-mobile-dark.jpg, costs-mobile-dark.jpg (390×844). Снимки содержат тестовые данные и подтверждают только показанные визуальные состояния. Это не независимая проверка входа, финансов или живых API. По сообщению основного исполнителя оба замечания ревью получили resolved и disposition ship в пределах двух исправлений. Правила фона заголовка SKU и наведённых строк подтверждены в CSS; документационный проход не повторял проверку исправлений и не расширяет scoped ship до полной функциональной проверки.\n",
+    "northStar": "Corbel — рабочая панель продавца",
+    "overview": "Corbel — закреплённый пользователем визуальный образец для «Панели продавца»: [dashboard, light и dark](https://demo.codeandchill.store/corbel/#/dashboard). Лавандовое внешнее поле и rail обрамляют компактное рабочее полотно; индиго обозначает выбор. Плотность, пропорции оболочки, семейство компонентов и типографика следуют этому образцу. Решение пользователя от 19.10.2026 в [PRODUCT.md](PRODUCT.md) отменило прежние визуальные правила, включая обязательный Manrope и Apple-направление.\n\nДокумент фиксирует текущую реализацию после пакета reference6, а не обещание будущего сходства. Источники: [reference.css](assets/reference.css), подключённый после [corbel.css](assets/corbel.css), [reference.js](assets/reference.js), [corbel-components.js](assets/corbel-components.js), [dashboard.js](assets/dashboard.js), [corbel.js](assets/corbel.js), [corbel-motion.js](assets/corbel-motion.js) и [app.html](app.html). Палитра, совместимость и базовое движение остаются в Corbel-слое; reference.css определяет окончательную типографику, плотность, компоновку и переопределённые состояния. Контракт направления и QUALITY BAR находятся в [.impeccable/surfaces/app-html.md](.impeccable/surfaces/app-html.md).",
     "keyCharacteristics": [
-      "Вложенное полотно, тонкие границы, плоские рабочие поверхности.",
-      "Manrope для кириллицы, латиницы, чисел и графиков.",
-      "Общая панель KPI с выделением выбранной метрики.",
-      "Две темы с локальным выбором и сохранением исходных данных."
+      "Instrument Sans для рабочего текста, Bricolage Grotesque для заголовков и чисел; Manrope покрывает кириллицу.",
+      "Четыре основных KPI, ниже gauge рентабельности и месячный график; реклама вынесена в отдельный блок.",
+      "Плоские панели с тонкими границами, две темы и компактные настройки.",
+      "Только реальные финансовые данные, явные неизвестные значения и существующие права доступа."
     ],
     "rules": [
       {
-        "name": "The Theme Pair Rule",
-        "body": "Каждый фон, текст, граница и состояние используют семантическую пару светлой и тёмной темы; светлая заливка таблицы не переносится в тёмную тему литералом.",
+        "name": "Theme Pair",
+        "body": "Фоны, текст, границы и состояния берутся из семантических переменных текущей темы; поздние переопределения reference.css имеют приоритет над Corbel-базой.",
         "section": "colors"
       },
       {
-        "name": "The Framed Canvas Rule",
-        "body": "Рабочие поверхности различаются тоном и границей; тень применяется только к существующим сегментам и перекрывающим слоям.",
+        "name": "Font Coverage",
+        "body": "Instrument Sans и Bricolage Grotesque остаются первыми в своих стеках. Manrope — покрытие отсутствующих глифов, а не обязательная идентичность всего интерфейса.",
+        "section": "typography"
+      },
+      {
+        "name": "Framed Canvas",
+        "body": "Рабочие карточки остаются плоскими; существующие небольшие тени отмечают выбранные сегменты и перекрывающие слои.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do Использовать парные семантические токены для обеих тем, включая заголовки и наведение таблиц.",
-      "Do Сохранять общее полотно, связанную сетку KPI и адаптивные размеры из реализации.",
-      "Do Использовать локальный Manrope для кириллицы, латиницы, чисел и подписей графиков.",
-      "Do Показывать реальные Telegram-данные и роль выбранного магазина в readonly-профиле.",
-      "Do Сохранять загрузку, ошибки, неизвестные значения и reduced-motion при развитии интерфейса."
+      "**Do** Сверять новые экраны с закреплённым Corbel light/dark и действующим QUALITY BAR поверхности.",
+      "**Do** Использовать реальные стеки Instrument Sans / Bricolage Grotesque с Manrope для покрытия кириллицы.",
+      "**Do** Сохранять четыре основных KPI, нижнюю область сравнения, реальные мини-графики и отдельный блок рекламы.",
+      "**Do** Показывать неизвестное как неизвестное, отрицательную рентабельность числом и пояснение в копейках с той же точностью.",
+      "**Do** Сохранять компактный профиль, небольшой переключатель темы, клавиатурные состояния и reduced-motion.",
+      "**Do** Сохранять изоляцию магазина/площадки, финансовые формулы, выбор API/файлов и ограничения доступа."
     ],
     "donts": [
-      "Don't Возвращать обязательную светлую Apple-стилистику или отдельную декоративную hero-плитку прибыли.",
-      "Don't Добавлять вымышленные показатели, карточки или редактирование аккаунта ради сходства с демо.",
-      "Don't Сохранять оформление как серверную настройку аккаунта или перезапрашивать финансы при смене темы.",
-      "Don't Расширять вердикт ship по двум исправлениям до полной функциональной проверки или точного клонирования Corbel."
+      "**Don't** Возвращать отменённые обязательный Manrope, Apple-направление или прежнюю общую сетку KPI 4+5.",
+      "**Don't** Подменять реальную прибыль демонстрационными числами, рейтингом магазина или синтетической историей.",
+      "**Don't** Обрезать числовую рентабельность до диапазона дуги или округлять пояснение до десятых рубля.",
+      "**Don't** Добавлять неподдерживаемые настройки аккаунта, серверное сохранение темы или автоматический API Ozon.",
+      "**Don't** Складывать API и файлы WB для одной площадки, раскрывать API в публичной витрине или расширять доступ к ИИ-анализу.",
+      "**Don't** Считать эту фиксацию документов визуальным QA, подтверждением motion fidelity или разрешением публикации."
     ]
   }
 }

@@ -1,0 +1,217 @@
+/* Shared seller-workspace typography and presentation. */
+@font-face{font-family:'Instrument Sans';src:url('/assets/fonts/instrument-sans.woff2') format('woff2');font-weight:400 700;font-style:normal;font-display:swap}
+@font-face{font-family:'Bricolage Grotesque';src:url('/assets/fonts/bricolage-grotesque.woff2') format('woff2');font-weight:500 800;font-style:normal;font-display:swap}
+:root:root{--font-sans:'Instrument Sans',Manrope,ui-sans-serif,system-ui,sans-serif;--font-display:'Bricolage Grotesque',Manrope,var(--font-sans);--font-data:var(--font-display)}
+body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-height:1.45}
+.corbel :is(button,input,select,textarea){font-family:var(--font-sans);letter-spacing:0}
+.corbel :is(h1,h2,h3){font-family:var(--font-display);font-weight:600;letter-spacing:-.025em}
+.corbel :is(strong,.kpi-number,.analytics-summary strong){font-weight:600}
+.corbel #appScreen{padding:10px 10px 10px 264px}
+.corbel .app-main{border-radius:24px;padding:0 24px 24px;min-height:calc(100dvh - 20px)}
+.corbel .page-heading{position:relative;gap:0;margin:0 -24px 16px;padding:0 24px;border-radius:24px 24px 0 0}
+.corbel .page-heading>div:first-child{padding:0;display:flex;align-items:center;min-height:66px}
+.corbel .page-title-row{gap:12px;align-items:center}
+.corbel .page-heading h1{font-family:var(--font-display);font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-.035em}
+.corbel .page-heading #pageSubtitle{display:none}
+.corbel .section-icon{width:34px;height:34px;display:grid;place-items:center;background:var(--accent);color:#fff;border-radius:9px;flex:none}
+.corbel .section-icon .icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
+.corbel .shell-actions{height:66px;gap:10px}
+.corbel .profile-link{font-size:12px;font-weight:600;background:var(--accent-soft)}
+.corbel .overview-controls{position:relative;margin:0 -24px;padding:16px 24px 0;width:calc(100% + 48px);border-top:1px solid var(--line);min-height:50px;gap:10px}
+.corbel .overview-controls .period-bar{min-width:180px}
+.corbel .overview-refresh{font-size:13px;min-height:36px}
+.corbel .section{margin-bottom:16px}
+.corbel .section-head h2{font-size:15px;font-weight:600}
+.corbel .sidebar-inner{padding:14px 12px 14px 14px;gap:0}
+.corbel .sidebar-brand{padding:0 28px 0 0;margin:0 0 20px;min-height:40px;gap:10px}
+.corbel .sidebar-brand strong{font-family:var(--font-display);font-size:14px;font-weight:600;letter-spacing:-.02em}
+.corbel .sidebar-brand span{font-size:11px;margin-top:3px}
+.corbel .sidebar-collapse{top:18px;right:12px}
+.corbel .shop-context{background:transparent;border:0;padding:0 6px 14px;margin:0 0 4px;border-radius:0}
+.corbel .context-label{font-size:11px;margin-bottom:4px}
+.corbel .marketplace-badge{font-size:10px;font-weight:500}
+.corbel .shop-context .select-trigger{min-height:30px;font-size:13px}
+.corbel .nav-search{width:100%;height:38px;display:flex;align-items:center;gap:9px;background:color-mix(in srgb,var(--surface) 50%,transparent);border:0;border-radius:11px;padding:0 12px;color:var(--ink-soft);font-size:13px;margin:0 0 18px;text-align:left;cursor:pointer}
+.corbel .nav-search .icon{width:16px;height:16px}
+.corbel .nav-search kbd{margin-left:auto;font-family:inherit;font-size:11px;color:var(--ink-mute);padding:1px 4px;border:1px solid var(--line);border-radius:4px}
+.corbel .nav-group-label{font-size:11px;margin:3px 10px 8px;color:var(--ink-mute)}
+.corbel .side-menu a{font-size:13px;min-height:40px;font-weight:500;gap:10px}
+.corbel .side-menu a.active{font-weight:600}
+.corbel .sidebar-action{font-size:12px;min-height:38px}
+.corbel .sidebar-actions{padding-top:20px}
+.corbel .sidebar-user{font-size:12px;padding-top:12px}
+.corbel #kpiRow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-radius:16px}
+.corbel #kpiRow>.kpi{grid-column:auto!important;border:0;border-right:1px solid var(--line);min-height:190px;padding:18px 20px 16px}
+.corbel #kpiRow>.kpi:last-child{border-right:0}
+.corbel .kpi-row .kpi-label{font-size:12px;font-weight:400;color:var(--ink-soft);min-height:0;line-height:1.4;margin:0 0 14px}
+.corbel .kpi-row .kpi-value{font-family:var(--font-display);font-size:27px;font-weight:600;letter-spacing:-.03em;line-height:1.2;flex:1 0 auto}
+.corbel .kpi-unit{font-family:var(--font-sans)}
+.corbel .kpi-row .kpi-unit{font-size:12px;font-weight:400}
+.corbel .kpi-reading{gap:4px 8px;margin-bottom:8px;min-height:35px}
+.corbel .kpi-comparison{display:flex;align-items:center;gap:6px;min-height:44px;margin-bottom:10px;width:100%}
+.corbel .kpi-comparison-copy{display:block;min-width:0}
+.corbel .kpi-comparison-label{display:block;font-size:11px;color:var(--ink-mute);line-height:1.3;margin-top:4px}
+.corbel .kpi-mini{height:40px;flex-basis:72px;margin-left:auto}
+.corbel .kpi-row .kpi-delta{font-size:11px!important;padding:1px 5px;font-weight:500;margin-bottom:12px}
+.corbel .kpi-comparison .kpi-delta{margin-bottom:0}
+.corbel .kpi-action{font-size:12px;font-weight:500;padding-top:12px;min-height:29px}
+.corbel .kpi-action svg{width:14px;height:14px}
+.corbel .overview-chart-deck.is-active{grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:16px;margin-bottom:16px}
+.corbel .overview-chart-deck>.profitability-card,.corbel .overview-chart-deck .trend-card{height:365px;min-height:0;padding:20px}
+.corbel .overview-chart-deck .trend-chart{min-height:0;flex:1;height:250px}
+.corbel #secOverviewCharts #secTrend{height:365px;min-height:0}
+.corbel #secOverviewCharts .trend-card{flex:1 1 0;height:100%;max-height:100%;overflow:hidden}
+.corbel #secOverviewCharts .trend-chart{flex:1 1 0;height:0;min-height:0}
+.corbel .panel-heading{margin-bottom:14px;min-height:20px}
+.corbel .panel-heading h2{font-size:15px;font-weight:600}
+.corbel .trend-card .panel-heading .hint{display:none}
+.corbel .trend-legend{font-size:12px;color:var(--ink-mute)}
+.corbel .trend-toolbar{gap:10px;padding-bottom:6px}
+.corbel .segmented-control.chart-style{background:var(--surface-2);padding:3px;border-radius:9px}
+.corbel .segmented-control.chart-style button{font-size:11px;min-height:26px;padding:0 10px}
+.corbel .profitability-card{display:flex;flex-direction:column;overflow:hidden}
+.corbel .profitability-card h2{font-size:15px;margin:0;line-height:20px;display:flex;align-items:center;gap:6px}
+.corbel .gauge-info{display:inline-grid;place-items:center;cursor:help;border:1px solid var(--ink-mute);border-radius:50%;width:11px;height:11px;font-family:var(--font-sans);font-size:8px;line-height:1;color:var(--ink-mute);font-weight:600}
+.corbel .gauge-figure{position:relative;min-height:0;height:205px;margin:3px 0 4px}
+.corbel .gauge-figure svg{display:block;width:100%;height:100%;overflow:visible}
+.corbel .gauge-track,.corbel .gauge-arc{fill:none;stroke-width:20;stroke-linecap:round}
+.corbel .gauge-track{stroke:var(--surface-2)}
+.corbel .gauge-arc{stroke:url(#profitGradient);stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1.2s cubic-bezier(.65,0,.35,1)}
+.corbel .gauge-ticks line{stroke:var(--line-strong);stroke-width:2.2;stroke-linecap:round;transition:stroke .6s}
+.corbel .gauge-ticks line.is-filled{stroke:var(--accent)}
+.corbel #profitabilityMarker{fill:var(--accent);stroke:var(--surface);stroke-width:4}
+.corbel .gauge-number{position:absolute;top:54%;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 7px;line-height:1;text-align:center}
+.corbel .gauge-number strong{font-family:var(--font-display);font-size:38px;font-weight:600;letter-spacing:-.04em}
+.corbel .gauge-number small{width:100%;font-size:11px;color:var(--ink-mute);margin-top:7px;line-height:1.2}
+.corbel .gauge-delta{background:var(--good-bg);color:var(--good);font-size:10px;border-radius:5px;padding:4px;font-weight:500}
+.corbel .gauge-delta:empty{display:none}
+.corbel .gauge-delta.is-negative{color:var(--bad);background:var(--bad-bg)}
+.corbel .profitability-card h3{font-size:15px;line-height:1.3;margin:0 0 7px}
+.corbel .profitability-card p{font-size:12px;line-height:1.5;color:var(--ink-soft);margin:0 0 12px}
+.corbel .gauge-details{display:flex;align-items:center;justify-content:space-between;padding:0;min-height:24px;margin-top:auto;width:100%;background:none;border:0;color:var(--ink-soft);font-size:12px;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px;cursor:pointer}
+.corbel .gauge-details svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;transition:transform .25s}
+.corbel .gauge-details:hover{color:var(--accent)}
+.corbel .gauge-details:hover svg{transform:translateX(3px)}
+.corbel .secondary-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));border-radius:16px}
+.corbel #secondaryKpiRow>.kpi{grid-column:auto!important;border:0;border-right:1px solid var(--line);min-height:185px;padding:16px}
+.corbel #secondaryKpiRow>.kpi:last-child{border-right:0}
+.corbel #secondaryKpiRow .kpi-value{font-size:24px}
+.corbel #secondaryKpiRow .kpi-extra{font-size:10px;line-height:1.4;margin:0 0 10px}
+.corbel #secondaryKpiRow .kpi-label{margin-bottom:12px}
+.corbel .expense-panel{width:100%;margin-bottom:16px}
+.corbel .expense-panel .expense-card{padding:0;height:auto}
+.corbel .expense-panel .exp-body{display:grid;grid-template-columns:210px minmax(0,1fr);gap:30px;align-items:center;padding:20px}
+.corbel .expense-panel .exp-chart{width:210px;height:220px}
+.corbel .expense-panel #expList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px;max-height:330px;overflow:auto;padding-right:8px}
+.corbel .expense-panel .exp-row{display:block;padding:12px 0}
+.corbel .expense-panel .exp-name{font-size:12px;margin-bottom:6px}
+.corbel .expense-panel .exp-meta{font-size:11px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;justify-content:flex-start}
+.corbel .expense-panel .exp-track{height:4px;margin:7px 0}
+.corbel .expense-panel .exp-meta strong{font-size:12px}
+.corbel .analytics-summary strong{font-family:var(--font-display);font-size:25px;font-weight:600;letter-spacing:-.02em}
+.corbel .analytics-summary>div{padding:16px 20px}
+.corbel .sku-card .skubar{height:180px}
+.corbel .sku-card .sku-toolbar{padding:12px 20px}
+.corbel :is(table.sku,table.costs){font-family:var(--font-sans);font-size:13px}
+.corbel :is(table.sku,table.costs) th{font-weight:500;letter-spacing:0;font-size:11px}
+.corbel .sku-card table.sku thead th{background:var(--panel)}
+.corbel .sku-card table.sku tbody tr:hover,.corbel .sku-card table.sku tbody tr:hover td{background:var(--accent-soft)}
+.corbel :is(.profile-grid,.settings-share-card,.settings-tax-card,.manual-expenses-card,.wb-api-card,.api-cabinet-card){border-radius:16px;box-shadow:none}
+.corbel .profile-grid{grid-template-columns:220px minmax(0,1fr);padding:24px;gap:20px 22px}
+.corbel .profile-grid>.profile-description{grid-column:1/-1}
+.corbel .profile-description h2{font-size:15px;margin-bottom:4px;font-weight:600}
+.corbel .profile-description p{font-size:13px;line-height:1.55}
+.corbel .profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:none;gap:12px 14px}
+.corbel .profile-field-wide{grid-column:1/-1}
+.corbel .profile-identity{display:flex;flex-direction:column;justify-content:center;text-align:center;gap:8px;margin:0;padding:18px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px}
+.corbel .profile-identity strong{font-size:14px}
+.corbel .profile-avatar{width:76px;height:76px;font-size:25px;font-weight:600;border:4px solid var(--surface)}
+.corbel .profile-note{font-size:11px;line-height:1.5;margin:8px 0 0}
+.corbel .profile-telegram{display:inline-block;font-size:12px;margin-top:8px}
+.corbel .profile-appearance{margin-top:16px;padding:24px}
+.corbel .appearance-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:20px;font-size:14px;font-weight:500}
+.corbel .appearance-options{display:flex;flex-wrap:nowrap;gap:0;padding:3px;border-radius:9px;background:var(--surface-2)}
+.corbel .appearance-option{flex:none;min-width:0;padding:6px 12px;min-height:30px;border:0;border-radius:7px;background:transparent;font-size:13px;font-weight:400}
+.corbel .appearance-option svg{display:none}
+.corbel .appearance-option[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px #10182820}
+.corbel .settings-tabs{border:0;background:var(--surface-2);border-radius:10px;margin-bottom:20px}
+.corbel .settings-tabs a{font-size:13px;font-weight:500;padding:7px 18px;min-height:34px}
+.corbel .dropzone{background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;min-height:200px}
+.corbel .dropzone:hover{background:var(--surface-2);border-color:var(--accent)}
+.corbel .dropzone .dz-title{font-weight:600}
+.corbel .primary{font-weight:600}
+.corbel .select-trigger{font-weight:400;min-height:36px;border-radius:10px}
+.corbel .select-menu-option{font-size:13px;font-weight:400}
+.corbel .auth-card{border-radius:24px;padding:36px;max-width:480px}
+.corbel .auth-card h1{font-family:var(--font-display);font-weight:600;font-size:30px}
+.corbel .auth-card p{font-size:14px}
+.corbel .finder{position:fixed;inset:100px auto auto 50%;transform:translateX(-50%);width:min(560px,calc(100vw - 28px));padding:0;border:1px solid var(--line-strong);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 24px 60px -20px #0b102a70;max-height:min(520px,75dvh);overflow:auto}
+.corbel .finder::backdrop{background:#0b102a50;backdrop-filter:blur(3px)}
+.corbel .finder-search{display:flex;gap:12px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.corbel .finder-search>.icon{width:20px;height:20px;color:var(--ink-mute)}
+.corbel .finder-search input{flex:1;min-width:0;border:0;background:transparent;box-shadow:none;outline:0;font-size:16px;padding:0}
+.corbel .finder-search button{border:1px solid var(--line);background:var(--surface-2);border-radius:5px;font-size:10px;min-height:24px;padding:2px 6px;color:var(--ink-mute)}
+.corbel .finder-results{padding:6px}
+.corbel .finder-results button{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:0;background:transparent;color:var(--ink);font-size:14px;border-radius:9px;text-align:left;cursor:pointer}
+.corbel .finder-results button:is(:hover,:focus-visible){background:var(--accent-soft);outline:0}
+.corbel .finder-results .icon{width:20px;height:20px;color:var(--accent)}
+.corbel .finder-results p{color:var(--ink-mute);font-size:13px;padding:16px}
+@media(min-width:901px){.sidebar-compact .corbel .nav-search{font-size:0;justify-content:center;padding:0}.sidebar-compact .corbel .nav-search kbd{display:none}.sidebar-compact .corbel .sidebar-collapse{top:64px}.sidebar-compact .corbel .sidebar-brand{margin-bottom:44px}.sidebar-compact .corbel .shop-context{margin-bottom:12px}}
+@media(max-width:1100px) and (min-width:901px){.corbel #appScreen{padding-left:228px}.corbel #appScreen>header.topnav{width:228px}.corbel #kpiRow>.kpi{padding:16px 12px}.corbel .kpi-row .kpi-value{font-size:24px}.corbel .kpi-mini{flex-basis:32px}.corbel .overview-chart-deck.is-active{grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr)}.corbel .overview-chart-deck #secTrend{order:0}}
+@media(max-width:900px){
+  .corbel #appScreen{padding:64px 8px 8px}
+  .corbel .app-main{padding:0 18px 24px;border-radius:20px}
+  .corbel .page-heading{margin-inline:-18px;padding-inline:18px;border-radius:20px 20px 0 0}
+  .corbel .overview-controls{margin-inline:-18px;padding-inline:18px;width:calc(100% + 36px)}
+  .corbel .page-heading>div:first-child{min-height:60px}
+  .corbel .page-heading h1{font-size:21px}
+  .corbel .shell-actions{height:60px}
+  .corbel #kpiRow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .corbel #kpiRow>.kpi{border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-height:168px}
+  .corbel #kpiRow>.kpi:nth-child(2n){border-right:0}
+  .corbel #kpiRow>.kpi:nth-child(n+3){border-bottom:0}
+  .corbel .overview-chart-deck.is-active{grid-template-columns:minmax(0,1fr)}
+  .corbel .overview-chart-deck #secTrend{order:0}
+  .corbel .overview-chart-deck>.profitability-card{height:350px}
+  .corbel .overview-chart-deck .trend-card{height:330px}
+  .corbel #secOverviewCharts #secTrend{height:330px}
+  .corbel .secondary-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .corbel #secondaryKpiRow>.kpi{border-bottom:1px solid var(--line)}
+  .corbel .profile-grid{grid-template-columns:1fr;gap:20px}
+  .corbel .profile-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .corbel #appScreen{padding:calc(60px + env(safe-area-inset-top)) 0 0}
+  .corbel .app-main{padding:0 14px 24px;border-radius:18px 18px 0 0}
+  .corbel .page-heading{margin-inline:-14px;padding-inline:14px}
+  .corbel .page-heading h1{font-size:20px}
+  .corbel .section-icon{width:30px;height:30px}
+  .corbel .page-title-row{gap:8px}
+  .corbel .overview-controls{margin-inline:-14px;padding:12px 14px 0;width:calc(100% + 28px)}
+  .corbel .overview-controls .period-bar{min-width:0}
+  .corbel .overview-controls .segmented-control{width:100%}
+  .corbel #kpiRow>.kpi{padding:16px 12px;min-height:170px}
+  .corbel .kpi-row .kpi-value{font-size:24px}
+  .corbel .kpi-row .kpi-unit{font-size:11px}
+  .corbel .kpi-mini{display:none}
+  .corbel .kpi-action{font-size:11px}
+  .corbel .kpi-row .kpi-delta{font-size:12px!important}
+  .corbel #secondaryKpiRow>.kpi{padding:14px 12px;min-height:185px;border-right:1px solid var(--line)}
+  .corbel #secondaryKpiRow>.kpi:nth-child(2n){border-right:0}
+  .corbel #secondaryKpiRow>.kpi:last-child:nth-child(odd){grid-column:1/-1!important}
+  .corbel #secondaryKpiRow .kpi-value{font-size:23px}
+  .corbel #secondaryKpiRow .kpi-extra{font-size:12px}
+  .corbel .expense-panel .exp-body{grid-template-columns:1fr;padding:14px;gap:10px}
+  .corbel .expense-panel .exp-chart{width:100%;height:180px}
+  .corbel .expense-panel #expList{grid-template-columns:1fr;max-height:330px;padding:0}
+  .corbel .expense-panel .exp-meta{font-size:12px}
+  .corbel .profile-grid{padding:20px 16px}
+  .corbel .profile-fields{grid-template-columns:1fr}
+  .corbel .profile-identity{flex-direction:row;text-align:left;justify-content:flex-start}
+  .corbel .profile-avatar{width:58px;height:58px;font-size:20px}
+  .corbel .profile-appearance{padding:20px 16px}
+  .corbel .profile-fields input,.corbel :is(input,textarea){font-size:16px}
+  .corbel .select-trigger{min-height:42px;font-size:14px}
+  .corbel .finder{top:76px}
+}
+@media(prefers-reduced-motion:reduce){.corbel .gauge-arc,.corbel .gauge-ticks line{transition:none}}

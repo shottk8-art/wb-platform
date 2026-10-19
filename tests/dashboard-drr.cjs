@@ -133,6 +133,13 @@ async function main() {
   assert.match(canvas.attributes['aria-label'], /ДРР \(заказа\)/);
   assert.equal(api.getTrendMetric('internalAds', 'ozon').label, 'Продвижение Ozon');
 
+  window.WBShell = { chartStyle: 'bar' };
+  for (const metric of ['sales', 'profit', 'drrOrders', 'drrSales']) {
+    api.renderTrend(canvas, [{ ...trend[0], profit: -20 }], metric, 'wildberries');
+    assert.equal(chart.options.scales.y.beginAtZero, true, metric + ' bars retain a zero baseline');
+    if (metric === 'profit') assert.equal(chart.data.datasets[0].data[0], -20, 'zero base must not discard losses');
+  }
+
   // Normal-motion path must keep decimal percentages instead of rounding to integers.
   const frames = [];
   window.matchMedia = () => ({ matches: false });

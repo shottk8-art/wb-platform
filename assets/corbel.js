@@ -46,6 +46,6 @@
     document.querySelectorAll('[data-theme-choice]').forEach(button=>button.addEventListener('click',()=>choose(button.dataset.themeChoice,button)));
     syncTheme();
   }
-  window.WBShell={setProfile,applyTheme,chartStyle:'line'};
+  window.WBShell={setProfile,applyTheme,chartStyle:'bar'};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
 })();

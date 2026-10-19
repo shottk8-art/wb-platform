@@ -5,22 +5,26 @@ primary_target: "app.html"
 related_targets: ["assets/corbel.css","assets/corbel.js"]
 ---
 
-# Кабинет продавца — Corbel adaptation
+# Кабинет продавца — Corbel reference reconstruction
 
 Mode: Operate. User-pinned reference: https://demo.codeandchill.store/corbel/#/dashboard, inspected dashboard and settings/profile on 19 October 2026. Code-led, independently authored; no paid template source is copied.
 
 ## Direction contract
 
-THESIS: One quiet, dense financial workspace, using Corbel's lavender rail, inset framed canvas and indigo selections, rather than isolated Apple-glass tiles.
+THESIS: The user superseded every previous visual rule. Reconstruct Corbel's actual page composition and component family; keep only the existing technical product and real WB/Ozon data.
 
-OWN-WORLD: Light ground #dfe4f4, panel #f6f7f9, white surfaces, ink #161b30 and accent #2a45cc. Dark ground #0f1430, panel #10131f, surfaces #161a29, ink #e9ecf7, accent #7088f0. Fine borders, 16px panels, compact 40px controls, a consistent Cyrillic-capable Manrope family. No copied brand or fabricated template metrics.
+OWN-WORLD: Measured Corbel palette, typography, 66px header, 264px rail, compact 16px panels and native motion. Instrument Sans body and Bricolage Grotesque display/numbers, with Cyrillic coverage retained. Both light and dark themes. No obsolete Apple treatment, mandatory Manrope identity, invented template data or fake shop score.
 
 STORY: Select a shop and marketplace, read verified monthly profit and expenses, click a KPI to inspect its trend, manage imports and costs, then configure API, tax and access. Profile displays the real Telegram identity; appearance is local, not a fake saved account update.
 
-FIRST VIEWPORT: A 264px lavender navigation rail, an inset rounded working canvas, compact title plus theme/profile actions, a full-width marketplace and month toolbar, a connected KPI panel. Below: the existing real trend, expenses and SKU blocks, restyled consistently. Mobile keeps a solid toolbar and drawer, two-column KPIs and stacked labelled table rows.
+FIRST VIEWPORT: Reference-aligned topbar with section icon, title, theme/profile tools; shop and search in the rail; four primary KPI cells only. Directly below, a half-circle profitability gauge on the left and reference-style monthly bars on the right. Advertising/DRR, expense breakdown and full-width SKU table follow below. Every important existing metric remains available.
 
-FORM: Explicit Corbel reference chosen by the user, including both light and dark themes. No random concept assignment: pinned reference; build path code-led. Signature interaction: direct KPI selection traces the same real metric in the chart, with a quiet reveal and preserved count animation. Themes recolor charts without fetching financial data. Motion respects reduced-motion.
+FORM: User-pinned Corbel reference, code-led, no concept tournament. KPI-to-chart selection, travelling menu, masked headings, radial theme and compact rail follow the reference. Gauge is the real net-profit/sales ratio, never an invented performance score. Russian labels and working account/API/import controls remain. Fresh full finish review compares reference captures and build captures, not only isolated bug fixes.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 Constraints: preserve all data isolation, accounting, API, Ozon import, AI owner restriction, empty/loading/error states and existing interactive IDs. User files and untracked duplicate assets stay untouched.
+
+## QUALITY BAR
+
+The pinned Corbel dashboard and profile screenshots are the comparative standard, not an invitation to reinterpret the product. Match the shell proportions, four-cell KPI composition with lower comparison/minichart area, aligned 365px gauge/bar panels, compact profile identity/field grid and small appearance switch. Preserve the same hierarchy in both themes and a usable 390px layout. Quantitative visuals must use actual monthly series, a zero baseline for bars, meaningful precision and explicit missing-data states. Motion follows the measured reference with reduced-motion support; static screenshots alone do not prove full motion fidelity. No demo data or unsupported account tools may be added to the production UI.

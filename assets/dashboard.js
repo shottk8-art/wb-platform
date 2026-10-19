@@ -346,8 +346,11 @@
   }
 
   function renderKPI(container, d, prevD, marketplace, interaction) {
-    const focusedMetric = container.contains?.(document.activeElement) ? document.activeElement?.dataset?.trendMetric : null;
+    const secondary = container.id === 'kpiRow' ? document.getElementById?.('secondaryKpiRow') : null;
+    const focusedMetric = container.contains?.(document.activeElement) || secondary?.contains?.(document.activeElement) ? document.activeElement?.dataset?.trendMetric : null;
     container.innerHTML = "";
+    if (secondary) secondary.innerHTML = '';
+    renderProfitability(d, prevD);
     const rates = d.rates || advertisingRatios(d.rep);
     const prevRates = prevD ? prevD.rates || advertisingRatios(prevD.rep) : null;
     const advertisingHint = marketplace === "ozon" ? "Продвижение Ozon + внешняя реклама" : "Внутренняя + медийная + внешняя реклама";
@@ -382,7 +385,7 @@
     const visibleCards = cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon"));
     const interactive = interaction && typeof interaction.onSelect === "function";
     const activeMetric = visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
-    visibleCards.forEach((c) => {
+    visibleCards.forEach((c, index) => {
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
@@ -394,18 +397,42 @@
           ${interactive ? `title="Показать на графике: ${escapeHtml(c.label)}"` : ""}
           ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
-          <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
-          ${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}
+          <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}></${block}>
+          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${c.value != null && c.prev != null ? 'к предыдущему месяцу' : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
           ${asContent(c.extra || "")}
           ${interactive ? '<span class="kpi-action"><span>Смотреть динамику</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>' : ''}
         </${tag}>
       `);
       if (interactive) card.addEventListener("click", () => interaction.onSelect(c.metric));
-      container.appendChild(card);
+      (secondary && index >= 4 ? secondary : container).appendChild(card);
       if (focusedMetric === c.metric) card.focus?.({preventScroll:true});
       if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
     return activeMetric;
+  }
+
+  function profitMargin(derived) {
+    const sales = derived?.rep?.sales_amount, profit = derived?.netProfit;
+    return typeof sales === 'number' && sales > 0 && typeof profit === 'number' && Number.isFinite(profit) ? profit / sales * 100 : null;
+  }
+  function renderProfitability(derived, previous) {
+    const output = document.getElementById?.('profitabilityValue');
+    if (!output) return;
+    const margin = profitMargin(derived), before = profitMargin(previous);
+    output.textContent = margin == null ? '—' : fmtRate.format(margin);
+    const arc = document.getElementById('profitabilityArc'), marker = document.getElementById('profitabilityMarker');
+    const drawn = Math.max(0, Math.min(100, margin || 0));
+    arc.style.strokeDashoffset = String(100 - drawn);
+    const angle = Math.PI - drawn / 100 * Math.PI;
+    marker.setAttribute('cx',String(160+120*Math.cos(angle))); marker.setAttribute('cy',String(154-120*Math.sin(angle)));
+    marker.setAttribute('visibility', margin == null ? 'hidden' : 'visible');
+    document.querySelectorAll?.('[data-gauge-tick]').forEach(tick=>tick.classList.toggle('is-filled',Number(tick.dataset.gaugeTick)<=drawn/100*40));
+    document.getElementById('profitabilityGauge').setAttribute('aria-label', margin == null ? 'Рентабельность: недостаточно данных' : `Рентабельность: ${fmtRate.format(margin)}% чистой прибыли от продаж`);
+    document.getElementById('profitabilityCaption').textContent = margin == null ? 'Заполните недостающие данные' : margin < 0 ? 'Магазин работает в убыток' : 'Прибыль на каждый рубль продаж';
+    document.getElementById('profitabilityNote').textContent = margin == null ? 'Для расчёта нужны продажи и чистая прибыль.' : `${fmtRate.format(margin)} коп. чистой прибыли с 1 ₽ продаж.`;
+    const delta = document.getElementById('profitabilityDelta');
+    delta.textContent = margin == null || before == null ? '' : `${margin >= before ? '+' : '−'}${fmtRate.format(Math.abs(margin-before))} п.п.`;
+    delta.classList.toggle('is-negative', margin != null && before != null && margin < before);
   }
 
   // Actual loaded months only. Nulls split the line; no invented sparkline data.
@@ -554,8 +581,22 @@
     });
   }
 
+  function trendBarColors(canvas, rows, color) {
+    const context = canvas.getContext?.('2d');
+    let inactive = `${color}35`;
+    if (context?.createPattern) {
+      const tile = document.createElement('canvas'); tile.width = tile.height = 8;
+      const pen = tile.getContext?.('2d');
+      if (pen) { pen.fillStyle=`${color}0d`;pen.fillRect(0,0,8,8);pen.strokeStyle=`${color}45`;pen.lineWidth=1.2;pen.beginPath();pen.moveTo(-2,6);pen.lineTo(6,-2);pen.moveTo(2,10);pen.lineTo(10,2);pen.stroke();inactive=context.createPattern(tile,'repeat') || inactive; }
+    }
+    const selected = document.getElementById?.('periodSelect')?.value;
+    const match = rows.findIndex(row=>`${row.year}-${row.month}`===selected);
+    const active = match >= 0 ? match : rows.length - 1;
+    return rows.map((_,i)=>i===active?color:inactive);
+  }
   function renderTrend(canvas, rows, metricKey, marketplace) {
     renderKpiSparklines(document.getElementById?.('kpiRow'), rows);
+    renderKpiSparklines(document.getElementById?.('secondaryKpiRow'), rows);
     metricKey = TREND_METRICS[metricKey] ? metricKey : "sales";
     const metric = getTrendMetric(metricKey, marketplace);
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
@@ -582,14 +623,15 @@
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
         datasets: [{
           label: metric.label, data: values, sellerMetric: metricKey,
-          borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? metric.color : `${metric.color}14`,
-          borderWidth: 2.5,
+          borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? trendBarColors(canvas,rows,metric.color) : `${metric.color}14`,
+          sellerRows: rows,
+          borderWidth: window.WBShell?.chartStyle === 'bar' ? 0 : 2.5,
           pointRadius: singlePoint ? 5 : values.map((value, index) => value != null
             && values[index - 1] == null && values[index + 1] == null ? 4 : 0),
           pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: metric.color,
           pointBackgroundColor: metric.color,
           pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
-          fill: true, spanGaps: false, borderRadius:5, maxBarThickness:42,
+          fill: true, spanGaps: false, borderRadius:7, maxBarThickness:32,
         }],
       },
       options: {
@@ -610,9 +652,9 @@
         scales: {
           x: { grid: { display: false }, border: { display: false }, ticks: { color: inkMute, maxRotation: 0 } },
           y: {
-            beginAtZero: metric.unit === "шт.",
-            border: { display: false },
+            beginAtZero: window.WBShell?.chartStyle === 'bar' || metric.unit === "шт.",
             grid: { color: "rgba(127,127,127,.12)" },
+            border: { display: false, dash: [3,3] },
             ticks: {
               color: inkMute,
               precision: metric.unit === "шт." ? 0 : undefined,
@@ -780,7 +822,7 @@
       chart.data.datasets.forEach(ds=>{
         if(ds.sellerMetric){
           const color=getTrendMetric(ds.sellerMetric).color;
-          ds.borderColor=color;ds.backgroundColor=chart.config.type==='bar'?color:`${color}14`;ds.pointBorderColor=color;ds.pointBackgroundColor=color;
+          ds.borderColor=color;ds.backgroundColor=chart.config.type==='bar'?trendBarColors(chart.canvas,ds.sellerRows || [],color):`${color}14`;ds.pointBorderColor=color;ds.pointBackgroundColor=color;
         }
       });
       chart.update('none');
@@ -800,5 +842,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline };
+  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability };
 })();

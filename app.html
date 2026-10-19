@@ -17,9 +17,11 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
-<script src="/assets/corbel.js?v=20261019-motion2"></script>
+<link rel="stylesheet" href="/assets/reference.css?v=20261019-reference6">
+<script src="/assets/corbel.js?v=20261019-reference4"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
-<script src="/assets/corbel-components.js?v=20261019-blocks3" defer></script>
+<script src="/assets/corbel-components.js?v=20261019-reference6" defer></script>
+<script src="/assets/reference.js?v=20261019-reference4" defer></script>
 </head>
 <body class="corbel">
 
@@ -149,23 +151,23 @@
       <nav class="settings-tabs" aria-label="Разделы настроек"><a href="#account" data-open-view="account" aria-current="page">Профиль</a><a href="#settings" data-open-view="settings">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
       <div class="card profile-grid">
         <div class="profile-description"><h2>Ваш профиль</h2><p>Учётная запись, с которой вы входите в платформу и работаете с магазинами.</p></div>
-        <div>
-          <div class="profile-identity"><span class="profile-avatar" data-profile-avatar>—</span><div><strong data-profile-name>—</strong><p>Вход через Telegram</p></div></div>
+        <div class="profile-identity"><span class="profile-avatar" data-profile-avatar>—</span><div><strong data-profile-name>—</strong><p>Вход через Telegram</p></div></div>
+        <div class="profile-details">
           <div class="profile-fields">
             <div><label for="profileName">Имя</label><input id="profileName" readonly aria-readonly="true" value="—"></div>
             <div><label for="profileTelegram">Telegram</label><input id="profileTelegram" readonly aria-readonly="true" value="—"></div>
-            <div><label for="profileRole">Роль в выбранном магазине</label><input id="profileRole" readonly aria-readonly="true" value="—"></div>
+            <div class="profile-field-wide"><label for="profileRole">Роль в выбранном магазине</label><input id="profileRole" readonly aria-readonly="true" value="—"></div>
           </div>
           <p class="profile-note">Имя и ник приходят из Telegram. Чтобы изменить их, обновите профиль в Telegram и войдите в платформу заново.</p>
           <a class="profile-telegram" id="profileTelegramLink" target="_blank" rel="noopener noreferrer" hidden>Открыть профиль в Telegram</a>
         </div>
       </div>
-      <div class="card profile-grid" style="margin-top:20px">
+      <div class="card profile-appearance">
         <div class="profile-description"><h2>Оформление</h2><p>Выберите комфортную тему. Изменение применяется сразу и сохраняется на этом устройстве.</p></div>
-        <div class="appearance-options">
+        <div class="appearance-row"><span>Тема</span><div class="appearance-options" role="group" aria-label="Тема оформления">
           <button class="appearance-option" type="button" data-theme-choice="light" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Светлая</button>
           <button class="appearance-option" type="button" data-theme-choice="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>Тёмная</button>
-        </div>
+        </div></div>
       </div>
     </section>
 
@@ -514,7 +516,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/dashboard.js?v=20261019-blocks3"></script>
+<script src="/assets/dashboard.js?v=20261019-reference6"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -859,7 +861,7 @@
 
   function selectTrendMetric(metric) {
     trendMetric = metric;
-    document.querySelectorAll("#kpiRow [data-trend-metric]").forEach((card) => {
+    document.querySelectorAll("#kpiRow [data-trend-metric], #secondaryKpiRow [data-trend-metric]").forEach((card) => {
       const selected = card.dataset.trendMetric === metric;
       card.classList.toggle("is-selected", selected);
       card.setAttribute("aria-pressed", String(selected));
@@ -876,7 +878,7 @@
     overviewLoadError = error;
     document.getElementById('periodSelect').disabled = pending || shopLoading;
     if (pending || !usesApiData() || error) document.getElementById('overviewRefresh').disabled = pending;
-    for (const id of ['secKpis', 'secTrend', 'secAnalytics']) document.getElementById(id).setAttribute('aria-busy', String(pending));
+    for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secTrend', 'secAnalytics']) document.getElementById(id)?.setAttribute('aria-busy', String(pending));
     updateOverviewSource();
   }
 
@@ -915,16 +917,20 @@
     if (loading) document.getElementById('shopLoading').textContent = 'Загружаем данные магазина…';
     document.getElementById('shopLoading').hidden = !loading || activeView !== 'overview';
     document.getElementById('periodSelect').disabled = loading || overviewPending;
-    for (const id of ['secKpis', 'secManualExpenses', 'secTrend', 'secAnalytics']) document.getElementById(id).hidden = loading;
+    for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secManualExpenses', 'secTrend', 'secAnalytics']) {
+      const section = document.getElementById(id);
+      if (section) section.hidden = loading;
+    }
     updateOverviewSource();
   }
 
   function resetShopDisplay() {
     overviewPending = false; overviewLoadError = '';
-    for (const id of ['secKpis', 'secTrend', 'secAnalytics']) document.getElementById(id).setAttribute('aria-busy', 'false');
+    for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secTrend', 'secAnalytics']) document.getElementById(id)?.setAttribute('aria-busy', 'false');
     periods = []; currentTrend = []; apiDisplayedPeriod = null;
     window.WBAnalysis.reset();
-    for (const id of ['kpiRow', 'membersBody', 'costsBody', 'uploadsBody']) document.getElementById(id).replaceChildren();
+    for (const id of ['kpiRow', 'secondaryKpiRow', 'membersBody', 'costsBody', 'uploadsBody']) document.getElementById(id)?.replaceChildren();
+    window.WBDashboard.renderProfitability(null, null);
     const sel = document.getElementById('periodSelect');
     sel.innerHTML = '<option value="">Загружаем данные магазина…</option>';
     sel.value = '';
