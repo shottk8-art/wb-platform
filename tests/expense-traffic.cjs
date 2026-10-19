@@ -21,6 +21,8 @@ const document={hidden:false,activeElement:null,events:{},createElementNS:(_,nam
 const window={events:{},matchMedia:()=>({matches:reduce,addEventListener(name,fn){window.preference=fn}}),addEventListener(name,fn){this.events[name]=fn}};
 vm.runInNewContext(fs.readFileSync('assets/expense-traffic.js','utf8'),{window,document,Intl,Map,Set,WeakMap,Number,Math,performance:{now:()=>clock},requestAnimationFrame:fn=>{frames.set(++nextFrame,fn);return nextFrame},cancelAnimationFrame:id=>frames.delete(id)});
 const api=window.WBExpenseTraffic;
+const css=fs.readFileSync('assets/reference.css','utf8');
+assert.match(css,/\.expense-card\.is-traffic \.exp-chart-center span\{width:56%;max-width:112px;[^}]*white-space:normal;overflow-wrap:anywhere;/,'centre label scales within the ring hole and wraps rather than reaching the arcs');
 const tiny=api.geometry([{value:100},{value:.00001}],100.00001);assert.ok(tiny[1].dash>0,'small categories are not swallowed by a fixed gap');
 assert.equal(api.formatPercent(.0001),'<0,1%');assert.equal(api.formatPercent(35),'35%');
 const parts=api.geometry([{value:800},{value:-200},{value:100}],1100);assert.ok(Math.abs(parts[1].share-200/1100*100)<1e-9);assert.ok(parts[1].offset<0);

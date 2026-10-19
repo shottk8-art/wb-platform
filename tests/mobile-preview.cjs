@@ -31,6 +31,7 @@ if(location.search.includes('sku=empty'))rows.splice(0);
 if(location.search.includes('sku=unknown'))rows.forEach((row,i)=>{row.revenue=i===0?null:i===1?0:-100;row.total_cost=null;row.profit=null;});
 const d={skuRows:rows,expenses:[['Себестоимость товара',696198],['Очень длинное название удержания маркетплейса',238988],['WB Продвижение',226553]],rep:{orders_amount:66640095,orders_qty:22998,sales_amount:2231708,bought_qty:1455,transfer_total:1826845,ads_spend:226553,wb_media_spend:0,ads_promo_spend:77511},netProfit:792508,rates:{drrOrders:6.3,drrSales:10.2}};
 const prev={...d,rep:{...d.rep,orders_amount:52258000,orders_qty:19000},skuRows:rows.map(r=>({...r,bought_qty:r.bought_qty-12,revenue:r.revenue-46687,profit:r.profit-59423})),expenses:[['Себестоимость товара',481112],['Очень длинное название удержания маркетплейса',291552],['WB Продвижение',242868]]};
+if(location.search.includes('expenses=commission')){d.expenses[1][0]='Комиссия Wildberries';prev.expenses[1][0]='Комиссия Wildberries';}
 if(location.search.includes('expenses=long')){d.isApi=true;prev.isApi=true;d.expenses.push(['Логистика',56000],['WB Media',28000],['Налог',25000],['Хранение',6200],['Операционные расходы',4500],['Компенсация скидок WB',-11000],['Реклама уже в удержаниях',-6200]);}
 if(location.search.includes('expenses=unknown')){d.isApi=true;d.expenses.push(['WB Media',null]);}
 if(location.search.includes('expenses=empty')){d.expenses=[];prev.expenses=[];}
@@ -112,7 +113,7 @@ http.createServer((req,res)=>{
     const selected=url.searchParams.get('view');
     const view=['overview','settings','account','reports','costs','team'].includes(selected)?selected:route;
     res.setHeader('Content-Type','text/html');res.setHeader('Cache-Control','no-store');
-    const expenses=['long','unknown','empty'].includes(url.searchParams.get('expenses'))?'&amp;expenses='+url.searchParams.get('expenses'):'';
+    const expenses=['long','unknown','empty','commission'].includes(url.searchParams.get('expenses'))?'&amp;expenses='+url.searchParams.get('expenses'):'';
     const motion=url.searchParams.get('motion')==='1'?'':'still=1&amp;';
     const series=['negative','unknown'].includes(url.searchParams.get('series'))?'&amp;series='+url.searchParams.get('series'):'';
     const sku=['reference','unknown','empty'].includes(url.searchParams.get('sku'))?'&amp;sku='+url.searchParams.get('sku'):'';
