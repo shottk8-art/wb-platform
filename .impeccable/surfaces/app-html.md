@@ -9,6 +9,8 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 ## Approved extension: client start, 19 October 2026
 
+Demo navigation refinement (owner request, same date): remove the standalone demo action from the rail and place it after tax in Settings, using a compact responsive row, explicit synthetic-data copy and the existing `/demo.html` new-tab link. Preserve onboarding demo access, both themes, keyboard focus and every real data/API/auth/payment path. No new motion or service work.
+
 Copy clarification (owner request, same date): the owner found the onboarding confusing and verbose. Keep its Corbel artwork, themes, animation and real creation/payment boundaries. Use plain Russian, one message per state and the consistent sequence «Магазин → Тариф → Проверка». Name the final action «Создать магазин» and show the selected marketplace's concrete next action (WB API key in settings; Ozon file in reports). Remove duplicated promotional captions, repeated storage/payment notes and vague scale/ready phrasing. Keep test payment and zero charge explicit; disclose developer failure controls and storage/limit details under native details. Hide account-only history/cancellation tools during first setup without removing them from account billing. Preserve exact prices, limits, two-marketplace counting and actual permissions. This supersedes earlier local copy-preservation wording, not the visual world.
 
 Terminology for this flow: «магазин» is the entity being created; «маркетплейс» is WB or Ozon as its data source; «тариф» is the selected offer; «подписка» is the account-period state, shown only in account billing. Do not alternate these words for stylistic variety.

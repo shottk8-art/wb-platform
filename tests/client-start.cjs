@@ -19,6 +19,11 @@ const {build}=require('../assets/demo-data.js'),sample=build(new Date('2026-10-1
 assert.equal(sample.periods.length,12);assert.deepEqual(sample.periods[11],{year:2026,month:9});assert.deepEqual(sample.periods[0],{year:2025,month:10});
 for(const marketplace of ['wildberries','ozon'])for(const {report,skus} of sample.data[marketplace]){assert.equal(report.sales_amount,skus.reduce((a,s)=>a+s.revenue,0));assert.equal(report.bought_qty,skus.reduce((a,s)=>a+s.bought_qty,0));assert.equal(report.transfer_total,report.transfer_goods-report.delivery_cost-report.storage_cost-report.acceptance_ops);assert(skus.every(s=>sample.costs.get(s.article)>0));}
 const demo=fs.readFileSync('demo.html','utf8'),logic=fs.readFileSync('assets/demo.js','utf8'),client=fs.readFileSync('assets/client-start.js','utf8'),app=fs.readFileSync('app.html','utf8');
+const sidebar=app.slice(app.indexOf('<header class="topnav"'),app.indexOf('</header>'));
+assert(!sidebar.includes('/demo.html'),'demo is not a sidebar action');
+const demoSettings=app.match(/<section\b[^>]*id="secDemoStore"[^>]*>[\s\S]*?<\/section>/)?.[0];
+assert(demoSettings?.includes('data-view="settings"'),'demo belongs to Settings');
+assert.match(demoSettings,/<a href="\/demo\.html" target="_blank" rel="noopener">Открыть демо/,'keep the separate demo and safe new-tab navigation');
 const window={addEventListener(){}},context=vm.createContext({window,Intl,Map,Set,Date});
 for(const file of ['assets/dashboard.js','assets/period-range.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
 const entries=['wildberries','ozon'].map(marketplace=>{const r=sample.data[marketplace][11];return{marketplace,derived:window.WBDashboard.computeDerived(r.report,r.skus,sample.costs,sample.taxRate)};});

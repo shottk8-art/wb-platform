@@ -120,9 +120,9 @@ http.createServer((req,res)=>{
     res.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0}iframe{display:block;border:0}</style></head><body><iframe title="Responsive seller workspace" width="'+width+'" height="'+height+'" src="/app.html?'+motion+'assets=7'+expenses+series+sku+'#'+view+'"></iframe></body></html>');return;
   }
   const file=path.resolve(root,'.'+pathname);
-  if(!file.startsWith(root+path.sep)||(!pathname.startsWith('/assets/')&&!['/app.html','/index.html','/admin.html'].includes(pathname))){res.writeHead(404).end();return;}
+  if(!file.startsWith(root+path.sep)||(!pathname.startsWith('/assets/')&&!['/app.html','/index.html','/admin.html','/demo.html'].includes(pathname))){res.writeHead(404).end();return;}
   try{let content=fs.readFileSync(file);const ext=path.extname(file);
-    if(ext==='.html')content=content.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>',fixture+'</body>');
+    if(ext==='.html'&&pathname!=='/demo.html')content=content.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>',fixture+'</body>');
     res.setHeader('Content-Type',({'html':'text/html','css':'text/css','js':'application/javascript','svg':'image/svg+xml','png':'image/png'})[ext.slice(1)]||'application/octet-stream');
     res.setHeader('Cache-Control','no-store');res.end(content);
   }catch{res.writeHead(404).end();}

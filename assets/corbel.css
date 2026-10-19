@@ -147,7 +147,10 @@ body.corbel{background:var(--page);font-family:var(--font-sans);color:var(--ink)
 .corbel .dz-hint{color:var(--ink-mute);font-size:12px;line-height:1.65}
 .corbel .dz-link{font-size:12px;color:var(--accent)}
 .corbel .report-market-switch{background:var(--surface);border-color:var(--line-strong);box-shadow:none;border-radius:12px}
-.corbel .settings-share-card,.corbel .settings-tax-card,.corbel .manual-expenses-card{padding:20px}
+.corbel .settings-share-card,.corbel .settings-tax-card,.corbel .settings-demo-card,.corbel .manual-expenses-card{padding:20px}
+.corbel .settings-demo-card{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap}
+.corbel .settings-demo-card .hint{margin:0;flex:1 1 240px}
+.corbel .settings-demo-card a{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;white-space:nowrap}
 .corbel .settings-share-toggle{color:var(--ink-soft)}
 .corbel input[type=checkbox]{accent-color:var(--accent)}
 .corbel .share-box{background:var(--surface-2);border-color:var(--line)}
@@ -251,7 +254,7 @@ body.corbel{background:var(--page);font-family:var(--font-sans);color:var(--ink)
   .corbel .trend-legend{font-size:12px}
   .corbel :is(input,select,textarea){font-size:16px}
   .corbel .dropzone{min-height:190px;padding:22px 18px}
-  .corbel :is(.settings-share-card,.settings-tax-card,.manual-expenses-card){padding:16px}
+  .corbel :is(.settings-share-card,.settings-tax-card,.settings-demo-card,.manual-expenses-card){padding:16px}
   .corbel .analytics-summary>div{padding:16px}
   .corbel .analytics-summary strong{font-size:22px}
   .corbel .exp-body{padding:14px}
