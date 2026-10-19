@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
-<link rel="stylesheet" href="/assets/reference.css?v=20261019-reference6">
+<link rel="stylesheet" href="/assets/reference.css?v=20261019-range2">
 <script src="/assets/corbel.js?v=20261019-reference4"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-reference6" defer></script>
@@ -134,11 +134,16 @@
           <button type="button" data-scope="ozon">Ozon</button>
           <button type="button" data-scope="all">Все вместе</button>
         </div>
-        <div class="period-bar"><select id="periodSelect" aria-label="Период отчёта"></select></div>
+        <div class="period-mode segmented-control" role="group" aria-label="Длительность периода"><button type="button" id="periodModeMonth" class="active" aria-pressed="true">Месяц</button><button type="button" id="periodModeRange" aria-pressed="false">Диапазон</button></div>
+        <div class="period-bar period-selection">
+          <label id="periodStartField" hidden><span>С</span><select id="periodStart" aria-label="Начало периода"></select></label>
+          <label><span id="periodEndLabel" hidden>По</span><select id="periodSelect" aria-label="Период отчёта"></select></label>
+        </div>
         <button type="button" class="ghost overview-refresh" id="overviewRefresh" hidden title="Обновить выбранный месяц из WB; текущий месяц — по сегодняшнюю дату">Обновить</button>
       </div>
     </div>
 
+    <p class="range-summary" id="rangeNotice" role="status" aria-live="polite" aria-atomic="true" hidden></p>
     <aside class="overview-loading" id="overviewLoading" role="status" aria-live="polite" aria-atomic="true" hidden>
       <span class="overview-loading-spinner" aria-hidden="true"></span>
       <div class="overview-loading-copy"><strong id="overviewLoadingTitle"></strong><p id="overviewLoadingText"></p></div>
@@ -516,7 +521,8 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/dashboard.js?v=20261019-reference6"></script>
+<script src="/assets/dashboard.js?v=20261019-range3"></script>
+<script src="/assets/period-range.js?v=20261019-range2"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -595,6 +601,7 @@
   function updateOverviewSource() {
     const allowed = apiCabinetAllowed();
     if (sourceShopId !== shop?.id) {
+      window.WBRange?.reset();
       sourceShopId = shop?.id; sourcePreference = null;
       try { const saved=localStorage.getItem(`wb-source:${shop.id}`); if(['api','files'].includes(saved)) sourcePreference=saved; } catch { /* storage is optional */ }
     }
@@ -602,10 +609,12 @@
     document.getElementById('overviewDataSource').value = overviewSource;
     window.WBShell?.components?.refreshSelects();
     document.getElementById('secApiCabinet').hidden = !allowed;
-    document.getElementById('secAiAnalysis').hidden = shopLoading || overviewPending || !!overviewLoadError || !aiAllowed;
+    document.getElementById('secAiAnalysis').hidden = shopLoading || overviewPending || !!overviewLoadError || !aiAllowed || !!window.WBRange?.active;
+    if(window.WBRange?.active) document.getElementById('secManualExpenses').hidden = true;
     document.getElementById('shopLoading').hidden = !shopLoading || activeView !== 'overview';
     document.getElementById('overviewHelp').hidden = activeView !== 'overview' || !usesApiData();
-    document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData();
+    document.getElementById('overviewRefresh').hidden = activeView !== 'overview' || !usesApiData() || !!window.WBRange?.active;
+    document.getElementById('rangeNotice').hidden = activeView !== 'overview' || !window.WBRange?.active;
     updateOverviewLoadStatus();
   }
   function usesApiData() {
@@ -829,6 +838,7 @@
     const sel = document.getElementById("periodSelect");
     if (!periods.length) {
       sel.innerHTML = `<option value="">${usesApiData() ? 'Нет готовых периодов' : 'Загрузите все обязательные отчёты'}</option>`;
+      window.WBRange?.sync(periods);
       return true;
     }
     sel.innerHTML = periods.map((p) => `<option value="${p.year}-${p.month}">${window.WBDashboard.formatPeriod(p.year, p.month)}${p.current ? ' · текущий' : ''}</option>`).join("");
@@ -836,12 +846,14 @@
     sel.value = periods.some((period) => `${period.year}-${period.month}` === requested)
       ? requested
       : window.WBDashboard.defaultPeriodValue(periods);
+    window.WBRange?.sync(periods);
     return true;
   }
 
   function refreshTrendChart() {
     const metric = window.WBDashboard.getTrendMetric(trendMetric, overviewScope);
-    document.getElementById("trendHint").textContent = `${metric.label} · последние 12 месяцев. Выберите другой показатель на карточке`;
+    const range = window.WBRange?.active;
+    document.getElementById("trendHint").textContent = `${metric.label} · ${range ? window.WBRange.label(currentTrend) : 'последние 12 месяцев'}. Выберите другой показатель на карточке`;
     const legend = document.getElementById("trendLegend");
     const item = document.createElement("span");
     const dot = document.createElement("i");
@@ -855,7 +867,7 @@
       ? "Нет данных для расчёта выбранного показателя"
       : "Загрузите отчёты, чтобы увидеть динамику";
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMetric, overviewScope);
-    document.getElementById('trendChart').setAttribute('aria-label', `${metric.label}: динамика магазина`);
+    document.getElementById('trendChart').setAttribute('aria-label', `${metric.label}: динамика магазина${range ? ' за '+window.WBRange.label(currentTrend) : ''}`);
     document.getElementById('trendValues').textContent = currentTrend.map(row => `${window.WBDashboard.formatPeriod(row.year,row.month)}: ${row[trendMetric] == null ? 'нет данных' : Number(row[trendMetric]).toLocaleString('ru-RU')} ${row[trendMetric] == null ? '' : metric.unit}`).join('; ');
   }
 
@@ -877,6 +889,7 @@
     overviewPending = pending;
     overviewLoadError = error;
     document.getElementById('periodSelect').disabled = pending || shopLoading;
+    if(document.getElementById('periodStart')) document.getElementById('periodStart').disabled = pending || shopLoading;
     if (pending || !usesApiData() || error) document.getElementById('overviewRefresh').disabled = pending;
     for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secTrend', 'secAnalytics']) document.getElementById(id)?.setAttribute('aria-busy', String(pending));
     updateOverviewSource();
@@ -917,6 +930,7 @@
     if (loading) document.getElementById('shopLoading').textContent = 'Загружаем данные магазина…';
     document.getElementById('shopLoading').hidden = !loading || activeView !== 'overview';
     document.getElementById('periodSelect').disabled = loading || overviewPending;
+    if(document.getElementById('periodStart')) document.getElementById('periodStart').disabled = loading || overviewPending;
     for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secManualExpenses', 'secTrend', 'secAnalytics']) {
       const section = document.getElementById(id);
       if (section) section.hidden = loading;
@@ -925,6 +939,7 @@
   }
 
   function resetShopDisplay() {
+    window.WBRange?.reset();
     overviewPending = false; overviewLoadError = '';
     for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secTrend', 'secAnalytics']) document.getElementById(id)?.setAttribute('aria-busy', 'false');
     periods = []; currentTrend = []; apiDisplayedPeriod = null;
@@ -954,6 +969,7 @@
     trendMetric = window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, previous, marketplace, {
       activeMetric: trendMetric,
       onSelect: selectTrendMetric,
+      comparisonLabel: window.WBRange?.active ? 'к предыдущему периоду' : undefined,
     });
   }
 
@@ -968,6 +984,7 @@
     const displayMarketplace = overviewScope;
     let loadError = '';
     try {
+      if(window.WBRange?.active) return await renderRangePeriod(request,selectedShop,displayMarketplace);
       if (usesApiData()) {
         return await renderApiPeriod(sel.value, request);
       }
@@ -1019,11 +1036,29 @@
       window.WBDashboard.renderSkuTable(document.getElementById("skuBody"), document.getElementById("skuFoot"), document.getElementById("skuHint"), document.getElementById("skuChart"), derived, prevDerived);
     } catch (error) {
       if (request !== dashboardRequest) return;
-      loadError = 'Повторите выбор площадки или периода. Если ошибка сохраняется, проверьте подключение к интернету.';
+      loadError = window.WBRange?.active ? error.message : 'Повторите выбор площадки или периода. Если ошибка сохраняется, проверьте подключение к интернету.';
+      if(window.WBRange?.active) document.getElementById('rangeNotice').textContent='Диапазон не рассчитан: проверьте полноту данных и выбранные месяцы.';
       if (!overviewPending) beginOverviewLoad();
     } finally {
       if (request === dashboardRequest && overviewPending) setOverviewPending(false, loadError);
     }
+  }
+
+  async function renderRangePeriod(request,selectedShop,scope) {
+    const range = window.WBRange, selection=range.selection(), api=usesApiData();
+    document.getElementById('rangeNotice').textContent='Считаем итоги за выбранный диапазон…';
+    const isCurrent=()=>request===dashboardRequest && shop?.id===selectedShop.id && overviewScope===scope && range.active && usesApiData()===api;
+    const result=await range.load({shop:selectedShop,scope,api,...selection,isCurrent});
+    if(!isCurrent() || !result)return;
+    renderDashboardKpis(result.derived,result.previous,scope);
+    currentTrend=result.trend;refreshTrendChart();
+    window.WBDashboard.renderExpenses(document.getElementById('expList'),document.getElementById('expTotal'),document.getElementById('expChart'),result.derived,scope,result.previous);
+    window.WBDashboard.renderSkuTable(document.getElementById('skuBody'),document.getElementById('skuFoot'),document.getElementById('skuHint'),document.getElementById('skuChart'),result.derived,result.previous);
+    showManualExpenses(result.derived,false);
+    const compared=result.previous ? `Сравнение: ${range.label(result.comparison)}.` : result.partial ? 'Текущий месяц неполный — сравнение не показываем.' : 'Для сравнения не хватает полного предыдущего периода.';
+    document.getElementById('rangeNotice').textContent=`${range.label(result.selected)} · ${result.selected.length} мес. ${compared} Правка расходов${aiAllowed ? ', ИИ-анализ' : ''}${api ? ', обновление из WB' : ''} — в режиме «Месяц».`;
+    document.getElementById('overviewHelpText').textContent='Итоги рассчитаны по сохранённым месячным данным. ДРР — все денежные рекламные расходы / общая база за период. Рентабельность — общая чистая прибыль / общая сумма продаж. Неизвестные значения не заменяются нулём.';
+    updateOverviewSource();
   }
 
   function paintApiDashboard(derived, previous, trend, ready) {
@@ -1292,7 +1327,7 @@
       await reloadOverview();
     });
     document.getElementById('overviewRefresh').addEventListener('click',async()=>{
-      if(!usesApiData()) return;
+      if(!usesApiData() || window.WBRange?.active) return;
       const button = document.getElementById('overviewRefresh');
       if(button.disabled) return;
       const selectedShop=shop.id, selectedScope=overviewScope, period=document.getElementById('periodSelect').value;
@@ -1557,7 +1592,8 @@
       } catch (e) { toast("Ошибка: " + e.message, true); }
     });
 
-    document.getElementById("periodSelect").addEventListener("change", () => renderCurrentPeriod(true));
+    window.WBRange.wire(()=>renderCurrentPeriod(true),updateOverviewSource);
+    document.getElementById("periodSelect").addEventListener("change", () => {window.WBRange.clamp();renderCurrentPeriod(true);});
     document.querySelectorAll('[data-chart-style]').forEach(button=>button.addEventListener('click',()=>{
       window.WBShell.chartStyle=button.dataset.chartStyle;
       document.querySelectorAll('[data-chart-style]').forEach(other=>{other.classList.toggle('active',other===button);other.setAttribute('aria-pressed',String(other===button))});
@@ -1565,7 +1601,7 @@
     }));
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
-      if (!aiAllowed || shopLoading || overviewPending || overviewLoadError) return;
+      if (!aiAllowed || shopLoading || overviewPending || overviewLoadError || window.WBRange?.active) return;
       const period = document.getElementById("periodSelect").value;
       if (!period) return toast("Сначала загрузите отчёты за полный период", true);
       const [year, month] = period.split("-").map(Number);
@@ -1574,11 +1610,11 @@
 
     const manualExpenseInputs = [document.getElementById("operationalExpensesInput"), document.getElementById("externalPromotionInput")];
     manualExpenseInputs.forEach((input) => input.addEventListener("input", () => {
-      document.getElementById("saveManualExpensesBtn").disabled = overviewScope === "all" || !document.getElementById("periodSelect").value;
+      document.getElementById("saveManualExpensesBtn").disabled = !!window.WBRange?.active || overviewScope === "all" || !document.getElementById("periodSelect").value;
     }));
     document.getElementById("saveManualExpensesBtn").addEventListener("click", async () => {
       const period = document.getElementById("periodSelect").value;
-      if (!period || overviewScope === "all") return;
+      if (!period || overviewScope === "all" || window.WBRange?.active) return;
       const [year, month] = period.split("-").map(Number);
       const button = document.getElementById("saveManualExpensesBtn");
       button.disabled = true;

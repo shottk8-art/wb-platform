@@ -122,6 +122,27 @@
     }
   }
 
+  // One catalogue and paginated, shop-scoped reads for the whole comparison
+  // window, rather than loading the same catalogue once for every month.
+  async function loadPeriodRange(shopId, periods, marketplace) {
+    const months = periods.map(p => ({year:Number(p.year),month:Number(p.month)}));
+    if (!months.length || months.some(p=>!Number.isInteger(p.year)||p.year<2000||p.year>2100||!Number.isInteger(p.month)||p.month<1||p.month>12)) throw new Error('Некорректный период');
+    const filter = months.map(p=>`and(year.eq.${p.year},month.eq.${p.month})`).join(',');
+    const scoped = table => withMarketplace(sb().from(table).select('*').eq('shop_id',shopId),marketplace).or(filter).order('year').order('month');
+    const [reports,skus,catalogue,ready] = await Promise.all([
+      readPages(()=>scoped('monthly_reports')),
+      readPages(()=>scoped('sku_sales').order('article').order('id')),
+      readPages(()=>sb().from('sku_costs').select('article,name,cost_price,updated_at').eq('shop_id',shopId).order('article')),
+      loadPeriods(shopId,marketplace),
+    ]);
+    const prices=costCatalogue(catalogue),costMap=new Map([...prices].map(([key,row])=>[key,row.cost_price]));
+    const names=new Map(catalogue.filter(row=>row.name).map(row=>[articleKey(row.article),row.name]));
+    const key=p=>`${p.year}-${p.month}`, available=new Set(ready.map(key)), result=new Map(months.map(p=>[key(p),{available:available.has(key(p)),report:null,skus:[],costMap}]));
+    reports.forEach(report=>{const entry=result.get(key(report));if(entry)entry.report=report;});
+    skus.forEach(row=>{const entry=result.get(key(row));if(entry)entry.skus.push({...row,name:row.name || names.get(articleKey(row.article)) || row.article});});
+    return result;
+  }
+
   async function loadTrendData(shopId, taxRate, marketplace) {
     const {data,error}=await sb().rpc('get_file_trend',{p_shop_id:shopId,p_marketplace:marketplace});
     if(error) throw error;
@@ -398,7 +419,7 @@
           ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
           <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}></${block}>
-          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${c.value != null && c.prev != null ? 'к предыдущему месяцу' : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
+          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${c.value != null && c.prev != null ? escapeHtml(interaction?.comparisonLabel || 'к предыдущему месяцу') : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
           ${asContent(c.extra || "")}
           ${interactive ? '<span class="kpi-action"><span>Смотреть динамику</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>' : ''}
         </${tag}>
@@ -592,7 +613,8 @@
     const selected = document.getElementById?.('periodSelect')?.value;
     const match = rows.findIndex(row=>`${row.year}-${row.month}`===selected);
     const active = match >= 0 ? match : rows.length - 1;
-    return rows.map((_,i)=>i===active?color:inactive);
+    const range = new Set(window.WBRange?.selectedMonths?.() || []);
+    return rows.map((row,i)=>(range.size ? range.has(`${row.year}-${row.month}`) : i===active)?color:inactive);
   }
   function renderTrend(canvas, rows, metricKey, marketplace) {
     renderKpiSparklines(document.getElementById?.('kpiRow'), rows);
@@ -616,7 +638,8 @@
       if (compact && Math.abs(value) >= 1000) return `${fmtCompact.format(value / 1000)} тыс. ₽`;
       return `${fmtMoney.format(Math.round(value))} ₽`;
     };
-    canvas.setAttribute("aria-label", `${metric.label}: динамика за последние 12 месяцев`);
+    const periodDescription=window.WBRange?.active ? window.WBRange.label(rows) || 'выбранный диапазон' : 'последние 12 месяцев';
+    canvas.setAttribute("aria-label", `${metric.label}: динамика за ${periodDescription}`);
     const config = {
       type: window.WBShell?.chartStyle === 'bar' ? 'bar' : 'line',
       data: {
@@ -698,7 +721,7 @@
 
   function renderSkuTable(tbody, tfoot, hint, canvas, d, prevD) {
     const counts = { A: 0, B: 0, C: 0 };
-    const prevRows = prevD ? new Map(prevD.skuRows.map((row) => [row.article, row])) : null;
+    const prevRows = prevD ? new Map(prevD.skuRows.map((row) => [articleKey(row.article), row])) : null;
     d.skuRows.forEach((s) => { counts[s.abc] = (counts[s.abc] || 0) + 1; });
     const search = document.getElementById("skuSearch");
     const sort = document.getElementById("skuSort");
@@ -749,7 +772,7 @@
           ? fmtMoney.format(Math.round(s.total_cost))
           : `<span class="cost-warn">не заполнено</span>`;
         const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
-        const prev = prevRows ? prevRows.get(s.article) : null;
+        const prev = prevRows ? prevRows.get(articleKey(s.article)) : null;
         const newBadge = prevRows && !prev ? `<span class="sku-new">Новый</span>` : "";
         return `
           <tr style="--row-index:${Math.min(index, 12)}">
@@ -842,5 +865,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability };
+  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadPeriodRange, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability, expenseItems };
 })();

@@ -1,0 +1,66 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const window={},context=vm.createContext({window,document:{},Intl,Map,Set,Date,console});
+for(const file of ['assets/dashboard.js','assets/period-range.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
+const d=window.WBDashboard,r=window.WBRange;
+const month=(year,month)=>({year,month});
+assert.deepEqual(JSON.parse(JSON.stringify(r.months('2025-11','2026-2'))),[month(2025,11),month(2025,12),month(2026,1),month(2026,2)]);
+assert.deepEqual(JSON.parse(JSON.stringify(r.comparison('2026-1','2026-3'))),[month(2025,10),month(2025,11),month(2025,12)]);
+assert.throws(()=>r.months('2026-9','2026-8'),/позже/);
+assert.throws(()=>r.months('2026-13','2026-13'),/Выберите/);
+const derived=(sales,ads,qty=1,article='Top-1',marketplace='wildberries')=>d.computeDerived({sales_amount:sales,orders_amount:sales*2,transfer_goods:sales*.8,transfer_total:sales*.7,bought_qty:qty,ads_spend:ads,wb_media_spend:0,external_promotion_expenses:0,operational_expenses:0,ads_promo_spend:999,marketplace},[{article,name:'Товар',bought_qty:qty,revenue:sales}],new Map([['top-1',10]]),5);
+const entries=[{marketplace:'wildberries',derived:derived(100,10)},{marketplace:'wildberries',derived:derived(900,180,2,'top-1')}];
+const total=r.aggregate(entries);
+assert.equal(total.rep.sales_amount,1000);assert.equal(total.rep.bought_qty,3);assert.equal(total.cogs,30);
+assert.equal(total.tax,50);assert.equal(total.netProfit,430,'monthly net profits are summed without deducting ads/tax twice');
+assert.equal(total.rates.drrSales,19,'weighted DRR from total advertising / sales, not 15% monthly mean');
+assert.equal(total.rates.drrOrders,9.5);assert.equal(total.rep.ads_promo_spend,1998,'bonuses do not enter DRR');
+assert.equal(total.skuRows.length,1,'article identity ignores case across months');assert.equal(total.skuRows[0].profit,970);
+assert.equal(total.skuRows[0].abc,'A');
+const apiUnknown={...entries[0].derived,isApi:true,netProfit:null,cogs:null,rep:{...entries[0].derived.rep,wb_media_spend:null},expenses:[['WB Media',null]],skuRows:[{...entries[0].derived.skuRows[0],profit:null,total_cost:null}]};
+const unknown=r.aggregate([{marketplace:'wildberries',derived:apiUnknown},entries[1]]);
+assert.equal(unknown.netProfit,null);assert.equal(unknown.cogs,null);assert.equal(unknown.rep.wb_media_spend,null);assert.equal(unknown.rates.drrSales,null);assert.equal(unknown.skuRows[0].profit,null);
+const mixed=r.aggregate([entries[0],{marketplace:'ozon',derived:derived(400,20,1,'top-1','ozon')}]);
+assert.equal(mixed.skuRows.length,2,'same article on different marketplaces must not collapse');
+assert.equal(mixed.rates.drrOrders,null,'Ozon accruals are not placed orders');assert.equal(mixed.rates.drrSales,6);
+
+async function main(){
+  let reads=0,shopIds=[];
+  const original=d.loadPeriodRange;
+  d.loadPeriodRange=async(shop,periods,marketplace)=>{reads++;shopIds.push(shop);return new Map(periods.map(p=>[`${p.year}-${p.month}`,{available:true,report:{...derived(100,10).rep,year:p.year,month:p.month},skus:[],costMap:new Map()}]));};
+  window.WBApiCabinet={currentMonth:'2026-10'};
+  const selection={shop:{id:'only-this-shop',tax_rate:0},scope:'all',api:false,start:'2026-7',end:'2026-9'};
+  const result=await r.load(selection);
+  assert.equal(result.derived.rep.sales_amount,600);assert.equal(result.trend.length,3);assert.ok(result.previous);assert.equal(reads,2,'one batch per marketplace, not one catalogue per month');assert.ok(shopIds.every(id=>id==='only-this-shop'));
+  d.loadPeriodRange=async(shop,periods)=>new Map(periods.map(p=>[`${p.year}-${p.month}`,{available:p.month!==8,report:derived(100,10).rep,skus:[],costMap:new Map()}]));
+  await assert.rejects(()=>r.load(selection),/Не хватает полных данных/);
+  d.loadPeriodRange=async(shop,periods)=>new Map(periods.map(p=>[`${p.year}-${p.month}`,{available:p.month>=7,report:derived(100,10).rep,skus:[],costMap:new Map()}]));
+  assert.equal((await r.load({...selection,scope:'wildberries'})).previous,null,'incomplete earlier coverage suppresses comparison');
+  assert.equal(await r.load({...selection,isCurrent:()=>false}),null,'abandoned selection cannot paint another shop');
+  let calls=0;
+  const cabinet={complete:true,finance:{retailAmount:100,forPay:80,bought_qty:1},economy:{payout:70,tax:0,internal_ads:10,advertising_total:10,drr_sales:10,drr_orders:5},sources:{ads:{status:'downloaded'},media:{amount:0},orders:{status:'downloaded',amount:200}},products:[],cogs:0,net_profit:60};
+  window.WBApiCabinet.overview=async()=>{calls++;return {cabinet,trend:[month(2026,8),month(2026,9)]};};
+  const api=await r.load({...selection,scope:'wildberries',api:true,start:'2026-8',end:'2026-9'});
+  assert.equal(api.derived.netProfit,120);assert.equal(api.previous,null);assert.ok(calls<=3,'unavailable historical months are not queried');
+  const partial=await r.load({...selection,scope:'wildberries',api:true,start:'2026-10',end:'2026-10'});
+  assert.equal(partial.partial,true);assert.equal(partial.previous,null);
+  d.loadPeriodRange=original;
+  // Actual paginated batch query: all rows, explicit tenant+marketplace, one catalogue.
+  const queries=[];
+  window.supabaseClient={rpc:async()=>({data:[month(2026,9)],error:null}),from(table){const q={table,eqs:[],select(){return q;},eq(k,v){q.eqs.push([k,v]);return q;},or(filter){q.filter=filter;return q;},order(){return q;},range:async(a,b)=>{queries.push({...q,a,b});return {error:null,data:table==='monthly_reports'?[{year:2026,month:9}]:table==='sku_costs'?[{article:'SKU',name:'Name',cost_price:7}]:a===0?Array.from({length:1000},(_,i)=>({year:2026,month:9,article:'SKU'+i})): [{year:2026,month:9,article:'SKU1000'}]};}};return q;}};
+  const data=await original('tenant-test',[month(2026,9)],'ozon');
+  assert.equal(data.get('2026-9').skus.length,1001);assert.equal(queries.filter(q=>q.table==='sku_costs').length,1);
+  for(const q of queries){assert.ok(q.eqs.some(([k,v])=>k==='shop_id'&&v==='tenant-test'));if(q.table!=='sku_costs'){assert.ok(q.eqs.some(([k,v])=>k==='marketplace'&&v==='ozon'));assert.equal(q.filter,'and(year.eq.2026,month.eq.9)');}}
+  context.document.getElementById=()=>null;
+  context.getComputedStyle=()=>({getPropertyValue:()=> '#123456'});
+  context.Chart=class{destroy(){}};
+  window.matchMedia=()=>({matches:true});
+  const body={innerHTML:''},foot={innerHTML:''};
+  d.renderSkuTable(body,foot,{textContent:''},{},entries[0].derived,{...entries[0].derived,skuRows:entries[0].derived.skuRows.map(row=>({...row,article:'  TOP-1  '}))});
+  assert.doesNotMatch(body.innerHTML,/sku-new/,'comparison across ranges must also ignore article case and edge spaces');
+  const labels={};
+  window.WBRange={active:true,label:()=> 'июль 2026 — сентябрь 2026'};
+  d.renderTrend({setAttribute(k,v){labels[k]=v;}},[{year:2026,month:7,sales:100}],'sales','wildberries');
+  assert.match(labels['aria-label'],/июль 2026 — сентябрь 2026/);assert.doesNotMatch(labels['aria-label'],/12 месяцев/);
+  console.log('Month range: PASS (year boundary, equal comparison, weighted rates, nulls, merged SKUs, complete coverage, source/tenant scope, stale selection, API cache budget, pagination).');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

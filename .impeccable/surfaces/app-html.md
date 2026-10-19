@@ -25,6 +25,10 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 Constraints: preserve all data isolation, accounting, API, Ozon import, AI owner restriction, empty/loading/error states and existing interactive IDs. User files and untracked duplicate assets stay untouched.
 
+## Month range extension
+
+Keep the established Corbel composition. Add Month/Range controls and labelled start/end month selectors to the overview toolbar. Range affects every analytical total, expense category, SKU and chart; compare against the immediately preceding interval of equal calendar-month length. Preserve unknowns, recompute ratios from totals, reject incomplete monthly coverage, and suppress comparisons for the current partial month. Keep monthly editing/AI and refresh actions monthly, with a concise explanation in range mode. No schema, auth, permissions or upstream synchronization changes. Cover desktop and 390px layouts in both themes; keyboard controls reuse existing selects.
+
 ## QUALITY BAR
 
 The pinned Corbel dashboard and profile screenshots are the comparative standard, not an invitation to reinterpret the product. Match the shell proportions, four-cell KPI composition with lower comparison/minichart area, aligned 365px gauge/bar panels, compact profile identity/field grid and small appearance switch. Preserve the same hierarchy in both themes and a usable 390px layout. Quantitative visuals must use actual monthly series, a zero baseline for bars, meaningful precision and explicit missing-data states. Motion follows the measured reference with reduced-motion support; static screenshots alone do not prove full motion fidelity. No demo data or unsupported account tools may be added to the production UI.

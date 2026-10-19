@@ -10,7 +10,8 @@ const fixture = `
 <script src="/assets/corbel-components.js?v=20261019-reference6"></script>
 <script src="/assets/reference.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
-<script src="/assets/dashboard.js?v=20261019-reference6"></script>
+<script src="/assets/dashboard.js?v=20261019-range3"></script>
+<script src="/assets/period-range.js?v=20261019-range2"></script>
 <script>
 const byId=id=>document.getElementById(id);
 // Deterministic still captures exercise the actual reduced-motion code path.
@@ -39,6 +40,27 @@ if(byId('salesMonth'))byId('salesMonth').innerHTML='<option>Сентябрь</op
 document.querySelector('#overviewScope [data-scope="wildberries"]')?.classList.add('active');
 document.querySelector('#reportMarketplace [data-marketplace="wildberries"]')?.classList.add('active');
 if(byId('periodSelect')) byId('periodSelect').innerHTML='<option value="2026-9">сентябрь 2026</option><option value="2026-8">август 2026</option><option value="2026-7">июль 2026</option>';
+if(byId('periodStart')) {
+  window.WBApiCabinet={currentMonth:'2026-10'};
+  const rangePeriods=[{year:2026,month:9},{year:2026,month:8},{year:2026,month:7}];
+  WBRange.sync(rangePeriods);
+  WBDashboard.loadPeriodRange=async(shop,periods,marketplace)=>new Map(periods.map(p=>{const scale=p.month/9;return [p.year+'-'+p.month,{available:true,report:{...d.rep,year:p.year,month:p.month,sales_amount:Math.round(d.rep.sales_amount*scale),transfer_goods:Math.round(d.rep.sales_amount*.8*scale),transfer_total:Math.round(d.rep.transfer_total*scale),bought_qty:Math.round(d.rep.bought_qty*scale),ads_spend:Math.round(d.rep.ads_spend*scale),external_promotion_expenses:0,operational_expenses:0,marketplace},skus:rows.slice(0,2).map(row=>({...row,bought_qty:Math.round(row.bought_qty*scale),revenue:Math.round(row.revenue*scale)})),costMap:new Map(rows.map(row=>[row.article,row.cost_price]))}];}));
+  let rangeTicket=0,rangeTrend=trend;
+  const drawRange=async()=>{
+    const ticket=++rangeTicket;
+    if(!WBRange.active){rangeTrend=trend;WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries',{onSelect:metric=>WBDashboard.renderTrend(byId('trendChart'),rangeTrend,metric,'wildberries')});drawTrend('sales');return;}
+    byId('rangeNotice').textContent='Считаем итоги…';
+    const result=await WBRange.load({shop:{id:'synthetic-preview',tax_rate:5},scope:'wildberries',api:false,...WBRange.selection(),isCurrent:()=>ticket===rangeTicket});
+    if(!result)return;rangeTrend=result.trend;
+    WBDashboard.renderKPI(byId('kpiRow'),result.derived,result.previous,'wildberries',{comparisonLabel:'к предыдущему периоду',onSelect:metric=>WBDashboard.renderTrend(byId('trendChart'),rangeTrend,metric,'wildberries')});
+    WBDashboard.renderTrend(byId('trendChart'),rangeTrend,'sales','wildberries');
+    WBDashboard.renderExpenses(byId('expList'),byId('expTotal'),byId('expChart'),result.derived,'wildberries',result.previous);
+    WBDashboard.renderSkuTable(byId('skuBody'),byId('skuFoot'),byId('skuHint'),byId('skuChart'),result.derived,result.previous);
+    byId('rangeNotice').textContent=WBRange.label(result.selected)+' · '+result.selected.length+' мес. Сравнение: '+WBRange.label(result.comparison)+'. Правка расходов, ИИ-анализ, обновление из WB — в режиме «Месяц».';
+  };
+  WBRange.wire(drawRange,()=>{byId('secManualExpenses').hidden=WBRange.active;byId('secAiAnalysis').hidden=WBRange.active;});
+  byId('periodSelect').addEventListener('change',()=>{WBRange.clamp();drawRange();});
+}
 if(byId('shareUrl')) byId('shareUrl').textContent='https://wb-platform.netlify.app/s/very-long-store-name';
 // Connected API settings must be tested too, not only the empty/disconnected form.
 if(byId('wbApiCheckBtn')) {
