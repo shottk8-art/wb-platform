@@ -45,6 +45,10 @@
 
   function getTrendMetric(key, marketplace) {
     const metric = { ...(TREND_METRICS[key] || TREND_METRICS.sales) };
+    if(typeof getComputedStyle==='function' && document.body){
+      const token=key==='profit'?'--good':key==='mediaAds'||key==='drrSales'?'--violet':key==='drrOrders'?'--warm':'--accent';
+      metric.color=getComputedStyle(document.body).getPropertyValue(token).trim() || metric.color;
+    }
     if (key === "internalAds" && marketplace === "ozon") metric.label = "Продвижение Ozon";
     if (key === "transfer" && marketplace === "wildberries") metric.label = "Итого к перечислению (WB)";
     if (key === "transfer" && marketplace === "ozon") metric.label = "К выплате после удержаний (Ozon)";
@@ -438,7 +442,7 @@
   }
 
   function renderExpenses(listEl, totalEl, canvas, d, marketplace, prevD) {
-    const palette = ["#5e5ce6", "#0a84ff", "#30b0c7", "#34c759", "#ff9f0a", "#ff6b5f", "#bf5af2", "#64d2ff", "#ac8e68", "#ff375f", "#8e8e93", "#af52de", "#00a6a6"];
+    const palette = ["#2a45cc", "#93a3ec", "#3f9c86", "#7a5aa6", "#c98a1e", "#c86e5d", "#7587bf", "#4f94a0", "#ac8e68", "#b06f91", "#8e94a9", "#9781bf", "#00a6a6"];
     const items = expenseItems(d, marketplace);
     const prevItems = prevD ? new Map(expenseItems(prevD, marketplace)) : null;
     const chartTotal = items.reduce((s,it)=>s+Math.abs(it[1] || 0),0);
@@ -493,7 +497,7 @@
         datasets: [{
           data: chartItems.map((i) => Math.abs(i.value)),
           backgroundColor: chartItems.map((i) => i.color),
-          borderColor: "#ffffff",
+          borderColor: getComputedStyle(document.body).getPropertyValue('--surface').trim() || '#ffffff',
           borderWidth: 3,
           hoverBorderWidth: 3,
           spacing: 1,
@@ -537,19 +541,19 @@
     };
     canvas.setAttribute("aria-label", `${metric.label}: динамика за последние 12 месяцев`);
     const config = {
-      type: "line",
+      type: window.WBShell?.chartStyle === 'bar' ? 'bar' : 'line',
       data: {
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
         datasets: [{
-          label: metric.label, data: values,
-          borderColor: metric.color, backgroundColor: `${metric.color}14`,
+          label: metric.label, data: values, sellerMetric: metricKey,
+          borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? metric.color : `${metric.color}14`,
           borderWidth: 2.5,
           pointRadius: singlePoint ? 5 : values.map((value, index) => value != null
             && values[index - 1] == null && values[index + 1] == null ? 4 : 0),
           pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: metric.color,
           pointBackgroundColor: metric.color,
           pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
-          fill: true, spanGaps: false,
+          fill: true, spanGaps: false, borderRadius:5, maxBarThickness:42,
         }],
       },
       options: {
@@ -584,6 +588,7 @@
     };
     const trendChart = charts.trends.get(canvas);
     if (trendChart) {
+      if(trendChart.config)trendChart.config.type = config.type;
       trendChart.data = config.data;
       trendChart.options = config.options;
       trendChart.update(reduceMotion ? "none" : undefined);
@@ -724,6 +729,29 @@
       },
     });
   }
+
+  // Repaint existing canvases only; switching appearance never reads the DB.
+  function refreshChartTheme(){
+    if(!window.Chart || typeof getComputedStyle!=='function')return;
+    const css=getComputedStyle(document.body),muted=css.getPropertyValue('--ink-mute').trim(),grid=css.getPropertyValue('--chart-grid').trim();
+    Chart.defaults.color=muted;Chart.defaults.font.family=css.fontFamily;
+    for(const chart of Object.values(Chart.instances || {})){
+      for(const axis of Object.values(chart.options.scales || {})){
+        if(axis.ticks)axis.ticks.color=muted;
+        if(axis.grid && grid)axis.grid.color=grid;
+      }
+      if(chart.config.type==='doughnut')chart.data.datasets.forEach(ds=>ds.borderColor=css.getPropertyValue('--surface').trim());
+      chart.data.datasets.forEach(ds=>{
+        if(ds.sellerMetric){
+          const color=getTrendMetric(ds.sellerMetric).color;
+          ds.borderColor=color;ds.backgroundColor=chart.config.type==='bar'?color:`${color}14`;ds.pointBorderColor=color;ds.pointBackgroundColor=color;
+        }
+      });
+      chart.update('none');
+    }
+  }
+  window.addEventListener?.('seller:themechange',refreshChartTheme);
+  if(window.Chart)document.fonts?.ready?.then(refreshChartTheme);
 
   function pluralArt(n) {
     const n10 = n % 10, n100 = n % 100;

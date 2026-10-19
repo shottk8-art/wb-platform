@@ -5,10 +5,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const fixture = `
+<script src="/assets/corbel.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/dashboard.js"></script>
 <script>
 const byId=id=>document.getElementById(id);
+// Deterministic still captures exercise the actual reduced-motion code path.
+if(location.search.includes('still=1')){const original=window.matchMedia.bind(window);window.matchMedia=query=>query.includes('prefers-reduced-motion')?{matches:true}:original(query);document.body.classList.add('fixture-static');}
 byId('loadingScreen').hidden=true;
 const screen=byId('appScreen')||byId('adminScreen')||byId(location.search.includes('login')?'authScreen':'publicScreen');
 screen.hidden=false;
@@ -19,8 +22,18 @@ const d={skuRows:rows,expenses:[['Себестоимость товара',69619
 const prev={...d,rep:{...d.rep,orders_amount:52258000,orders_qty:19000},skuRows:rows.map(r=>({...r,bought_qty:r.bought_qty-12,revenue:r.revenue-46687,profit:r.profit-59423})),expenses:[['Себестоимость товара',481112],['Очень длинное название удержания маркетплейса',291552],['WB Продвижение',242868]]};
 if(byId('skuBody')) WBDashboard.renderSkuTable(byId('skuBody'),byId('skuFoot'),byId('skuHint'),byId('skuChart'),d,prev);
 if(byId('expList')) WBDashboard.renderExpenses(byId('expList'),byId('expTotal'),byId('expChart'),d,'wildberries',prev);
-if(byId('kpiRow')) WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries');
+const trend=Array.from({length:12},(_,i)=>({year:i<2?2025:2026,month:(i+10)%12+1,sales:1250000+i*91000,profit:260000+i*47000,quantity:800+i*60,transfer:900000+i*77000,internalAds:100000+i*11000,mediaAds:10000+i*2000,promo:20000+i*1000,drrOrders:5+i*.15,drrSales:7+i*.2}));
+const drawTrend=metric=>{if(byId('trendChart'))WBDashboard.renderTrend(byId('trendChart'),trend,metric,'wildberries')};
+if(byId('kpiRow')) WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries',{onSelect:drawTrend,activeMetric:'sales'});
+drawTrend('sales');
+WBShell.setProfile({user_metadata:{full_name:'Тестовый пользователь',telegram_username:'example'}},true);
+document.querySelectorAll('[data-chart-style]').forEach(button=>button.onclick=()=>{WBShell.chartStyle=button.dataset.chartStyle;drawTrend('sales')});
 if(byId('shopSwitch')) byId('shopSwitch').innerHTML='<option>Тестовый магазин · длинное название</option>';
+if(byId('userEmail')) byId('userEmail').textContent='Тестовый пользователь';
+if(byId('salesYear'))byId('salesYear').innerHTML='<option>2026</option>';
+if(byId('salesMonth'))byId('salesMonth').innerHTML='<option>Сентябрь</option>';
+document.querySelector('#overviewScope [data-scope="wildberries"]')?.classList.add('active');
+document.querySelector('#reportMarketplace [data-marketplace="wildberries"]')?.classList.add('active');
 if(byId('periodSelect')) byId('periodSelect').innerHTML='<option>сентябрь 2026</option>';
 if(byId('shareUrl')) byId('shareUrl').textContent='https://wb-platform.netlify.app/s/very-long-store-name';
 // Connected API settings must be tested too, not only the empty/disconnected form.
@@ -45,9 +58,9 @@ if(byId('costsBody')) byId('costsBody').innerHTML=rows.map(r=>'<tr><td class="mo
 if(byId('membersBody')) byId('membersBody').innerHTML='<tr><td>@very_long_username_for_test</td><td>Ожидает входа</td><td><button class="ghost small">Убрать</button></td></tr>';
 if(byId('uploadsBody')) byId('uploadsBody').innerHTML='<tr><td>Длинное название загруженного отчета за сентябрь 2026.xlsx</td><td>Wildberries</td><td>Сводный отчет</td><td>сентябрь 2026</td><td>10.10.2026</td><td><button class="ghost small">Отменить</button></td></tr>';
 if(byId('questionsBody')) byId('questionsBody').innerHTML='<tr><td>@example</td><td>Длинный вопрос пользователя о работе финансового отчёта</td><td>10.10.2026</td><td>Новый</td><td><button class="ghost small">Закрыть</button></td></tr>';
-const activate=()=>{const route=location.hash.slice(1)||'overview';document.querySelectorAll('.app-view').forEach(e=>{const active=e.dataset.view===route;e.hidden=!active;e.classList.toggle('is-active',active)});screen.classList.remove('menu-open');if(byId('pageTitle'))byId('pageTitle').textContent=({overview:'Обзор',reports:'Отчёты',costs:'Себестоимость',team:'Команда',settings:'Настройки'})[route];window.scrollTo(0,0)};
+const activate=()=>{const route=location.hash.slice(1)||'overview';document.querySelectorAll('.app-view').forEach(e=>{const active=e.dataset.view===route;e.hidden=!active;e.classList.toggle('is-active',active)});document.querySelectorAll('.side-menu [data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===route));screen.classList.remove('menu-open');if(byId('overviewControls'))byId('overviewControls').hidden=route!=='overview';if(byId('pageTitle'))byId('pageTitle').textContent=({overview:'Обзор',reports:'Отчёты',costs:'Себестоимость',team:'Команда',settings:'Настройки',account:'Учётная запись'})[route];window.scrollTo(0,0)};
 if(byId('appScreen')){activate();window.addEventListener('hashchange',activate);byId('mobileMenuBtn').onclick=()=>screen.classList.toggle('menu-open');byId('menuScrim').onclick=()=>screen.classList.remove('menu-open');byId('askQuestionBtn').onclick=()=>{screen.classList.remove('menu-open');byId('questionModal').hidden=false};byId('questionCancelBtn').onclick=()=>byId('questionModal').hidden=true;document.querySelectorAll('.collapse-btn').forEach(b=>b.onclick=()=>b.closest('section').classList.toggle('collapsed'));}
-</script>`;
+</script><style>.fixture-static .app-view{animation:none!important}.fixture-static{scroll-behavior:auto!important}</style>`;
 http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1');
   const pathname=url.pathname==='/'?'/app.html':decodeURIComponent(url.pathname);

@@ -13,14 +13,13 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#f5f5f7">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
+<link rel="stylesheet" href="/assets/corbel.css?v=20261019-1">
+<script src="/assets/corbel.js?v=20261019-1"></script>
 </head>
-<body>
+<body class="corbel">
 
 <svg class="icon-sprite" aria-hidden="true">
   <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"/></symbol>
@@ -60,11 +59,13 @@
         <span class="marketplace-badge" id="marketplaceBadge">Wildberries</span>
       </div>
       <nav class="side-menu" aria-label="Основная навигация">
+        <p class="nav-group-label">Рабочее пространство</p>
         <a class="active" href="#overview" data-view="overview"><svg class="icon"><use href="#icon-dashboard"/></svg><span>Обзор</span></a>
         <a href="#reports" data-view="reports"><svg class="icon"><use href="#icon-upload"/></svg><span>Отчёты</span></a>
         <a href="#costs" data-view="costs"><svg class="icon"><use href="#icon-store"/></svg><span>Себестоимость</span></a>
         <a href="#team" data-view="team"><svg class="icon"><use href="#icon-people"/></svg><span>Команда</span></a>
         <a href="#settings" data-view="settings"><svg class="icon"><use href="#icon-settings"/></svg><span>Настройки</span></a>
+        <a href="#account" data-view="account"><svg class="icon"><use href="#icon-people"/></svg><span>Учётная запись</span></a>
       </nav>
       <div class="sidebar-actions">
         <button class="sidebar-action" id="newShopBtn"><svg class="icon"><use href="#icon-plus"/></svg>Новый магазин</button>
@@ -118,6 +119,10 @@
 
     <div class="page-heading">
       <div><div class="page-title-row"><h1 id="pageTitle">Обзор</h1><span class="metric-help" id="overviewHelp" hidden><button type="button" class="help-button" aria-label="Как рассчитаны показатели" aria-expanded="false" aria-controls="overviewHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="overviewHelpText" role="tooltip">Продажи учитывают возвраты. Из выплаты вычитаются себестоимость, налог и денежные расходы. Бонусы показаны справочно.</span></span></div><p id="pageSubtitle">Главные показатели магазина за выбранный месяц</p></div>
+      <div class="shell-actions">
+        <button class="shell-icon-button" type="button" data-theme-toggle aria-label="Включить тёмную тему" aria-pressed="false"><svg data-moon viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg><svg data-sun viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
+        <a class="profile-link" href="#account" data-open-view="account" aria-label="Открыть учётную запись"><span data-profile-avatar>—</span></a>
+      </div>
       <div class="overview-controls" id="overviewControls">
         <div class="segmented-control" id="overviewScope" aria-label="Показывать данные">
           <button type="button" data-scope="wildberries">Wildberries</button>
@@ -137,6 +142,31 @@
 
     <p class="hint" id="shopLoading" role="status" aria-live="polite" hidden>Загружаем данные магазина…</p>
 
+    <section class="section app-view" id="secAccount" data-view="account">
+      <nav class="settings-tabs" aria-label="Разделы настроек"><a href="#account" data-open-view="account" aria-current="page">Профиль</a><a href="#settings" data-open-view="settings">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
+      <div class="card profile-grid">
+        <div class="profile-description"><h2>Ваш профиль</h2><p>Учётная запись, с которой вы входите в платформу и работаете с магазинами.</p></div>
+        <div>
+          <div class="profile-identity"><span class="profile-avatar" data-profile-avatar>—</span><div><strong data-profile-name>—</strong><p>Вход через Telegram</p></div></div>
+          <div class="profile-fields">
+            <div><label for="profileName">Имя</label><input id="profileName" readonly aria-readonly="true" value="—"></div>
+            <div><label for="profileTelegram">Telegram</label><input id="profileTelegram" readonly aria-readonly="true" value="—"></div>
+            <div><label for="profileRole">Роль в выбранном магазине</label><input id="profileRole" readonly aria-readonly="true" value="—"></div>
+          </div>
+          <p class="profile-note">Имя и ник приходят из Telegram. Чтобы изменить их, обновите профиль в Telegram и войдите в платформу заново.</p>
+          <a class="profile-telegram" id="profileTelegramLink" target="_blank" rel="noopener noreferrer" hidden>Открыть профиль в Telegram</a>
+        </div>
+      </div>
+      <div class="card profile-grid" style="margin-top:20px">
+        <div class="profile-description"><h2>Оформление</h2><p>Выберите комфортную тему. Изменение применяется сразу и сохраняется на этом устройстве.</p></div>
+        <div class="appearance-options">
+          <button class="appearance-option" type="button" data-theme-choice="light" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Светлая</button>
+          <button class="appearance-option" type="button" data-theme-choice="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>Тёмная</button>
+        </div>
+      </div>
+    </section>
+
+    <nav class="section app-view settings-tabs" data-view="settings" aria-label="Разделы настроек"><a href="#account" data-open-view="account">Профиль</a><a href="#settings" data-open-view="settings" aria-current="page">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
     <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card settings-share-card">
@@ -336,6 +366,20 @@
       <div class="kpi-row" id="kpiRow"></div>
     </section>
 
+    <section class="section app-view" id="secTrend" data-view="overview">
+      <div class="section-head">
+        <h2>Динамика магазина</h2>
+        <span class="hint" id="trendHint" aria-live="polite">Нажмите на карточку показателя, чтобы увидеть его динамику</span>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-toolbar">
+          <div class="trend-legend" id="trendLegend" aria-hidden="true"><span><i class="trend-dot trend-dot--sales"></i>Сумма продаж</span></div>
+          <div class="segmented-control chart-style" aria-label="Вид графика"><button type="button" data-chart-style="line" class="active" aria-pressed="true">Линия</button><button type="button" data-chart-style="bar" aria-pressed="false">Столбцы</button></div>
+        </div>
+        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев" aria-describedby="trendValues"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div><div id="trendValues" class="sr-only" aria-live="polite"></div>
+      </div>
+    </section>
+
     <section class="section app-view" id="secAiAnalysis" data-view="overview">
       <div class="section-head"><h2>AI-анализ результатов</h2><span class="hint">выводы, риски и следующие шаги по выбранному магазину, месяцу и площадке</span></div>
       <div class="card ai-analysis-card" id="aiAnalysisCard" data-state="idle">
@@ -376,21 +420,6 @@
           </div>
           <button class="primary" id="saveManualExpensesBtn" disabled>Сохранить</button>
         </div>
-      </div>
-    </section>
-
-    <section class="section app-view" id="secTrend" data-view="overview">
-      <div class="section-head">
-        <h2>Динамика магазина</h2>
-        <span class="hint" id="trendHint" aria-live="polite">Нажмите на карточку показателя, чтобы увидеть его динамику</span>
-      </div>
-      <div class="card trend-card">
-        <div class="trend-toolbar">
-          <div class="trend-legend" id="trendLegend" aria-hidden="true">
-            <span><i class="trend-dot trend-dot--sales"></i>Сумма продаж</span>
-          </div>
-        </div>
-        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев" aria-describedby="trendValues"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div><div id="trendValues" class="sr-only" aria-live="polite"></div>
       </div>
     </section>
 
@@ -482,7 +511,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/dashboard.js?v=20261012-no-orders1"></script>
+<script src="/assets/dashboard.js?v=20261019-corbel1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -510,6 +539,7 @@
     costs: { title: "Себестоимость", subtitle: "Укажите закупочную цену товаров для точного расчёта прибыли" },
     team: { title: "Команда", subtitle: "Управляйте доступом сотрудников к данным магазина" },
     settings: { title: "Настройки", subtitle: "Налог, публичная витрина и управление магазином" },
+    account: { title: "Учётная запись", subtitle: "Ваш профиль и оформление платформы" },
   };
 
   function isOwner() {
@@ -699,6 +729,7 @@
     // владелец: RLS всё равно отклонит эти действия от участника, поэтому
     // прячем элементы управления, чтобы не показывать ложные ошибки.
     const owner = isOwner();
+    window.WBShell?.setProfile(session.user, owner);
     window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
     window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
     updateOverviewSource();
@@ -1301,10 +1332,10 @@
     };
     document.getElementById("menuScrim").addEventListener("click", closeMobileMenu);
     document.addEventListener("keydown", event => { if (event.key === "Escape") closeMobileMenu(); });
-    document.querySelectorAll(".side-menu [data-view]").forEach((link) => {
+    document.querySelectorAll(".side-menu [data-view], [data-open-view]").forEach((link) => {
       link.addEventListener("click", (event) => {
         event.preventDefault();
-        setActiveView(link.dataset.view);
+        setActiveView(link.dataset.view || link.dataset.openView);
         closeMobileMenu();
       });
     });
@@ -1509,6 +1540,11 @@
     });
 
     document.getElementById("periodSelect").addEventListener("change", () => renderCurrentPeriod(true));
+    document.querySelectorAll('[data-chart-style]').forEach(button=>button.addEventListener('click',()=>{
+      window.WBShell.chartStyle=button.dataset.chartStyle;
+      document.querySelectorAll('[data-chart-style]').forEach(other=>{other.classList.toggle('active',other===button);other.setAttribute('aria-pressed',String(other===button))});
+      refreshTrendChart();
+    }));
 
     document.getElementById("aiAnalyzeBtn").addEventListener("click", async () => {
       if (!aiAllowed || shopLoading || overviewPending || overviewLoadError) return;

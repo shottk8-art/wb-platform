@@ -1,0 +1,931 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T08:38:05Z",
+  "title": "Design System: Панель продавца",
+  "extensions": {
+    "colorMeta": {
+      "light-page": {
+        "role": "neutral",
+        "displayName": "Светлая · page",
+        "canonical": "#dfe4f4",
+        "tonalRamp": [
+          "oklch(0.15 0.0224 272.05)",
+          "oklch(0.26 0.0224 272.05)",
+          "oklch(0.38 0.0224 272.05)",
+          "oklch(0.49 0.0224 272.05)",
+          "oklch(0.61 0.0224 272.05)",
+          "oklch(0.72 0.0224 272.05)",
+          "oklch(0.84 0.0224 272.05)",
+          "oklch(0.95 0.0224 272.05)"
+        ]
+      },
+      "light-panel": {
+        "role": "neutral",
+        "displayName": "Светлая · panel",
+        "canonical": "#f6f7f9",
+        "tonalRamp": [
+          "oklch(0.15 0.0029 264.54)",
+          "oklch(0.26 0.0029 264.54)",
+          "oklch(0.38 0.0029 264.54)",
+          "oklch(0.49 0.0029 264.54)",
+          "oklch(0.61 0.0029 264.54)",
+          "oklch(0.72 0.0029 264.54)",
+          "oklch(0.84 0.0029 264.54)",
+          "oklch(0.95 0.0029 264.54)"
+        ]
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Светлая · surface",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(0.15 0.0000 89.88)",
+          "oklch(0.26 0.0000 89.88)",
+          "oklch(0.38 0.0000 89.88)",
+          "oklch(0.49 0.0000 89.88)",
+          "oklch(0.61 0.0000 89.88)",
+          "oklch(0.72 0.0000 89.88)",
+          "oklch(0.84 0.0000 89.88)",
+          "oklch(0.95 0.0000 89.88)"
+        ]
+      },
+      "light-surface-2": {
+        "role": "neutral",
+        "displayName": "Светлая · surface-2",
+        "canonical": "#f2f4f7",
+        "tonalRamp": [
+          "oklch(0.15 0.0045 258.32)",
+          "oklch(0.26 0.0045 258.32)",
+          "oklch(0.38 0.0045 258.32)",
+          "oklch(0.49 0.0045 258.32)",
+          "oklch(0.61 0.0045 258.32)",
+          "oklch(0.72 0.0045 258.32)",
+          "oklch(0.84 0.0045 258.32)",
+          "oklch(0.95 0.0045 258.32)"
+        ]
+      },
+      "light-line": {
+        "role": "neutral",
+        "displayName": "Светлая · line",
+        "canonical": "#161b3017",
+        "tonalRamp": [
+          "oklch(0.15 0.0415 272.58)",
+          "oklch(0.26 0.0415 272.58)",
+          "oklch(0.38 0.0415 272.58)",
+          "oklch(0.49 0.0415 272.58)",
+          "oklch(0.61 0.0415 272.58)",
+          "oklch(0.72 0.0415 272.58)",
+          "oklch(0.84 0.0415 272.58)",
+          "oklch(0.95 0.0415 272.58)"
+        ]
+      },
+      "light-line-strong": {
+        "role": "neutral",
+        "displayName": "Светлая · line-strong",
+        "canonical": "#161b3029",
+        "tonalRamp": [
+          "oklch(0.15 0.0415 272.58)",
+          "oklch(0.26 0.0415 272.58)",
+          "oklch(0.38 0.0415 272.58)",
+          "oklch(0.49 0.0415 272.58)",
+          "oklch(0.61 0.0415 272.58)",
+          "oklch(0.72 0.0415 272.58)",
+          "oklch(0.84 0.0415 272.58)",
+          "oklch(0.95 0.0415 272.58)"
+        ]
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Светлая · ink",
+        "canonical": "#161b30",
+        "tonalRamp": [
+          "oklch(0.15 0.0415 272.58)",
+          "oklch(0.26 0.0415 272.58)",
+          "oklch(0.38 0.0415 272.58)",
+          "oklch(0.49 0.0415 272.58)",
+          "oklch(0.61 0.0415 272.58)",
+          "oklch(0.72 0.0415 272.58)",
+          "oklch(0.84 0.0415 272.58)",
+          "oklch(0.95 0.0415 272.58)"
+        ]
+      },
+      "light-ink-soft": {
+        "role": "neutral",
+        "displayName": "Светлая · ink-soft",
+        "canonical": "#4b5168",
+        "tonalRamp": [
+          "oklch(0.15 0.0387 273.32)",
+          "oklch(0.26 0.0387 273.32)",
+          "oklch(0.38 0.0387 273.32)",
+          "oklch(0.49 0.0387 273.32)",
+          "oklch(0.61 0.0387 273.32)",
+          "oklch(0.72 0.0387 273.32)",
+          "oklch(0.84 0.0387 273.32)",
+          "oklch(0.95 0.0387 273.32)"
+        ]
+      },
+      "light-ink-mute": {
+        "role": "neutral",
+        "displayName": "Светлая · ink-mute",
+        "canonical": "#676d84",
+        "tonalRamp": [
+          "oklch(0.15 0.0367 273.63)",
+          "oklch(0.26 0.0367 273.63)",
+          "oklch(0.38 0.0367 273.63)",
+          "oklch(0.49 0.0367 273.63)",
+          "oklch(0.61 0.0367 273.63)",
+          "oklch(0.72 0.0367 273.63)",
+          "oklch(0.84 0.0367 273.63)",
+          "oklch(0.95 0.0367 273.63)"
+        ]
+      },
+      "light-brand": {
+        "role": "primary",
+        "displayName": "Светлая · brand",
+        "canonical": "#161b30",
+        "tonalRamp": [
+          "oklch(0.15 0.0415 272.58)",
+          "oklch(0.26 0.0415 272.58)",
+          "oklch(0.38 0.0415 272.58)",
+          "oklch(0.49 0.0415 272.58)",
+          "oklch(0.61 0.0415 272.58)",
+          "oklch(0.72 0.0415 272.58)",
+          "oklch(0.84 0.0415 272.58)",
+          "oklch(0.95 0.0415 272.58)"
+        ]
+      },
+      "light-brand-soft": {
+        "role": "primary",
+        "displayName": "Светлая · brand-soft",
+        "canonical": "#2a45cc",
+        "tonalRamp": [
+          "oklch(0.15 0.2094 267.84)",
+          "oklch(0.26 0.2094 267.84)",
+          "oklch(0.38 0.2094 267.84)",
+          "oklch(0.49 0.2094 267.84)",
+          "oklch(0.61 0.2094 267.84)",
+          "oklch(0.72 0.2094 267.84)",
+          "oklch(0.84 0.2094 267.84)",
+          "oklch(0.95 0.2094 267.84)"
+        ]
+      },
+      "light-accent": {
+        "role": "primary",
+        "displayName": "Светлая · accent",
+        "canonical": "#2a45cc",
+        "tonalRamp": [
+          "oklch(0.15 0.2094 267.84)",
+          "oklch(0.26 0.2094 267.84)",
+          "oklch(0.38 0.2094 267.84)",
+          "oklch(0.49 0.2094 267.84)",
+          "oklch(0.61 0.2094 267.84)",
+          "oklch(0.72 0.2094 267.84)",
+          "oklch(0.84 0.2094 267.84)",
+          "oklch(0.95 0.2094 267.84)"
+        ]
+      },
+      "light-accent-soft": {
+        "role": "primary",
+        "displayName": "Светлая · accent-soft",
+        "canonical": "#e4e9fb",
+        "tonalRamp": [
+          "oklch(0.15 0.0249 273.50)",
+          "oklch(0.26 0.0249 273.50)",
+          "oklch(0.38 0.0249 273.50)",
+          "oklch(0.49 0.0249 273.50)",
+          "oklch(0.61 0.0249 273.50)",
+          "oklch(0.72 0.0249 273.50)",
+          "oklch(0.84 0.0249 273.50)",
+          "oklch(0.95 0.0249 273.50)"
+        ]
+      },
+      "light-good": {
+        "role": "secondary",
+        "displayName": "Светлая · good",
+        "canonical": "#2b7a64",
+        "tonalRamp": [
+          "oklch(0.15 0.0845 171.31)",
+          "oklch(0.26 0.0845 171.31)",
+          "oklch(0.38 0.0845 171.31)",
+          "oklch(0.49 0.0845 171.31)",
+          "oklch(0.61 0.0845 171.31)",
+          "oklch(0.72 0.0845 171.31)",
+          "oklch(0.84 0.0845 171.31)",
+          "oklch(0.95 0.0845 171.31)"
+        ]
+      },
+      "light-good-bg": {
+        "role": "secondary",
+        "displayName": "Светлая · good-bg",
+        "canonical": "#e0efe9",
+        "tonalRamp": [
+          "oklch(0.15 0.0178 170.07)",
+          "oklch(0.26 0.0178 170.07)",
+          "oklch(0.38 0.0178 170.07)",
+          "oklch(0.49 0.0178 170.07)",
+          "oklch(0.61 0.0178 170.07)",
+          "oklch(0.72 0.0178 170.07)",
+          "oklch(0.84 0.0178 170.07)",
+          "oklch(0.95 0.0178 170.07)"
+        ]
+      },
+      "light-bad": {
+        "role": "secondary",
+        "displayName": "Светлая · bad",
+        "canonical": "#b0412b",
+        "tonalRamp": [
+          "oklch(0.15 0.1495 33.11)",
+          "oklch(0.26 0.1495 33.11)",
+          "oklch(0.38 0.1495 33.11)",
+          "oklch(0.49 0.1495 33.11)",
+          "oklch(0.61 0.1495 33.11)",
+          "oklch(0.72 0.1495 33.11)",
+          "oklch(0.84 0.1495 33.11)",
+          "oklch(0.95 0.1495 33.11)"
+        ]
+      },
+      "light-bad-bg": {
+        "role": "secondary",
+        "displayName": "Светлая · bad-bg",
+        "canonical": "#f7e6e1",
+        "tonalRamp": [
+          "oklch(0.15 0.0198 37.03)",
+          "oklch(0.26 0.0198 37.03)",
+          "oklch(0.38 0.0198 37.03)",
+          "oklch(0.49 0.0198 37.03)",
+          "oklch(0.61 0.0198 37.03)",
+          "oklch(0.72 0.0198 37.03)",
+          "oklch(0.84 0.0198 37.03)",
+          "oklch(0.95 0.0198 37.03)"
+        ]
+      },
+      "light-violet": {
+        "role": "secondary",
+        "displayName": "Светлая · violet",
+        "canonical": "#7a5aa6",
+        "tonalRamp": [
+          "oklch(0.15 0.1196 301.93)",
+          "oklch(0.26 0.1196 301.93)",
+          "oklch(0.38 0.1196 301.93)",
+          "oklch(0.49 0.1196 301.93)",
+          "oklch(0.61 0.1196 301.93)",
+          "oklch(0.72 0.1196 301.93)",
+          "oklch(0.84 0.1196 301.93)",
+          "oklch(0.95 0.1196 301.93)"
+        ]
+      },
+      "light-violet-bg": {
+        "role": "secondary",
+        "displayName": "Светлая · violet-bg",
+        "canonical": "#efe9f6",
+        "tonalRamp": [
+          "oklch(0.15 0.0184 306.66)",
+          "oklch(0.26 0.0184 306.66)",
+          "oklch(0.38 0.0184 306.66)",
+          "oklch(0.49 0.0184 306.66)",
+          "oklch(0.61 0.0184 306.66)",
+          "oklch(0.72 0.0184 306.66)",
+          "oklch(0.84 0.0184 306.66)",
+          "oklch(0.95 0.0184 306.66)"
+        ]
+      },
+      "light-warm": {
+        "role": "secondary",
+        "displayName": "Светлая · warm",
+        "canonical": "#946415",
+        "tonalRamp": [
+          "oklch(0.15 0.1074 73.61)",
+          "oklch(0.26 0.1074 73.61)",
+          "oklch(0.38 0.1074 73.61)",
+          "oklch(0.49 0.1074 73.61)",
+          "oklch(0.61 0.1074 73.61)",
+          "oklch(0.72 0.1074 73.61)",
+          "oklch(0.84 0.1074 73.61)",
+          "oklch(0.95 0.1074 73.61)"
+        ]
+      },
+      "light-warm-bg": {
+        "role": "secondary",
+        "displayName": "Светлая · warm-bg",
+        "canonical": "#f8eeda",
+        "tonalRamp": [
+          "oklch(0.15 0.0285 84.59)",
+          "oklch(0.26 0.0285 84.59)",
+          "oklch(0.38 0.0285 84.59)",
+          "oklch(0.49 0.0285 84.59)",
+          "oklch(0.61 0.0285 84.59)",
+          "oklch(0.72 0.0285 84.59)",
+          "oklch(0.84 0.0285 84.59)",
+          "oklch(0.95 0.0285 84.59)"
+        ]
+      },
+      "light-on-brand": {
+        "role": "primary",
+        "displayName": "Светлая · on-brand",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(0.15 0.0000 89.88)",
+          "oklch(0.26 0.0000 89.88)",
+          "oklch(0.38 0.0000 89.88)",
+          "oklch(0.49 0.0000 89.88)",
+          "oklch(0.61 0.0000 89.88)",
+          "oklch(0.72 0.0000 89.88)",
+          "oklch(0.84 0.0000 89.88)",
+          "oklch(0.95 0.0000 89.88)"
+        ]
+      },
+      "light-chart-grid": {
+        "role": "neutral",
+        "displayName": "Светлая · chart-grid",
+        "canonical": "#161b3017",
+        "tonalRamp": [
+          "oklch(0.15 0.0415 272.58)",
+          "oklch(0.26 0.0415 272.58)",
+          "oklch(0.38 0.0415 272.58)",
+          "oklch(0.49 0.0415 272.58)",
+          "oklch(0.61 0.0415 272.58)",
+          "oklch(0.72 0.0415 272.58)",
+          "oklch(0.84 0.0415 272.58)",
+          "oklch(0.95 0.0415 272.58)"
+        ]
+      },
+      "dark-page": {
+        "role": "neutral",
+        "displayName": "Тёмная · page",
+        "canonical": "#0f1430",
+        "tonalRamp": [
+          "oklch(0.15 0.0557 272.91)",
+          "oklch(0.26 0.0557 272.91)",
+          "oklch(0.38 0.0557 272.91)",
+          "oklch(0.49 0.0557 272.91)",
+          "oklch(0.61 0.0557 272.91)",
+          "oklch(0.72 0.0557 272.91)",
+          "oklch(0.84 0.0557 272.91)",
+          "oklch(0.95 0.0557 272.91)"
+        ]
+      },
+      "dark-panel": {
+        "role": "neutral",
+        "displayName": "Тёмная · panel",
+        "canonical": "#10131f",
+        "tonalRamp": [
+          "oklch(0.15 0.0249 273.04)",
+          "oklch(0.26 0.0249 273.04)",
+          "oklch(0.38 0.0249 273.04)",
+          "oklch(0.49 0.0249 273.04)",
+          "oklch(0.61 0.0249 273.04)",
+          "oklch(0.72 0.0249 273.04)",
+          "oklch(0.84 0.0249 273.04)",
+          "oklch(0.95 0.0249 273.04)"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Тёмная · surface",
+        "canonical": "#161a29",
+        "tonalRamp": [
+          "oklch(0.15 0.0301 272.29)",
+          "oklch(0.26 0.0301 272.29)",
+          "oklch(0.38 0.0301 272.29)",
+          "oklch(0.49 0.0301 272.29)",
+          "oklch(0.61 0.0301 272.29)",
+          "oklch(0.72 0.0301 272.29)",
+          "oklch(0.84 0.0301 272.29)",
+          "oklch(0.95 0.0301 272.29)"
+        ]
+      },
+      "dark-surface-2": {
+        "role": "neutral",
+        "displayName": "Тёмная · surface-2",
+        "canonical": "#1c2133",
+        "tonalRamp": [
+          "oklch(0.15 0.0350 271.80)",
+          "oklch(0.26 0.0350 271.80)",
+          "oklch(0.38 0.0350 271.80)",
+          "oklch(0.49 0.0350 271.80)",
+          "oklch(0.61 0.0350 271.80)",
+          "oklch(0.72 0.0350 271.80)",
+          "oklch(0.84 0.0350 271.80)",
+          "oklch(0.95 0.0350 271.80)"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Тёмная · line",
+        "canonical": "#e1e6fa17",
+        "tonalRamp": [
+          "oklch(0.15 0.0276 274.65)",
+          "oklch(0.26 0.0276 274.65)",
+          "oklch(0.38 0.0276 274.65)",
+          "oklch(0.49 0.0276 274.65)",
+          "oklch(0.61 0.0276 274.65)",
+          "oklch(0.72 0.0276 274.65)",
+          "oklch(0.84 0.0276 274.65)",
+          "oklch(0.95 0.0276 274.65)"
+        ]
+      },
+      "dark-line-strong": {
+        "role": "neutral",
+        "displayName": "Тёмная · line-strong",
+        "canonical": "#e1e6fa2b",
+        "tonalRamp": [
+          "oklch(0.15 0.0276 274.65)",
+          "oklch(0.26 0.0276 274.65)",
+          "oklch(0.38 0.0276 274.65)",
+          "oklch(0.49 0.0276 274.65)",
+          "oklch(0.61 0.0276 274.65)",
+          "oklch(0.72 0.0276 274.65)",
+          "oklch(0.84 0.0276 274.65)",
+          "oklch(0.95 0.0276 274.65)"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Тёмная · ink",
+        "canonical": "#e9ecf7",
+        "tonalRamp": [
+          "oklch(0.15 0.0151 273.85)",
+          "oklch(0.26 0.0151 273.85)",
+          "oklch(0.38 0.0151 273.85)",
+          "oklch(0.49 0.0151 273.85)",
+          "oklch(0.61 0.0151 273.85)",
+          "oklch(0.72 0.0151 273.85)",
+          "oklch(0.84 0.0151 273.85)",
+          "oklch(0.95 0.0151 273.85)"
+        ]
+      },
+      "dark-ink-soft": {
+        "role": "neutral",
+        "displayName": "Тёмная · ink-soft",
+        "canonical": "#b1b8d0",
+        "tonalRamp": [
+          "oklch(0.15 0.0349 272.68)",
+          "oklch(0.26 0.0349 272.68)",
+          "oklch(0.38 0.0349 272.68)",
+          "oklch(0.49 0.0349 272.68)",
+          "oklch(0.61 0.0349 272.68)",
+          "oklch(0.72 0.0349 272.68)",
+          "oklch(0.84 0.0349 272.68)",
+          "oklch(0.95 0.0349 272.68)"
+        ]
+      },
+      "dark-ink-mute": {
+        "role": "neutral",
+        "displayName": "Тёмная · ink-mute",
+        "canonical": "#9aa3bf",
+        "tonalRamp": [
+          "oklch(0.15 0.0420 271.26)",
+          "oklch(0.26 0.0420 271.26)",
+          "oklch(0.38 0.0420 271.26)",
+          "oklch(0.49 0.0420 271.26)",
+          "oklch(0.61 0.0420 271.26)",
+          "oklch(0.72 0.0420 271.26)",
+          "oklch(0.84 0.0420 271.26)",
+          "oklch(0.95 0.0420 271.26)"
+        ]
+      },
+      "dark-brand": {
+        "role": "primary",
+        "displayName": "Тёмная · brand",
+        "canonical": "#dce3ff",
+        "tonalRamp": [
+          "oklch(0.15 0.0389 274.48)",
+          "oklch(0.26 0.0389 274.48)",
+          "oklch(0.38 0.0389 274.48)",
+          "oklch(0.49 0.0389 274.48)",
+          "oklch(0.61 0.0389 274.48)",
+          "oklch(0.72 0.0389 274.48)",
+          "oklch(0.84 0.0389 274.48)",
+          "oklch(0.95 0.0389 274.48)"
+        ]
+      },
+      "dark-brand-soft": {
+        "role": "primary",
+        "displayName": "Тёмная · brand-soft",
+        "canonical": "#a9b6f4",
+        "tonalRamp": [
+          "oklch(0.15 0.0896 275.01)",
+          "oklch(0.26 0.0896 275.01)",
+          "oklch(0.38 0.0896 275.01)",
+          "oklch(0.49 0.0896 275.01)",
+          "oklch(0.61 0.0896 275.01)",
+          "oklch(0.72 0.0896 275.01)",
+          "oklch(0.84 0.0896 275.01)",
+          "oklch(0.95 0.0896 275.01)"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Тёмная · accent",
+        "canonical": "#7088f0",
+        "tonalRamp": [
+          "oklch(0.15 0.1567 271.70)",
+          "oklch(0.26 0.1567 271.70)",
+          "oklch(0.38 0.1567 271.70)",
+          "oklch(0.49 0.1567 271.70)",
+          "oklch(0.61 0.1567 271.70)",
+          "oklch(0.72 0.1567 271.70)",
+          "oklch(0.84 0.1567 271.70)",
+          "oklch(0.95 0.1567 271.70)"
+        ]
+      },
+      "dark-accent-soft": {
+        "role": "primary",
+        "displayName": "Тёмная · accent-soft",
+        "canonical": "#7088f026",
+        "tonalRamp": [
+          "oklch(0.15 0.1567 271.70)",
+          "oklch(0.26 0.1567 271.70)",
+          "oklch(0.38 0.1567 271.70)",
+          "oklch(0.49 0.1567 271.70)",
+          "oklch(0.61 0.1567 271.70)",
+          "oklch(0.72 0.1567 271.70)",
+          "oklch(0.84 0.1567 271.70)",
+          "oklch(0.95 0.1567 271.70)"
+        ]
+      },
+      "dark-good": {
+        "role": "secondary",
+        "displayName": "Тёмная · good",
+        "canonical": "#6fd0b2",
+        "tonalRamp": [
+          "oklch(0.15 0.1026 171.29)",
+          "oklch(0.26 0.1026 171.29)",
+          "oklch(0.38 0.1026 171.29)",
+          "oklch(0.49 0.1026 171.29)",
+          "oklch(0.61 0.1026 171.29)",
+          "oklch(0.72 0.1026 171.29)",
+          "oklch(0.84 0.1026 171.29)",
+          "oklch(0.95 0.1026 171.29)"
+        ]
+      },
+      "dark-good-bg": {
+        "role": "secondary",
+        "displayName": "Тёмная · good-bg",
+        "canonical": "#6fd0b221",
+        "tonalRamp": [
+          "oklch(0.15 0.1026 171.29)",
+          "oklch(0.26 0.1026 171.29)",
+          "oklch(0.38 0.1026 171.29)",
+          "oklch(0.49 0.1026 171.29)",
+          "oklch(0.61 0.1026 171.29)",
+          "oklch(0.72 0.1026 171.29)",
+          "oklch(0.84 0.1026 171.29)",
+          "oklch(0.95 0.1026 171.29)"
+        ]
+      },
+      "dark-bad": {
+        "role": "secondary",
+        "displayName": "Тёмная · bad",
+        "canonical": "#f08c78",
+        "tonalRamp": [
+          "oklch(0.15 0.1260 32.23)",
+          "oklch(0.26 0.1260 32.23)",
+          "oklch(0.38 0.1260 32.23)",
+          "oklch(0.49 0.1260 32.23)",
+          "oklch(0.61 0.1260 32.23)",
+          "oklch(0.72 0.1260 32.23)",
+          "oklch(0.84 0.1260 32.23)",
+          "oklch(0.95 0.1260 32.23)"
+        ]
+      },
+      "dark-bad-bg": {
+        "role": "secondary",
+        "displayName": "Тёмная · bad-bg",
+        "canonical": "#f08c7821",
+        "tonalRamp": [
+          "oklch(0.15 0.1260 32.23)",
+          "oklch(0.26 0.1260 32.23)",
+          "oklch(0.38 0.1260 32.23)",
+          "oklch(0.49 0.1260 32.23)",
+          "oklch(0.61 0.1260 32.23)",
+          "oklch(0.72 0.1260 32.23)",
+          "oklch(0.84 0.1260 32.23)",
+          "oklch(0.95 0.1260 32.23)"
+        ]
+      },
+      "dark-violet": {
+        "role": "secondary",
+        "displayName": "Тёмная · violet",
+        "canonical": "#b39bd6",
+        "tonalRamp": [
+          "oklch(0.15 0.0876 302.91)",
+          "oklch(0.26 0.0876 302.91)",
+          "oklch(0.38 0.0876 302.91)",
+          "oklch(0.49 0.0876 302.91)",
+          "oklch(0.61 0.0876 302.91)",
+          "oklch(0.72 0.0876 302.91)",
+          "oklch(0.84 0.0876 302.91)",
+          "oklch(0.95 0.0876 302.91)"
+        ]
+      },
+      "dark-violet-bg": {
+        "role": "secondary",
+        "displayName": "Тёмная · violet-bg",
+        "canonical": "#b39bd621",
+        "tonalRamp": [
+          "oklch(0.15 0.0876 302.91)",
+          "oklch(0.26 0.0876 302.91)",
+          "oklch(0.38 0.0876 302.91)",
+          "oklch(0.49 0.0876 302.91)",
+          "oklch(0.61 0.0876 302.91)",
+          "oklch(0.72 0.0876 302.91)",
+          "oklch(0.84 0.0876 302.91)",
+          "oklch(0.95 0.0876 302.91)"
+        ]
+      },
+      "dark-warm": {
+        "role": "secondary",
+        "displayName": "Тёмная · warm",
+        "canonical": "#e4bd75",
+        "tonalRamp": [
+          "oklch(0.15 0.1009 81.88)",
+          "oklch(0.26 0.1009 81.88)",
+          "oklch(0.38 0.1009 81.88)",
+          "oklch(0.49 0.1009 81.88)",
+          "oklch(0.61 0.1009 81.88)",
+          "oklch(0.72 0.1009 81.88)",
+          "oklch(0.84 0.1009 81.88)",
+          "oklch(0.95 0.1009 81.88)"
+        ]
+      },
+      "dark-warm-bg": {
+        "role": "secondary",
+        "displayName": "Тёмная · warm-bg",
+        "canonical": "#e4bd751c",
+        "tonalRamp": [
+          "oklch(0.15 0.1009 81.88)",
+          "oklch(0.26 0.1009 81.88)",
+          "oklch(0.38 0.1009 81.88)",
+          "oklch(0.49 0.1009 81.88)",
+          "oklch(0.61 0.1009 81.88)",
+          "oklch(0.72 0.1009 81.88)",
+          "oklch(0.84 0.1009 81.88)",
+          "oklch(0.95 0.1009 81.88)"
+        ]
+      },
+      "dark-on-brand": {
+        "role": "primary",
+        "displayName": "Тёмная · on-brand",
+        "canonical": "#10131f",
+        "tonalRamp": [
+          "oklch(0.15 0.0249 273.04)",
+          "oklch(0.26 0.0249 273.04)",
+          "oklch(0.38 0.0249 273.04)",
+          "oklch(0.49 0.0249 273.04)",
+          "oklch(0.61 0.0249 273.04)",
+          "oklch(0.72 0.0249 273.04)",
+          "oklch(0.84 0.0249 273.04)",
+          "oklch(0.95 0.0249 273.04)"
+        ]
+      },
+      "dark-chart-grid": {
+        "role": "neutral",
+        "displayName": "Тёмная · chart-grid",
+        "canonical": "#e1e6fa17",
+        "tonalRamp": [
+          "oklch(0.15 0.0276 274.65)",
+          "oklch(0.26 0.0276 274.65)",
+          "oklch(0.38 0.0276 274.65)",
+          "oklch(0.49 0.0276 274.65)",
+          "oklch(0.61 0.0276 274.65)",
+          "oklch(0.72 0.0276 274.65)",
+          "oklch(0.84 0.0276 274.65)",
+          "oklch(0.95 0.0276 274.65)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Заголовок страницы",
+        "purpose": "23 px desktop, 22 px ≤900 px, 20 px ≤600 px."
+      },
+      "title": {
+        "displayName": "Заголовок секции",
+        "purpose": "16 px desktop, 15 px ≤900 px."
+      },
+      "body": {
+        "displayName": "Рабочий текст",
+        "purpose": "Общий текст интерфейса; основной язык русский."
+      },
+      "label": {
+        "displayName": "Подпись KPI",
+        "purpose": "Подпись перед значением; не отдельный декоративный kicker."
+      },
+      "metric": {
+        "displayName": "Финансовая метрика",
+        "purpose": "Manrope, табличные цифры, одна строка вместе с единицей."
+      }
+    },
+    "shadows": [
+      {
+        "name": "surface",
+        "value": "none",
+        "purpose": "Карточки, KPI и dropzone."
+      },
+      {
+        "name": "selected-segment",
+        "value": "0 1px 3px #161b3014",
+        "purpose": "Активный сегмент и вкладка."
+      },
+      {
+        "name": "help-popover",
+        "value": "0 15px 40px -15px #0005",
+        "purpose": "Перекрывающая подсказка."
+      },
+      {
+        "name": "modal",
+        "value": "0 24px 70px -20px #0006",
+        "purpose": "Модальное окно."
+      },
+      {
+        "name": "auth",
+        "value": "0 24px 70px -35px #161b3044",
+        "purpose": "Карточка авторизации."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "CSS --ease."
+      },
+      {
+        "name": "control-transition",
+        "value": "200ms",
+        "purpose": "Цвет, граница, transform кнопок."
+      },
+      {
+        "name": "workspace-enter",
+        "value": "280ms",
+        "purpose": "Вход секции: translateY(5px), blur(1px) → none; также длительность drawer."
+      },
+      {
+        "name": "kpi-count-and-trend",
+        "value": "720ms easeOutQuart",
+        "purpose": "Обновление чисел и тренда."
+      },
+      {
+        "name": "expenses",
+        "value": "760ms easeOutQuart",
+        "purpose": "Doughnut расходов."
+      },
+      {
+        "name": "sku",
+        "value": "680ms easeOutQuart",
+        "purpose": "Горизонтальная диаграмма SKU."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Без CSS-переходов и входа секций; конечные числа сразу, графики animation:false, прокрутка мгновенная."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone-max",
+        "value": "600px"
+      },
+      {
+        "name": "sku-rows-max",
+        "value": "760px"
+      },
+      {
+        "name": "drawer-max",
+        "value": "900px"
+      },
+      {
+        "name": "compact-desktop-max",
+        "value": "1100px"
+      },
+      {
+        "name": "kpi-four-plus-five-min",
+        "value": "1101px"
+      },
+      {
+        "name": "analytics-two-columns-min",
+        "value": "1650px"
+      },
+      {
+        "name": "wide-canvas-min",
+        "value": "1900px"
+      }
+    ],
+    "tonalRampNote": "Восемь ступеней OKLCH синтезированы только для preview, без альфы; это не токены приложения."
+  },
+  "components": [
+    {
+      "name": "Основная кнопка",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Основное действие. Цвета наследуют light/dark через brand и on-brand.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Сохранить</button>",
+      "css": ".ds-primary{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;font-weight:650;min-height:40px;padding:9px 16px;border:1px solid var(--brand,#161b30);border-radius:9px;background:var(--brand,#161b30);color:var(--on-brand,#fff);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-primary:hover:not(:disabled){background:var(--accent,#2a45cc);border-color:var(--accent,#2a45cc);color:#fff}.ds-primary:active:not(:disabled){transform:translateY(1px)}.ds-primary:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+    },
+    {
+      "name": "Вторичная кнопка",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Дополнительное действие на спокойной поверхности.",
+      "html": "<button class=\"ds-ghost\" type=\"button\">Отмена</button>",
+      "css": ".ds-ghost{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;font-weight:500;min-height:40px;padding:9px 14px;border:1px solid var(--line-strong,#161b3029);border-radius:9px;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-ghost:hover:not(:disabled){background:var(--surface-2,#f2f4f7);border-color:var(--ink-mute,#676d84);color:var(--ink,#161b30)}.ds-ghost:active:not(:disabled){transform:translateY(1px)}.ds-ghost:disabled{opacity:.45;cursor:not-allowed}.ds-primary:focus-visible,.ds-ghost:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+    },
+    {
+      "name": "Поле",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Общее редактируемое поле; readonly-профиль использует surface-2.",
+      "html": "<label class=\"ds-label\" for=\"ds-shop\">Название магазина</label><input class=\"ds-input\" id=\"ds-shop\" placeholder=\"Название\">",
+      "css": ".ds-label{display:block;margin-bottom:5px;font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:12.5px;font-weight:600;color:var(--ink-soft,#4b5168)}.ds-input{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;min-height:40px;padding:10px 12px;background:var(--surface,#fff);color:var(--ink,#161b30);border:1px solid var(--line-strong,#161b3029);border-radius:9px;caret-color:var(--accent,#2a45cc)}.ds-input::placeholder{color:var(--ink-mute,#676d84);opacity:1}.ds-input:focus{border-color:var(--accent,#2a45cc);box-shadow:0 0 0 3px var(--accent-soft,#e4e9fb);outline:0}.ds-input:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-input[readonly]{background:var(--surface-2,#f2f4f7);color:var(--ink-soft,#4b5168)}@media(max-width:600px){.ds-input{font-size:16px}}"
+    },
+    {
+      "name": "Активная навигация",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Полоса навигации; разметка содержит встроенную существующую SVG-иконку.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Рабочее пространство\"><a class=\"ds-nav-link\" href=\"#overview\" aria-current=\"page\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"4\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"4\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.5\"/><rect x=\"14\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.5\"/></svg>Обзор</a></nav>",
+      "css": ".ds-nav{background:var(--page,#dfe4f4);padding:14px;width:236px}.ds-nav-link{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;font-weight:550;display:flex;align-items:center;gap:11px;min-height:42px;padding:5px 10px;border:1px solid transparent;border-radius:12px;color:var(--ink-soft,#4b5168);text-decoration:none}.ds-nav-link:hover{background:color-mix(in srgb,var(--surface,#fff) 45%,transparent);color:var(--ink,#161b30)}.ds-nav-link[aria-current=page]{background:color-mix(in srgb,var(--surface,#fff) 62%,transparent);border-color:color-mix(in srgb,var(--accent,#2a45cc) 22%,transparent);color:var(--ink,#161b30);font-weight:700}.ds-nav-icon{width:28px;height:28px;padding:6px;border-radius:8px;fill:none;stroke:currentColor;stroke-width:1.7;background:var(--accent,#2a45cc);color:#fff;flex:none}.ds-nav-link:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}"
+    },
+    {
+      "name": "Благоприятная дельта",
+      "kind": "chip",
+      "refersTo": "chip-up",
+      "description": "Смысл изменения задаётся метрикой; статичный образец без вымышленной суммы.",
+      "html": "<span class=\"ds-chip\"><svg class=\"ds-chip-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m5 15 6-6 4 4 5-7M15 6h5v5\"/></svg>Рост прибыли</span>",
+      "css": ".ds-chip{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:5px;background:var(--good-bg,#e0efe9);color:var(--good,#2b7a64);font-size:11px;line-height:1.5;font-weight:600}.ds-chip-icon{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8}@media(max-width:600px){.ds-chip{font-size:12px;padding:2px 4px}}"
+    },
+    {
+      "name": "Карточка настроек",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Плоская поверхность с отступом 20 px, без декоративного подъёма.",
+      "html": "<section class=\"ds-card\"><strong class=\"ds-card-title\">Публичная витрина</strong><p class=\"ds-card-copy\">Ссылка на магазин в режиме просмотра</p></section>",
+      "css": ".ds-card{font-family:var(--font-sans,Manrope,system-ui,sans-serif);padding:20px;border:1px solid var(--line-strong,#161b3029);border-radius:16px;background:var(--surface,#fff);color:var(--ink,#161b30);box-shadow:none}.ds-card-title{font-size:16px;font-weight:700}.ds-card-copy{font-size:12px;line-height:1.6;color:var(--ink-mute,#676d84)}@media(max-width:600px){.ds-card{padding:16px}}"
+    },
+    {
+      "name": "Выбранный KPI",
+      "kind": "button",
+      "refersTo": "kpi-selected",
+      "description": "Ячейка связанной панели. Прочерк сохраняет смысл неизвестного значения; preview не подключает график.",
+      "html": "<button class=\"ds-kpi\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-kpi-label\">Сумма продаж</span><span class=\"ds-kpi-value\">—</span></button>",
+      "css": ".ds-kpi{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:flex;flex-direction:column;text-align:left;gap:0;min-height:157px;padding:19px 20px 17px;border:0;border-right:1px solid var(--line,#161b3017);border-bottom:1px solid var(--line,#161b3017);border-radius:0;background:transparent;color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s}.ds-kpi:hover{background:var(--surface-2,#f2f4f7)}.ds-kpi[aria-pressed=true]{background:var(--accent-soft,#e4e9fb);box-shadow:inset 0 -2px var(--accent,#2a45cc)}.ds-kpi:active{transform:none}.ds-kpi:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-kpi-label{font-size:12px;font-weight:550;line-height:1.5;color:var(--ink-soft,#4b5168);margin-bottom:15px}.ds-kpi-value{font-size:clamp(22px,2.15vw,32px);font-weight:750;line-height:1.18;letter-spacing:-.035em;font-variant-numeric:tabular-nums;white-space:nowrap}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+    },
+    {
+      "name": "Выбор оформления",
+      "kind": "button",
+      "refersTo": "appearance-selected",
+      "description": "Состояние выбора темы; обработчик localStorage остаётся в приложении, preview показывает стили.",
+      "html": "<button class=\"ds-appearance\" type=\"button\" aria-pressed=\"true\"><svg class=\"ds-appearance-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z\"/></svg>Тёмная</button>",
+      "css": ".ds-appearance{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:14px;display:flex;align-items:center;gap:10px;min-width:130px;padding:14px;border:1px solid var(--line-strong,#161b3029);border-radius:9px;text-align:left;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s,color .2s,border-color .2s,transform .2s cubic-bezier(.16,1,.3,1)}.ds-appearance[aria-pressed=true]{border-color:var(--accent,#2a45cc);background:var(--accent-soft,#e4e9fb);color:var(--accent,#2a45cc)}.ds-appearance:active{transform:translateY(1px)}.ds-appearance:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-appearance-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+    },
+    {
+      "name": "Загрузка отчёта",
+      "kind": "custom",
+      "description": "Dropzone с тематическим наведением. Preview не загружает файл.",
+      "html": "<div class=\"ds-upload\" role=\"button\" tabindex=\"0\" aria-label=\"Загрузить отчёт\"><strong>Отчёт маркетплейса</strong><p class=\"ds-upload-hint\">Перетащите файл или выберите его</p></div>",
+      "css": ".ds-upload{font-family:var(--font-sans,Manrope,system-ui,sans-serif);background:var(--surface,#fff);color:var(--ink,#161b30);border:1px dashed var(--line-strong,#161b3029);border-radius:16px;min-height:210px;padding:25px 20px;text-align:center;cursor:pointer;box-shadow:none}.ds-upload:hover,.ds-upload.ds-dragover{background:var(--accent-soft,#e4e9fb);border-color:var(--accent,#2a45cc);transform:none;box-shadow:none}.ds-upload:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-upload strong{font-size:14px;font-weight:650}.ds-upload-hint{font-size:12px;line-height:1.65;color:var(--ink-mute,#676d84)}@media(max-width:600px){.ds-upload{min-height:190px;padding:22px 18px}}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+    },
+    {
+      "name": "Заголовок и наведение SKU",
+      "kind": "custom",
+      "description": "Последняя коррекция специфичности в приложении: заголовок и hovered td используют surface-2 в обеих темах.",
+      "html": "<table class=\"ds-sku\"><thead><tr><th>Артикул</th><th>Продажи</th></tr></thead><tbody><tr><td>Артикул</td><td>—</td></tr></tbody></table>",
+      "css": ".ds-sku{font-family:var(--font-sans,Manrope,system-ui,sans-serif);font-size:13px;width:100%;border-collapse:collapse;background:var(--surface,#fff);color:var(--ink,#161b30)}.ds-sku th{padding:10px 14px;background:var(--surface-2,#f2f4f7);color:var(--ink-soft,#4b5168);font-size:11px;font-weight:650;letter-spacing:.025em;border-bottom:1px solid var(--line,#161b3017);backdrop-filter:none}.ds-sku td{padding:10px 14px;border-bottom:1px solid var(--line,#161b3017);background:transparent}.ds-sku tbody tr:hover,.ds-sku tbody tr:hover td{background:var(--surface-2,#f2f4f7)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Вложенное финансовое полотно",
+    "overview": "Спокойная, плотная рабочая среда: лавандовая навигационная полоса обрамляет отдельное скруглённое полотно, а индиго отмечает выбор. Светлая и тёмная темы равноправны; иерархия строится на тоне поверхности, границах и типографике. Это одобренная замена прежней светлой Apple-стилистики.\n\nОриентир — закреплённый [Corbel dashboard](https://demo.codeandchill.store/corbel/#/dashboard), направление — [.impeccable/surfaces/app-html.md](.impeccable/surfaces/app-html.md). Адаптация написана самостоятельно, непосредственно в коде; платный исходник шаблона не импортировался. Документ фиксирует реализованную систему платформы без утверждения точного клонирования Corbel. Продуктовые ограничения, текущие API и файловая поддержка Ozon определяются [CONTEXT.md](CONTEXT.md).\n\nИсточники фиксации от 19 октября 2026: assets/corbel.css, assets/corbel.js, app.html, общий assets/dashboard.js и наследуемые assets/styles.css, assets/responsive.css. Просмотрены .impeccable/review/desktop.jpg, account-desktop-dark.jpg (1440×1000), overview-mobile-dark.jpg, costs-mobile-dark.jpg (390×844). Снимки содержат тестовые данные и подтверждают только показанные визуальные состояния. Это не независимая проверка входа, финансов или живых API. По сообщению основного исполнителя оба замечания ревью получили resolved и disposition ship в пределах двух исправлений. Правила фона заголовка SKU и наведённых строк подтверждены в CSS; документационный проход не повторял проверку исправлений и не расширяет scoped ship до полной функциональной проверки.\n",
+    "keyCharacteristics": [
+      "Вложенное полотно, тонкие границы, плоские рабочие поверхности.",
+      "Manrope для кириллицы, латиницы, чисел и графиков.",
+      "Общая панель KPI с выделением выбранной метрики.",
+      "Две темы с локальным выбором и сохранением исходных данных."
+    ],
+    "rules": [
+      {
+        "name": "The Theme Pair Rule",
+        "body": "Каждый фон, текст, граница и состояние используют семантическую пару светлой и тёмной темы; светлая заливка таблицы не переносится в тёмную тему литералом.",
+        "section": "colors"
+      },
+      {
+        "name": "The Framed Canvas Rule",
+        "body": "Рабочие поверхности различаются тоном и границей; тень применяется только к существующим сегментам и перекрывающим слоям.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do Использовать парные семантические токены для обеих тем, включая заголовки и наведение таблиц.",
+      "Do Сохранять общее полотно, связанную сетку KPI и адаптивные размеры из реализации.",
+      "Do Использовать локальный Manrope для кириллицы, латиницы, чисел и подписей графиков.",
+      "Do Показывать реальные Telegram-данные и роль выбранного магазина в readonly-профиле.",
+      "Do Сохранять загрузку, ошибки, неизвестные значения и reduced-motion при развитии интерфейса."
+    ],
+    "donts": [
+      "Don't Возвращать обязательную светлую Apple-стилистику или отдельную декоративную hero-плитку прибыли.",
+      "Don't Добавлять вымышленные показатели, карточки или редактирование аккаунта ради сходства с демо.",
+      "Don't Сохранять оформление как серверную настройку аккаунта или перезапрашивать финансы при смене темы.",
+      "Don't Расширять вердикт ship по двум исправлениям до полной функциональной проверки или точного клонирования Corbel."
+    ]
+  }
+}
