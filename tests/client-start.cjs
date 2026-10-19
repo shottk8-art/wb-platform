@@ -34,6 +34,11 @@ assert(client.includes("root.querySelector('[data-create-shop]').onclick=async")
 assert(!client.slice(client.indexOf('form.onsubmit=e=>'),client.indexOf("root.querySelector('[data-skip-payment]')")).includes('await createShop'));
 assert(client.includes("if(step===1)billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:"));
 assert(client.includes('data-payment-plans'));assert(client.includes("skip.hidden=['processing','result'].includes(screen)&&outcome==='success'"));
+for(const phrase of ['Выберите свой масштаб','Всё готово к тесту','Проверили сценарий отказа','Смоделировать отказ','Ваш кабинет почти готов','Реальная картина магазина'])assert(!client.includes(phrase));
+for(const phrase of ['Добавьте магазин','Укажите название и выберите маркетплейс.','Подтвердите тариф','К оплате сейчас','Подтвердить (тест)','Продолжить без оплаты','Проверьте данные','Создать магазин'])assert(client.includes(phrase));
+assert(client.includes('<details class="client-test-details"><summary>Проверить отказ оплаты</summary>'));
+assert(client.includes('${!onContinue&&state.history.length?'));assert(client.includes('${!onContinue&&s?.status'));
+assert(client.includes('После создания загрузите отчёт Ozon в разделе «Отчёты».'));assert(client.includes('После создания подключите API-ключ Wildberries в настройках.'));
 const css=fs.readFileSync('assets/client-start.css','utf8');assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('client-success-draw'));assert(css.includes('font-size:16px'));assert(!/animation[^;\n]*infinite/.test(css));
 assert(client.includes('srcset="/assets/illustrations/seller-economics-480.webp 480w, /assets/illustrations/seller-economics-960.webp 960w"'));
 assert(client.includes('width="960" height="960" alt=""'));assert(css.includes('client-success-contour'));assert(css.includes('--market-color:var(--violet)'));
