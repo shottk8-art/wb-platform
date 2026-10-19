@@ -394,9 +394,10 @@
           ${interactive ? `title="Показать на графике: ${escapeHtml(c.label)}"` : ""}
           ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
-          <${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}>
+          <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
           ${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}
           ${asContent(c.extra || "")}
+          ${interactive ? '<span class="kpi-action"><span>Смотреть динамику</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>' : ''}
         </${tag}>
       `);
       if (interactive) card.addEventListener("click", () => interaction.onSelect(c.metric));
@@ -405,6 +406,40 @@
       if (c.value != null) animateKpiNumber(card.querySelector(".kpi-number"), c.prev == null ? 0 : c.prev, c.value, c.unit);
     });
     return activeMetric;
+  }
+
+  // Actual loaded months only. Nulls split the line; no invented sparkline data.
+  function kpiSparkline(rows, metric) {
+    const values = rows.slice(-12).map(row => {
+      const value = row[metric];
+      return !['number', 'string'].includes(typeof value) || String(value).trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value);
+    });
+    const valid = values.filter(value => value != null);
+    if (valid.length < 2) return '';
+    if (['quantity', 'transfer', 'internalAds', 'mediaAds', 'promo'].includes(metric)) {
+      const low = Math.min(0, ...valid), high = Math.max(0, ...valid), extent = high - low || 1;
+      const zero = 36 - (0 - low) / extent * 28, step = 72 / values.length;
+      const bars = values.map((value, i) => {
+        if (value == null) return '';
+        const y = 36 - (value - low) / extent * 28;
+        return `<rect x="${(4 + i * step).toFixed(2)}" y="${Math.min(y, zero).toFixed(2)}" width="${Math.max(2, step - 2).toFixed(2)}" height="${Math.max(1, Math.abs(y - zero)).toFixed(2)}" rx="1.2" opacity="${i === values.length - 1 ? 1 : .28 + i / values.length * .45}"/>`;
+      }).join('');
+      return `<svg class="kpi-mini-bars" viewBox="0 0 80 44" aria-hidden="true">${bars}</svg>`;
+    }
+    const min = Math.min(...valid), max = Math.max(...valid), range = max - min || 1;
+    let path = '', connected = false;
+    values.forEach((value, i) => {
+      if (value == null) { connected = false; return; }
+      const x = 4 + i / Math.max(1, values.length - 1) * 72, y = max === min ? 22 : 36 - (value - min) / range * 28;
+      path += `${connected ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)} `; connected = true;
+    });
+    return `<svg viewBox="0 0 80 44" fill="none" aria-hidden="true"><path class="kpi-mini-line" d="${path}" pathLength="100"/></svg>`;
+  }
+  function renderKpiSparklines(container, rows) {
+    container?.querySelectorAll?.('[data-kpi-mini]').forEach(node => {
+      node.innerHTML = kpiSparkline(rows, node.dataset.kpiMini);
+      node.hidden = !node.innerHTML;
+    });
   }
 
   function expenseItems(d, marketplace) {
@@ -520,6 +555,7 @@
   }
 
   function renderTrend(canvas, rows, metricKey, marketplace) {
+    renderKpiSparklines(document.getElementById?.('kpiRow'), rows);
     metricKey = TREND_METRICS[metricKey] ? metricKey : "sales";
     const metric = getTrendMetric(metricKey, marketplace);
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
@@ -764,5 +800,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue };
+  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline };
 })();

@@ -814,7 +814,7 @@
       },
       {
         "name": "analytics-two-columns-min",
-        "value": "1650px"
+        "value": "1101px"
       },
       {
         "name": "wide-canvas-min",
@@ -877,8 +877,8 @@
       "kind": "button",
       "refersTo": "kpi-selected",
       "description": "Ячейка связанной панели. Прочерк сохраняет смысл неизвестного значения; preview не подключает график.",
-      "html": "<button class=\"ds-kpi\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-kpi-label\">Сумма продаж</span><span class=\"ds-kpi-value\">—</span></button>",
-      "css": ".ds-kpi{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:flex;flex-direction:column;text-align:left;gap:0;min-height:157px;padding:19px 20px 17px;border:0;border-right:1px solid var(--line,#161b3017);border-bottom:1px solid var(--line,#161b3017);border-radius:0;background:transparent;color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s}.ds-kpi:hover{background:var(--surface-2,#f2f4f7)}.ds-kpi[aria-pressed=true]{background:var(--accent-soft,#e4e9fb);box-shadow:inset 0 -2px var(--accent,#2a45cc)}.ds-kpi:active{transform:none}.ds-kpi:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-kpi-label{font-size:12px;font-weight:550;line-height:1.5;color:var(--ink-soft,#4b5168);margin-bottom:15px}.ds-kpi-value{font-size:clamp(22px,2.15vw,32px);font-weight:750;line-height:1.18;letter-spacing:-.035em;font-variant-numeric:tabular-nums;white-space:nowrap}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-ghost,.ds-kpi,.ds-appearance,.ds-upload{transition:none;animation:none}}"
+      "html": "<button class=\"ds-kpi\" type=\"button\" aria-pressed=\"true\"><span class=\"ds-kpi-label\">Сумма продаж</span><span class=\"ds-kpi-value\">—</span><span class=\"ds-kpi-action\">Смотреть динамику</span></button>",
+      "css": ".ds-kpi{font-family:var(--font-sans,Manrope,system-ui,sans-serif);display:flex;flex-direction:column;text-align:left;min-height:184px;padding:18px 20px 16px;border:1px solid var(--line,#161b3017);border-radius:0;background:var(--surface,#fff);color:var(--ink,#161b30);cursor:pointer;transition:background-color .2s}.ds-kpi:hover{background:var(--surface-2,#f2f4f7)}.ds-kpi:focus-visible{outline:2px solid var(--accent,#2a45cc);outline-offset:3px}.ds-kpi-label{font-size:13px;color:var(--ink-soft,#4b5168);margin-bottom:16px}.ds-kpi-value{font-size:26px;font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}.ds-kpi-action{margin-top:auto;padding-top:12px;border-top:1px dashed var(--line-strong,#161b3029);font-size:12px;color:var(--accent,#2a45cc);text-decoration:underline;text-underline-offset:3px}"
     },
     {
       "name": "Выбор оформления",

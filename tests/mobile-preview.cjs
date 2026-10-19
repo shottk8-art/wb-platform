@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..');
 const fixture = `
 <script src="/assets/corbel.js"></script>
 <script src="/assets/corbel-motion.js"></script>
+<script src="/assets/corbel-components.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/dashboard.js"></script>
 <script>
@@ -35,7 +36,7 @@ if(byId('salesYear'))byId('salesYear').innerHTML='<option>2026</option>';
 if(byId('salesMonth'))byId('salesMonth').innerHTML='<option>Сентябрь</option>';
 document.querySelector('#overviewScope [data-scope="wildberries"]')?.classList.add('active');
 document.querySelector('#reportMarketplace [data-marketplace="wildberries"]')?.classList.add('active');
-if(byId('periodSelect')) byId('periodSelect').innerHTML='<option>сентябрь 2026</option>';
+if(byId('periodSelect')) byId('periodSelect').innerHTML='<option value="2026-9">сентябрь 2026</option><option value="2026-8">август 2026</option><option value="2026-7">июль 2026</option>';
 if(byId('shareUrl')) byId('shareUrl').textContent='https://wb-platform.netlify.app/s/very-long-store-name';
 // Connected API settings must be tested too, not only the empty/disconnected form.
 if(byId('wbApiCheckBtn')) {
