@@ -661,7 +661,7 @@
     const match = rows.findIndex(row=>`${row.year}-${row.month}`===selected);
     const active = match >= 0 ? match : rows.length - 1;
     const range = new Set(window.WBRange?.selectedMonths?.() || []);
-    return rows.map((row,i)=>(range.size ? range.has(`${row.year}-${row.month}`) : i===active)?color:inactive);
+    return rows.map((row,i)=>window.WBTrend ? inactive : (range.size ? range.has(`${row.year}-${row.month}`) : i===active)?color:inactive);
   }
   function renderTrend(canvas, rows, metricKey, marketplace) {
     renderKpiSparklines(document.getElementById?.('kpiRow'), rows);
@@ -689,29 +689,32 @@
     canvas.setAttribute("aria-label", `${metric.label}: динамика за ${periodDescription}`);
     const config = {
       type: window.WBShell?.chartStyle === 'bar' ? 'bar' : 'line',
+      plugins: window.WBTrend ? [window.WBTrend.plugin] : [],
       data: {
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
         datasets: [{
           label: metric.label, data: values, sellerMetric: metricKey,
           borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? trendBarColors(canvas,rows,metric.color) : `${metric.color}14`,
-          sellerRows: rows,
+          sellerRows: rows, sellerMarketplace: marketplace,
           borderWidth: window.WBShell?.chartStyle === 'bar' ? 0 : 2.5,
           pointRadius: singlePoint ? 5 : values.map((value, index) => value != null
             && values[index - 1] == null && values[index + 1] == null ? 4 : 0),
           pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: metric.color,
           pointBackgroundColor: metric.color,
           pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
-          fill: true, spanGaps: false, borderRadius:7, maxBarThickness:32,
+          fill: true, spanGaps: false, borderRadius:window.WBTrend?99:7, borderSkipped:false, maxBarThickness:30, barPercentage:.66, categoryPercentage:1,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
+        events: window.WBTrend ? [] : ['mousemove','mouseout','click','touchstart','touchmove'],
         animation: reduceMotion ? false : { duration: 1200, easing: "easeOutCubic", delay: ctx => ctx.type === 'data' && ctx.mode === 'default' ? Math.min(ctx.dataIndex * 35, 385) : 0 },
         plugins: {
           legend: { display: false },
           tooltip: {
+            enabled: !window.WBTrend,
             backgroundColor: "rgba(29,29,31,.94)",
             padding: 12,
             cornerRadius: 10,
@@ -720,10 +723,10 @@
           },
         },
         scales: {
-          x: { grid: { display: false }, border: { display: false }, ticks: { color: inkMute, maxRotation: 0 } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: window.WBTrend ? 'transparent' : inkMute, maxRotation: 0 } },
           y: {
             beginAtZero: window.WBShell?.chartStyle === 'bar' || metric.unit === "шт.",
-            grid: { color: "rgba(127,127,127,.12)" },
+            grid: { color: "rgba(127,127,127,.12)", tickLength:0 },
             border: { display: false, dash: [3,3] },
             ticks: {
               color: inkMute,
@@ -884,8 +887,8 @@
     const css=getComputedStyle(document.body),muted=css.getPropertyValue('--ink-mute').trim(),grid=css.getPropertyValue('--chart-grid').trim();
     Chart.defaults.color=muted;Chart.defaults.font.family=css.fontFamily;
     for(const chart of Object.values(Chart.instances || {})){
-      for(const axis of Object.values(chart.options.scales || {})){
-        if(axis.ticks)axis.ticks.color=muted;
+      for(const [name,axis] of Object.entries(chart.options.scales || {})){
+        if(axis.ticks)axis.ticks.color=window.WBTrend && chart.data.datasets.some(ds=>ds.sellerMetric) && name==='x'?'transparent':muted;
         if(axis.grid && grid)axis.grid.color=grid;
       }
       if(chart.config.type==='doughnut'){

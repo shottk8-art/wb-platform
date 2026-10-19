@@ -47,7 +47,7 @@
     return output;
   }
   function trendPoint(p,d) {
-    return {...p,sales:d.rep.sales_amount,quantity:d.rep.bought_qty,transfer:d.rep.transfer_total,profit:d.netProfit,internalAds:d.rep.ads_spend,mediaAds:d.rep.wb_media_spend,promo:d.rep.ads_promo_spend,...d.rates};
+    return {...p,sales:d.rep.sales_amount,orders:d.rep.orders_amount,quantity:d.rep.bought_qty,transfer:d.rep.transfer_total,profit:d.netProfit,internalAds:d.rep.ads_spend,mediaAds:d.rep.wb_media_spend,promo:d.rep.ads_promo_spend,...d.rates};
   }
   async function mapBounded(items,callback) {
     const result=new Array(items.length);let next=0;

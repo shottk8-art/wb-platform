@@ -72,6 +72,37 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .trend-card .panel-heading .hint{display:none}
 .corbel .trend-legend{font-size:12px;color:var(--ink-mute)}
 .corbel .trend-toolbar{gap:10px;padding-bottom:6px}
+.corbel .trend-card>.panel-heading{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-bottom:8px}
+.corbel .trend-period-summary{font-size:12px;color:var(--ink-mute);font-variant-numeric:tabular-nums;line-height:1.4}
+.corbel .trend-chart.has-trend-interaction{position:relative;isolation:isolate;overflow:visible}
+.corbel .trend-interaction{position:absolute;inset:0;pointer-events:none;font-family:var(--font-sans);font-variant-numeric:tabular-nums;--trend-ease:cubic-bezier(.16,1,.3,1)}
+.corbel .trend-highlight{position:absolute;left:0;top:0;z-index:2;border-radius:999px;background:linear-gradient(180deg,color-mix(in srgb,var(--trend-color) 70%,var(--surface)),var(--trend-color) 40%,color-mix(in srgb,var(--trend-color) 87%,var(--ink)));box-shadow:inset 0 1px #ffffff59;transition:transform .55s var(--trend-ease),height .65s var(--trend-ease),width .55s var(--trend-ease);will-change:transform}
+.corbel .trend-highlight-cap{position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px #ffffff40;left:50%;top:7px;margin-left:-4.5px}
+.corbel .trend-highlight.is-negative .trend-highlight-cap{top:auto;bottom:7px}
+.corbel .trend-highlight.is-point{background:var(--surface);border:2px solid var(--trend-color);box-shadow:0 0 0 4px color-mix(in srgb,var(--trend-color) 18%,transparent)}
+.corbel .trend-months{position:absolute;display:grid;pointer-events:none;z-index:3}
+.corbel .trend-month{position:absolute;display:block;min-width:0;min-height:0;width:100%;height:100%;padding:0;border:0;border-radius:9px;box-shadow:none;background:transparent;pointer-events:auto;cursor:pointer;color:var(--ink-mute);font:inherit;font-size:11px;transition:background-color .25s ease-out,color .2s}
+.corbel .trend-month:hover{background:color-mix(in srgb,var(--trend-color) 4%,transparent);transform:none}
+.corbel .trend-month:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+.corbel .trend-month>span{position:absolute;top:calc(var(--plot-height) + 7px);left:var(--month-x,50%);transform:translateX(-50%);white-space:nowrap;line-height:1.3;pointer-events:none}
+.corbel .trend-month.is-active{color:var(--ink);font-weight:600}
+.corbel .trend-average{position:absolute;top:0;height:0;border-top:1px dashed var(--violet);pointer-events:none;z-index:1;transition:transform .65s var(--trend-ease)}
+.corbel .trend-average>span{position:absolute;right:0;top:-21px;padding:1px 6px;border-radius:5px;background:var(--violet-bg);color:var(--violet);font-size:11px;font-weight:600;white-space:nowrap}
+.corbel .trend-tooltip{position:absolute;left:0;top:0;z-index:4;min-width:200px;max-width:calc(100% - 8px);width:max-content;padding:10px 12px;border-radius:12px;background:#161b30;color:#f3f5fb;box-shadow:0 28px 70px -22px #161b3066,0 2px 8px #161b3014;font-size:12px;line-height:1.4;pointer-events:none;transition:transform .55s var(--trend-ease),opacity .2s;will-change:transform}
+.corbel .trend-tooltip-month{margin:0 0 7px;font-weight:600;line-height:1.4}
+.corbel .trend-tooltip dl{display:grid;gap:4px;margin:0}
+.corbel .trend-tooltip dl>div{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:18px;align-items:baseline}
+.corbel .trend-tooltip dt{color:#b8bdce;font-weight:400;min-width:0}
+.corbel .trend-tooltip dd{margin:0;font-weight:600;white-space:nowrap;text-align:right}
+.corbel .trend-tooltip dd[data-sentiment="up"]{color:#5ee6b4}
+.corbel .trend-tooltip dd[data-sentiment="down"]{color:#ff9ea2}
+:root[data-theme="dark"] .corbel .trend-tooltip{background:#e9ecf7;color:#161b30;box-shadow:0 28px 70px -22px #0009,0 2px 8px #0002}
+:root[data-theme="dark"] .corbel .trend-tooltip dt{color:#515974}
+:root[data-theme="dark"] .corbel .trend-tooltip dd[data-sentiment="up"]{color:#08775a}
+:root[data-theme="dark"] .corbel .trend-tooltip dd[data-sentiment="down"]{color:#c22d34}
+.corbel .trend-interaction.is-instant :is(.trend-tooltip,.trend-highlight,.trend-average){transition:none}
+@media(max-width:600px){.corbel .trend-tooltip{min-width:190px;font-size:12px}.corbel .trend-tooltip dl>div{gap:12px}.corbel .trend-month{font-size:10px}.corbel .trend-month>span{font-size:0}.corbel .trend-month>span::before{content:attr(data-month);font-size:10px}.corbel .trend-period-summary{font-size:11px}.corbel .trend-month:nth-child(even):not(.is-active)>span{visibility:hidden}.corbel .trend-month:last-child>span{visibility:visible!important}}
+@media(prefers-reduced-motion:reduce){.corbel .trend-interaction *{transition:none!important}}
 .corbel .segmented-control.chart-style{background:var(--surface-2);padding:3px;border-radius:9px}
 .corbel .segmented-control.chart-style button{font-size:11px;min-height:26px;padding:0 10px}
 .corbel .profitability-card{display:flex;flex-direction:column;overflow:hidden}
