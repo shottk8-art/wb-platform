@@ -19,12 +19,14 @@
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
 <link rel="stylesheet" href="/assets/reference.css?v=20261019-center1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
+<link rel="stylesheet" href="/assets/client-start.css?v=20261019-start1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
 <script src="/assets/reference.js?v=20261019-reference4" defer></script>
 </head>
 <body class="corbel">
+<main class="client-welcome" id="clientWelcome" hidden></main>
 
 <svg class="icon-sprite" aria-hidden="true">
   <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"/></symbol>
@@ -74,6 +76,8 @@
         <a href="#account" data-view="account"><svg class="icon"><use href="#icon-people"/></svg><span>Учётная запись</span></a>
       </nav>
       <div class="sidebar-actions">
+        <button class="sidebar-action" type="button" id="showClientGuide"><svg class="icon"><use href="#icon-help"/></svg> Начало работы</button>
+        <a class="sidebar-action" href="/demo.html" target="_blank" rel="noopener"><svg class="icon"><use href="#icon-dashboard"/></svg> Демо-магазин</a>
         <button class="sidebar-action" id="newShopBtn"><svg class="icon"><use href="#icon-plus"/></svg>Новый магазин</button>
         <button class="sidebar-action" id="askQuestionBtn"><svg class="icon"><use href="#icon-help"/></svg>Задать вопрос</button>
         <button class="sidebar-action" id="adminLink" hidden><svg class="icon"><use href="#icon-shield"/></svg>Админка</button>
@@ -153,6 +157,7 @@
 
     <p class="hint" id="shopLoading" role="status" aria-live="polite" hidden>Загружаем данные магазина…</p>
 
+    <section class="section app-view" data-view="overview"><aside id="clientGuide" class="client-guide" hidden></aside></section>
     <section class="section app-view" id="secAccount" data-view="account">
       <nav class="settings-tabs" aria-label="Разделы настроек"><a href="#account" data-open-view="account" aria-current="page">Профиль</a><a href="#settings" data-open-view="settings">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
       <div class="card profile-grid">
@@ -168,6 +173,7 @@
           <a class="profile-telegram" id="profileTelegramLink" target="_blank" rel="noopener noreferrer" hidden>Открыть профиль в Telegram</a>
         </div>
       </div>
+      <div id="testBillingRoot"></div>
       <div class="card profile-appearance">
         <div class="profile-description"><h2>Оформление</h2><p>Выберите комфортную тему. Изменение применяется сразу и сохраняется на этом устройстве.</p></div>
         <div class="appearance-row"><span>Тема</span><div class="appearance-options" role="group" aria-label="Тема оформления">
@@ -527,6 +533,8 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
+<script src="/assets/test-subscription.js?v=20261019-start1"></script>
+<script src="/assets/client-start.js?v=20261019-start1"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
@@ -1283,6 +1291,17 @@
     });
   }
 
+  async function selectReportMarketplace(marketplace) {
+    if (!['wildberries','ozon'].includes(marketplace)) return;
+    reportMarketplace = marketplace;
+    overviewScope = marketplace;
+    updateShareBox();
+    updateScopeButtons();
+    await reloadOverview();
+    await refreshCostsTable();
+    await refreshUploadsLog();
+  }
+
   async function init() {
     session = await window.WBAuth.waitForSession(4000);
     if (!session) { location.href = "/index.html"; return; }
@@ -1291,16 +1310,25 @@
     document.getElementById("secAiAnalysis").hidden = !aiAllowed;
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
-    shop = await window.WBAuth.ensureShop();
+    // Do not create a real shop just because somebody signed in or opened a demo.
+    const accessibleShops = await window.WBAuth.listMyShops();
+    let firstSetup = null;
+    shop = accessibleShops[0] || null;
+    if (!shop) {
+      firstSetup = await window.WBClientStart.firstShop(session.user, {
+        createShop: (name, marketplace) => window.WBAuth.createShop(name, marketplace),
+        signOut: () => window.WBAuth.signOut(),
+      });
+      shop = firstSetup.shop;
+    }
     try {
       const selectedId = localStorage.getItem("wb-selected-shop:" + session.user.id);
       if (selectedId) {
-        const shops = await window.WBAuth.listMyShops();
-        shop = shops.find((s) => s.id === selectedId) || shop;
+        shop = accessibleShops.find((s) => s.id === selectedId) || shop;
       }
     } catch (_) { /* storage may be unavailable */ }
-    overviewScope = "wildberries";
-    reportMarketplace = "wildberries";
+    overviewScope = firstSetup?.marketplace || "wildberries";
+    reportMarketplace = firstSetup?.marketplace || "wildberries";
     await refreshShopSwitch();
     updateShareBox();
     updateScopeButtons();
@@ -1319,8 +1347,12 @@
 
     loading.hidden = true;
     appScreen.hidden = false;
-    const initialView = location.hash.replace(/^#/, "");
-    setActiveView(VIEW_META[initialView] ? initialView : "overview", false);
+    window.WBClientStart.mount(session.user, {navigate:(view,marketplace)=>{
+      if (marketplace) selectReportMarketplace(marketplace).catch(error=>toast(error.message,true));
+      setActiveView(view);
+    }});
+    const initialView = firstSetup ? (firstSetup.marketplace === 'ozon' ? 'reports' : 'settings') : location.hash.replace(/^#/, "");
+    setActiveView(VIEW_META[initialView] ? initialView : "overview", !!firstSetup);
 
     document.getElementById("adminLink").hidden = !aiAllowed;
 
@@ -1416,16 +1448,7 @@
     });
 
     document.querySelectorAll("#reportMarketplace [data-marketplace]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const marketplace = button.dataset.marketplace;
-        reportMarketplace = marketplace;
-        overviewScope = marketplace;
-        updateShareBox();
-        updateScopeButtons();
-        await reloadOverview();
-        await refreshCostsTable();
-        await refreshUploadsLog();
-      });
+      button.addEventListener("click", () => selectReportMarketplace(button.dataset.marketplace).catch(error=>toast(error.message,true)));
     });
 
     const questionModal = document.getElementById("questionModal");

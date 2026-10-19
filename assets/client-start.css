@@ -1,0 +1,68 @@
+.corbel .client-welcome{width:min(1120px,100% - 48px);margin:24px auto 64px}
+.client-welcome-top,.client-section-head,.client-actions,.client-guide-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.client-welcome-intro{max-width:640px;margin:48px 0 36px}
+.corbel .client-welcome-intro h1{font-size:34px;line-height:1.2;letter-spacing:-.035em;margin:20px 0 12px}
+.client-welcome p,.client-billing p,.client-guide p{color:var(--ink-soft);line-height:1.65;max-width:70ch}
+.client-welcome-layout{display:grid;grid-template-columns:minmax(260px,.75fr) minmax(0,1.25fr);gap:32px;align-items:start}
+.client-setup{padding:28px;background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;min-width:0}
+.corbel :is(.client-setup,.client-billing,.client-guide) h2{font-size:19px;line-height:1.3;margin:0 0 10px;font-weight:700}
+.client-setup>label{display:block;margin:24px 0 8px;font-size:13px;font-weight:600}
+.client-setup input[type=text],.client-setup input[name=shopName]{width:100%;box-sizing:border-box}
+.client-setup fieldset{border:0;padding:0;margin:24px 0 0;min-width:0}
+.client-setup legend{font-size:13px;font-weight:650;margin-bottom:10px}
+.client-setup fieldset label{display:grid;grid-template-columns:20px 1fr;align-items:center;gap:2px 10px;padding:12px 0;cursor:pointer}
+.client-setup input[type=radio]{width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--accent)}
+.client-setup fieldset span{grid-column:2;color:var(--ink-soft);font-size:12px}
+.client-setup>[type=submit]{width:100%;margin-top:18px;min-height:44px}
+.client-form-status{font-size:13px;color:var(--bad)!important;margin:10px 0 0}
+.client-billing{min-width:0;scroll-margin-top:24px}
+#testBillingRoot{padding:28px;background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;margin-top:24px}
+.client-test-badge{background:var(--warm-bg);color:var(--warm);font-size:12px;white-space:nowrap;border-radius:6px;padding:5px 9px;font-weight:650}
+.client-section-head p{margin:5px 0 0;font-size:13px}
+.client-test-note{font-size:13px;margin:18px 0 24px}
+.client-plans{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:var(--surface)}
+.client-plan{padding:22px;min-width:0}
+.client-plan+article{border-left:1px solid var(--line-strong)}
+.corbel .client-plan h3{font-size:15px;margin:0 0 14px;font-weight:650}
+.corbel .client-price{font-size:26px;font-weight:750;color:var(--ink);letter-spacing:-.035em;white-space:nowrap;margin:0}
+.client-price span{font-size:12px;font-weight:500;color:var(--ink-soft);letter-spacing:0}
+.client-plan>p:not(.client-price){font-size:13px;line-height:1.9;margin:12px 0 20px}
+.client-plan button{width:100%;font-size:12px;min-height:42px}
+.corbel .client-count-note,.client-storage-note{font-size:12px;color:var(--ink-soft);line-height:1.6;margin:14px 0}
+.client-checkout{background:var(--accent-soft);border-radius:12px;padding:22px;margin:24px 0;scroll-margin-top:24px}
+.client-checkout h3{margin:0;font-size:17px}
+.client-checkout p{font-size:13px}
+.client-actions{justify-content:flex-start;gap:8px}
+.client-actions button{font-size:12px;min-height:42px}
+.client-payment-status{font-size:13px;padding:16px 0;line-height:1.6;color:var(--ink-soft)}
+.client-payment-status p{margin:4px 0}
+.client-history{margin-top:20px;border-top:1px solid var(--line);padding-top:16px;font-size:13px}
+.client-history summary{cursor:pointer;min-height:32px}
+.client-history ul{list-style:none;padding:0;margin:12px 0}
+.client-history li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.client-history li strong{font-size:12px;font-weight:600}
+.corbel .client-guide{background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;padding:24px;margin:0 0 24px}
+.client-guide-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding:0;list-style:none;margin:24px 0}
+.client-guide-steps li{min-width:0}
+.client-guide-steps button{padding:0;border:0;background:transparent;color:var(--accent);font-weight:650;font-size:14px;text-align:left;min-height:32px;text-decoration:underline;text-underline-offset:4px}
+.client-guide-steps span{display:block;color:var(--ink-soft);font-size:12px;line-height:1.7;margin-top:6px}
+.client-guide-steps a,.client-guide-footer{font-size:12px}
+.client-guide-footer{border-top:1px solid var(--line);padding-top:16px}
+.client-demo-banner{padding:12px 24px;background:var(--accent-soft);color:var(--ink);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px}
+.corbel .client-demo-main{max-width:1440px;margin:24px auto;padding:0 24px 48px}
+.client-demo-main .page-heading{margin:0 0 24px;padding:0}
+.client-demo-main .overview-controls{border:0;border-top:0;margin:16px 0 0;padding:0;grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap}
+.client-demo-main .overview-controls select{min-width:180px}
+.client-demo-main .analytics-details-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:start}
+.client-demo-main .analytics-details-grid>*{min-width:0}
+.corbel.demo-mode{background:var(--panel);--ink-mute:var(--ink-soft)}
+.corbel .client-demo-main .page-heading>div:first-child{display:block}
+.corbel .client-demo-main .overview-controls{width:100%;min-width:0;margin:16px 0 0}
+.client-demo-main .period-bar,.client-demo-main .seller-select{max-width:100%;min-width:0}
+.corbel .client-demo-main .overview-chart-deck{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:16px;margin-bottom:24px}
+.corbel .client-demo-main #secAdvertising{display:block}
+.corbel .client-demo-main #secOverviewCharts .trend-card{overflow:visible}
+.client-demo-main .section{margin-bottom:24px}
+@media(max-width:1000px){.client-welcome-layout{grid-template-columns:1fr;max-width:700px}.client-guide-steps{gap:16px}.client-demo-main .analytics-details-grid{grid-template-columns:1fr}.corbel .client-demo-main .overview-chart-deck{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.corbel .client-welcome{width:calc(100% - 32px);margin:16px auto 40px}.client-welcome-intro{margin:32px 0 24px}.corbel .client-welcome-intro h1{font-size:28px}.client-setup,#testBillingRoot{padding:20px}.client-plans{grid-template-columns:1fr}.client-plan+article{border-left:0;border-top:1px solid var(--line-strong)}.client-plan{padding:20px}.client-guide-steps{grid-template-columns:1fr;gap:16px}.client-section-head{align-items:flex-start}.corbel .client-guide{padding:20px}.client-demo-banner{padding:12px 16px}.corbel .client-demo-main{padding:0 14px 32px;margin-top:16px}.client-demo-main .page-heading{grid-template-columns:1fr auto}.client-demo-main .overview-controls select{min-width:0;width:100%}.client-demo-main .period-bar{flex:1}.client-demo-main .period-bar label{width:100%}}
+@media(prefers-reduced-motion:no-preference){.client-checkout:not([hidden]){animation:client-checkout-in .32s cubic-bezier(.16,1,.3,1)}@keyframes client-checkout-in{from{clip-path:inset(0 0 12%);transform:translateY(6px)}to{clip-path:inset(0);transform:none}}}

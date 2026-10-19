@@ -7,6 +7,10 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+## Approved extension: client start, 19 October 2026
+
+The owner requested onboarding and simulated payments. Extend the incumbent Corbel world, not a new design direction: existing type, semantic light/dark tokens, standard controls, restrained checkout reveal with reduced-motion fallback. First-time users explicitly create one real shop or open a separate synthetic `/demo.html`; invited members and existing shops retain their access without a forced onboarding or payment. Account contains two test plans: RUB 1990 for 2 marketplace shops / 2 employees, RUB 2990 for 6 / 6. WB + Ozon uses two places, not one. Test outcomes are browser-local, per user, clearly labelled simulation and never server entitlements. Ozon remains manual reports. No payment provider, card fields, real money, automatic renewal, live quotas or legal-compliance claims. The earlier prohibition on demonstration data continues on real financial screens; the new separately labelled demo is explicitly authorized.
+
 Mode: Operate. User-pinned reference: https://demo.codeandchill.store/corbel/#/dashboard, inspected dashboard and settings/profile on 19 October 2026. Code-led, independently authored; no paid template source is copied.
 
 ## Direction contract

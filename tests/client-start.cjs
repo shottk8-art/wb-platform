@@ -1,0 +1,35 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {PLANS,create,nextMonth}=require('../assets/test-subscription.js');
+const data=new Map(),storage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)},now=()=> '2026-01-31T12:00:00.000Z';
+assert.deepEqual(PLANS.map(p=>[p.price,p.shops,p.employees]),[[1990,2,2],[2990,6,6]]);
+assert.equal(nextMonth(now()),'2026-02-28T12:00:00.000Z');assert.equal(nextMonth('2028-01-31T12:00:00Z'),'2028-02-29T12:00:00.000Z');
+let a=create('alice',storage,now),b=create('bob',storage,now);
+assert.equal(a.state.guideHidden,true);assert.equal(a.finish('success'),false);assert.throws(()=>a.begin('invented'));
+a.begin('start');a.begin('team');a.finish('success');assert.equal(a.state.subscription.plan,'start');assert.equal(a.state.history.length,1);
+assert.equal(a.finish('success'),false);assert.equal(b.state.subscription,null);assert.equal(create('alice',storage).state.subscription.plan,'start');
+a.begin('team');a.finish('declined');assert.equal(a.state.subscription.plan,'start');a.begin('team');a.finish('cancelled');assert.equal(a.state.subscription.plan,'start');
+a.cancel();assert.equal(a.state.subscription.status,'cancelled');a.guide(false);assert.equal(create('alice',storage).state.guideHidden,false);
+for(let i=0;i<20;i++){a.begin('team');a.finish('success');}assert.equal(a.state.history.length,12);
+const copy=a.state;copy.subscription.plan='forged';assert.equal(a.state.subscription.plan,'team');
+const race=create('race',storage,now),attempt=race.begin('team');assert.equal(race.finish('success','stale-attempt'),false);assert.equal(race.finish('success',attempt.id),true);assert.equal(race.finish('cancelled'),false);assert.equal(race.state.subscription.status,'active');
+assert.equal(create('bad',{getItem:()=>'{',setItem:()=>{}}).state.subscription,null);
+const blocked=create('private',{getItem(){throw Error();},setItem(){throw Error();}},now);blocked.begin('team');blocked.finish('success');assert.equal(blocked.persistent,false);assert.equal(blocked.state.subscription.plan,'team');
+const invalid=create('invalid',{getItem:()=>JSON.stringify({version:1,mode:'simulation',history:[{plan:'invented',at:now(),status:'success'}],subscription:{plan:'start',at:now(),until:'bad',status:'active'}}),setItem(){}});assert.equal(invalid.state.subscription,null);assert.equal(invalid.state.history.length,0);
+const {build}=require('../assets/demo-data.js'),sample=build(new Date('2026-10-19T12:00:00Z'));
+assert.equal(sample.periods.length,12);assert.deepEqual(sample.periods[11],{year:2026,month:9});assert.deepEqual(sample.periods[0],{year:2025,month:10});
+for(const marketplace of ['wildberries','ozon'])for(const {report,skus} of sample.data[marketplace]){assert.equal(report.sales_amount,skus.reduce((a,s)=>a+s.revenue,0));assert.equal(report.bought_qty,skus.reduce((a,s)=>a+s.bought_qty,0));assert.equal(report.transfer_total,report.transfer_goods-report.delivery_cost-report.storage_cost-report.acceptance_ops);assert(skus.every(s=>sample.costs.get(s.article)>0));}
+const demo=fs.readFileSync('demo.html','utf8'),logic=fs.readFileSync('assets/demo.js','utf8'),client=fs.readFileSync('assets/client-start.js','utf8'),app=fs.readFileSync('app.html','utf8');
+const window={addEventListener(){}},context=vm.createContext({window,Intl,Map,Set,Date});
+for(const file of ['assets/dashboard.js','assets/period-range.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
+const entries=['wildberries','ozon'].map(marketplace=>{const r=sample.data[marketplace][11];return{marketplace,derived:window.WBDashboard.computeDerived(r.report,r.skus,sample.costs,sample.taxRate)};});
+const total=window.WBRange.aggregate(entries);assert.equal(total.netProfit,entries.reduce((sum,e)=>sum+e.derived.netProfit,0));assert.equal(total.rep.sales_amount,entries.reduce((sum,e)=>sum+e.derived.rep.sales_amount,0));assert.equal(total.rates.drrOrders,null);
+for(const {derived:d} of entries){assert.equal(d.netProfit,d.rep.transfer_total-d.cogs-d.ads-d.tax-d.manualExpenses);assert(d.netProfit>0);}
+assert(!/supabase|config\.js|auth\.js|wb-api|analysis\.js/.test(demo));assert(!/fetch\(|\.from\(|WBRange\.load/.test(logic));assert(!/fetch\(|\.from\(|payment_method|cardNumber/.test(client));
+assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(app.includes('firstSetup?.marketplace'));
+assert(demo.includes('Все данные вымышлены'));assert(client.includes('Wildberries и Ozon считаются двумя магазинами'));
+assert(demo.includes('id="periodSelect"'));assert(logic.includes('period.value=key(sample.periods[11])'));assert(logic.includes('sample.periods.findIndex(p=>key(p)===period.value)'));
+assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('selectReportMarketplace(marketplace).catch'));
+const routeSource=app.slice(app.indexOf('  async function selectReportMarketplace('),app.indexOf('  async function init()'));
+const calls=[],route={reportMarketplace:'wildberries',overviewScope:'wildberries',updateShareBox:()=>calls.push('share'),updateScopeButtons:()=>calls.push('scope'),reloadOverview:async()=>calls.push('overview'),refreshCostsTable:async()=>calls.push('costs'),refreshUploadsLog:async()=>calls.push('uploads')};
+vm.createContext(route);vm.runInContext(routeSource,route);
+route.selectReportMarketplace('ozon').then(async()=>{assert.equal(route.reportMarketplace,'ozon');assert.equal(route.overviewScope,'ozon');assert.deepEqual(calls,['share','scope','overview','costs','uploads']);await route.selectReportMarketplace('invalid');assert.equal(calls.length,5);console.log('Client start: test-only payments, attempt races, per-user storage, Ozon guide routing, onboarding and coherent 12-month demo PASS');}).catch(error=>{console.error(error);process.exitCode=1;});

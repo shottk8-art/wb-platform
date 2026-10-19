@@ -29,6 +29,33 @@
         ],
         "createdAt": "2026-09-02T20:26:28.026Z",
         "reason": "Inter/IBM Plex Mono is the project-wide type system (see index.html, app.html) — same intentional exception, just extended to the new admin page"
+      },
+      {
+        "rule": "overused-font",
+        "value": "instrument sans",
+        "files": [
+          "demo.html"
+        ],
+        "createdAt": "2026-10-19T15:05:23.376Z",
+        "reason": "Approved Corbel reference typeface inherited by the separate demo; not a new visual direction"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "demo.html"
+        ],
+        "createdAt": "2026-10-19T15:05:23.397Z",
+        "reason": "Static linked legacy focus-shadow finding; Corbel overrides use semantic focus rings and offset tooltip elevation. Preserve the approved shared chart interaction."
+      },
+      {
+        "rule": "clipped-overflow-container",
+        "value": "*",
+        "files": [
+          "demo.html"
+        ],
+        "createdAt": "2026-10-19T15:06:09.294Z",
+        "reason": "Shared gauge labels and native-backed hidden selects are intentionally contained. Demo trend-card overflow is explicitly visible and select menus use body top-layer popovers; verified in rendered mobile layout."
       }
     ]
   }
