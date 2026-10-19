@@ -62,7 +62,7 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .kpi-comparison-copy{display:block;min-width:0}
 .corbel .kpi-comparison-label{display:block;font-size:11px;color:var(--ink-mute);line-height:1.3;margin-top:4px}
 .corbel .kpi-mini{height:40px;flex-basis:72px;margin-left:auto}
-.corbel .kpi-row .kpi-delta{font-size:11px!important;padding:1px 5px;font-weight:500;margin-bottom:12px}
+.corbel .kpi-row .kpi-delta{font-size:11px!important;padding:1px 5px;font-weight:600;margin-bottom:12px}
 .corbel .kpi-comparison .kpi-delta{margin-bottom:0}
 .corbel .kpi-action{font-size:12px;font-weight:500;padding-top:12px;min-height:29px}
 .corbel .kpi-action svg{width:14px;height:14px}

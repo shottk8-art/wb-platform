@@ -1,4 +1,6 @@
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const referenceCSS=fs.readFileSync('assets/reference.css','utf8');
+assert.match(referenceCSS,/\.corbel \.kpi-row \.kpi-delta\{[^}]*font-size:11px!important;[^}]*font-weight:600;/,'comparison figures are semibold without changing their size');
 const container=()=>({id:'',children:[],set innerHTML(value){this.children=[]},appendChild(card){this.children.push(card)}});
 const secondary=container();
 const document={getElementById:id=>id==='secondaryKpiRow'?secondary:null,createElement(){return{set innerHTML(html){const number={textContent:'',classList:{add(){},remove(){}}};this.content={firstChild:{html,querySelector:()=>number,addEventListener(){}}}}}}};
