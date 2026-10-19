@@ -43,5 +43,9 @@ api.enhance(uiCard);assert.ok(animations.every(a=>a.cancelled),'rerender cancels
 toolbar.onkeydown({key:'Escape'});assert.equal(toolbar.hidden,true);assert.equal(filters.focused,true);
 reduced=true;observers.at(-1).fn([{isIntersecting:true}]);assert.equal(animations.length,12);reduced=false;api.enhance(uiCard);observers.at(-1).fn([{isIntersecting:true}]);assert.equal(animations.length,24);
 hidden=true;events.visibilitychange();assert.ok(animations.every(a=>a.cancelled));hidden=false;events.preference();api.dispose(uiCard);assert.equal(details.onclick,null);assert.equal(filters.onclick,null);assert.equal(toolbar.onkeydown,null);
-for(const page of ['app.html','index.html']){const html=fs.readFileSync(page,'utf8');assert.match(html,/sku-products.css\?v=20261019-layout1/);assert.ok(html.indexOf('sku-products.js')<html.indexOf('dashboard.js'));assert.match(html,/id="skuDetailsToggle"/);assert.match(html,/id="skuFilterToggle"/);}
+for(const page of ['app.html','index.html']){const html=fs.readFileSync(page,'utf8');assert.match(html,/sku-products.css\?v=20261019-headers1/);assert.ok(html.indexOf('sku-products.js')<html.indexOf('dashboard.js'));assert.match(html,/id="skuDetailsToggle"/);assert.match(html,/id="skuFilterToggle"/);}
+const productCSS=fs.readFileSync('assets/sku-products.css','utf8');
+assert.match(productCSS,/table\.sku th\{[^}]*font-size:12px;[^}]*white-space:nowrap;/,'keep established header typography and currency on one line');
+assert.match(productCSS,/is-sku-details \.sku-col-cost\{width:15\.5%\}/,'cost header has space within the expanded table');
+assert.match(productCSS,/is-sku-details \.sku-col-bar\{width:12%\}/,'expanded columns still total 100 percent');
 console.log('SKU Top products PASS: every article, real revenue ranking/bars, unknown/negative/zero/tiny, escaped identity, costs/profit/comparisons/totals, search/ABC/sort, no duplicate Chart, bounded reveal, controls/keyboard, reduced/hidden/rerender/dispose; no services.');
