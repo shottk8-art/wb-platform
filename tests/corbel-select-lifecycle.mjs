@@ -39,7 +39,7 @@ class Element {
   getBoundingClientRect() { return { left: 20, top: 20, bottom: 60, width: 220, height: 40 }; }
 }
 
-function fixture(hidden = false) {
+function fixture(hidden = false, shop = false) {
   const select = new Element(), group = new Element(), observers = [], changes = [];
   select.hidden = hidden;
   const options = ['A', 'B', 'C'].map(text => {
@@ -55,11 +55,13 @@ function fixture(hidden = false) {
     selectedOptions: { get: () => options.filter(option => option.selected) },
   });
   select.selectedIndex = 1;
+  const badge = new Element(); badge.textContent = 'WB · Ozon';
+  if (shop) { select.id = 'shopSwitch'; options[0].textContent = 'toplash'; options[1].textContent = 'GREEN FLOW'; options[2].textContent = 'clariskin'; }
   for (const type of ['input', 'change']) select.addEventListener(type, () => changes.push(type));
   const body = new Element(), shell = {};
   const document = {
     readyState: 'complete', body, createElement: () => new Element(),
-    getElementById: () => null, querySelector: () => null,
+    getElementById: id => shop && id === 'marketplaceBadge' ? badge : null, querySelector: () => null,
     querySelectorAll: selector => { assert.equal(selector, 'select'); return [select]; },
     addEventListener() {},
   };
@@ -82,7 +84,7 @@ function fixture(hidden = false) {
   const key = key => button.dispatchEvent({ type: 'keydown', key, preventDefault() {} });
   const open = () => button.dispatchEvent({ type: 'click' });
   const active = () => menu.children.find(item => item.id === button.getAttribute('aria-activedescendant'));
-  return { select, options, group, wrap, button, menu, changes, notify, key, open, active };
+  return { select, options, group, wrap, button, menu, changes, notify, key, open, active, badge };
 }
 
 // The original index regression: hiding A must not turn highlighted B into C.
@@ -130,4 +132,15 @@ assert.equal(visibility.button.getAttribute('aria-required'), 'true');
 visibility.select.required = false; visibility.notify('required');
 assert.equal(visibility.button.getAttribute('aria-required'), null);
 
-console.log('PASS: select identity after redraw, safe fallback, hidden groups, native change handlers, visibility/close, required state.');
+const shop = fixture(false, true);
+const [monogram, copy] = shop.button.children;
+assert.equal(monogram.textContent, 'GF');assert.equal(monogram.getAttribute('aria-hidden'), 'true');
+assert.equal(copy.children[0].textContent, 'GREEN FLOW');assert.equal(copy.children[1], shop.badge, 'marketplace metadata keeps its original DOM identity');
+shop.badge.textContent = 'Wildberries';assert.equal(copy.children[1].textContent, 'Wildberries');
+shop.open();shop.key('End');shop.key('Enter');
+assert.equal(shop.select.selectedIndex, 2);assert.equal(monogram.textContent, 'CL');assert.deepEqual(shop.changes, ['input', 'change']);
+shop.options[2].textContent = 'Очень длинное название магазина';shop.notify('label');assert.equal(monogram.textContent, 'ОД');assert.equal(copy.children[0].textContent, 'Очень длинное название магазина');
+shop.select.disabled = true;shop.notify('disabled');assert.equal(shop.button.disabled, true);
+shop.select.selectedIndex = -1;shop.select.options = [];shop.notify('hidden');assert.equal(monogram.textContent, '—');assert.equal(copy.children[0].textContent, 'Нет доступных значений');assert.equal(shop.button.disabled, true);
+
+console.log('PASS: select identity, hidden/disabled groups, native change handlers, keyboard, visibility/close, required state; shop monogram/metadata identity and long-name updates.');

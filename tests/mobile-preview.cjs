@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const fixture = `
 <script src="/assets/corbel.js"></script>
 <script src="/assets/corbel-motion.js"></script>
-<script src="/assets/corbel-components.js?v=20261019-reference6"></script>
+<script src="/assets/corbel-components.js?v=20261019-shop1"></script>
 <script src="/assets/reference.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/trend-interaction.js?v=20261019-trend2"></script>
@@ -45,7 +45,8 @@ drawTrend('sales');
 document.addEventListener('DOMContentLoaded',()=>{if(byId('kpiRow'))WBDashboard.renderKPI(byId('kpiRow'),d,prev,'wildberries',{onSelect:drawTrend,activeMetric:'sales'});drawTrend('sales');});
 WBShell.setProfile({user_metadata:{full_name:'Тестовый пользователь',telegram_username:'example'}},true);
 document.querySelectorAll('[data-chart-style]').forEach(button=>button.onclick=()=>{WBShell.chartStyle=button.dataset.chartStyle;drawTrend('sales')});
-if(byId('shopSwitch')) byId('shopSwitch').innerHTML='<option>Тестовый магазин · длинное название</option>';
+if(byId('shopSwitch')) byId('shopSwitch').innerHTML=location.search.includes('shop=green')?'<option value="green">GREEN FLOW</option><option value="long">Тестовый магазин · очень длинное название</option>':'<option value="long">Тестовый магазин · длинное название</option><option value="green">GREEN FLOW</option>';
+if(location.search.includes('shop=green')&&byId('marketplaceBadge'))byId('marketplaceBadge').textContent='WB · Ozon';
 if(byId('userEmail')) byId('userEmail').textContent='Тестовый пользователь';
 if(byId('salesYear'))byId('salesYear').innerHTML='<option>2026</option>';
 if(byId('salesMonth'))byId('salesMonth').innerHTML='<option>Сентябрь</option>';

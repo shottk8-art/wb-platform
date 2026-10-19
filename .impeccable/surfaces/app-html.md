@@ -25,6 +25,10 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 Constraints: preserve all data isolation, accounting, API, Ozon import, AI owner restriction, empty/loading/error states and existing interactive IDs. User files and untracked duplicate assets stay untouched.
 
+## Shop selector refinement
+
+Unify the rail's shop name and existing marketplace metadata inside the same native-backed select trigger. A36px initials tile identifies the actual selected shop; the name remains one ellipsized line with its full native title, existing WB/Ozon metadata is muted below, and the chevron remains right-aligned. The whole64px-high control is clickable, with one12px border radius and a200ms surface/border transition, no lift or new navigation. Keep the original shopSwitch select, marketplaceBadge node, options, change handlers, keyboard/disabled/empty states and data-isolation logic. Compact rail shows only the same monogram in a52px control; mobile drawer retains the full selector. Both themes/reduced-motion required. No server, storage, financial or permission changes.
+
 ## Month range extension
 
 Keep the established Corbel composition. Add Month/Range controls and labelled start/end month selectors to the overview toolbar. Range affects every analytical total, expense category, SKU and chart; compare against the immediately preceding interval of equal calendar-month length. Preserve unknowns, recompute ratios from totals, reject incomplete monthly coverage, and suppress comparisons for the current partial month. Keep monthly editing/AI and refresh actions monthly, with a concise explanation in range mode. No schema, auth, permissions or upstream synchronization changes. Cover desktop and 390px layouts in both themes; keyboard controls reuse existing selects.

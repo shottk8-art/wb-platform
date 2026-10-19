@@ -41,6 +41,18 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .context-label{font-size:11px;margin-bottom:4px}
 .corbel .marketplace-badge{font-size:10px;font-weight:500}
 .corbel .shop-context .select-trigger{min-height:30px;font-size:13px}
+/* Shop identity and marketplace metadata are one native-backed control. */
+.corbel .shop-context--unified{padding:0;margin:0 0 16px}
+.corbel .shop-context .shop-picker{display:block;width:100%;min-width:0}
+.corbel .shop-context .shop-picker .select-trigger{display:flex;align-items:center;gap:10px;min-height:64px;width:100%;padding:10px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 52%,transparent);box-shadow:none;text-align:left;transition:background-color .2s,border-color .2s}
+.corbel .shop-context .shop-picker .select-trigger:hover,.corbel .shop-context .shop-picker .select-trigger[aria-expanded="true"]{background:color-mix(in srgb,var(--surface) 82%,transparent);border-color:var(--line-strong)}
+.corbel .shop-picker-mark{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-family:var(--font-display);font-size:13px;font-weight:600;letter-spacing:0;line-height:1}
+.corbel .shop-picker-copy{display:block;flex:1;min-width:0;text-align:left}
+.corbel .shop-context .shop-picker .select-value{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;line-height:1.4}
+.corbel .shop-context .shop-picker .marketplace-badge{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:none;color:var(--ink-mute);border:0;border-radius:0;padding:0;margin:3px 0 0;font-size:11px;font-weight:400;line-height:1.4}
+.corbel .shop-context .shop-picker .select-trigger>svg{flex:0 0 14px;width:14px;height:14px;margin-left:auto;color:var(--ink-mute)}
+@media(min-width:901px){.sidebar-compact .corbel .shop-context--unified{padding:0;margin:0 0 16px}.sidebar-compact .corbel .shop-context .shop-picker .select-trigger{justify-content:center;min-height:52px;padding:7px;gap:0}.sidebar-compact .corbel .shop-picker-copy,.sidebar-compact .corbel .shop-context .shop-picker .select-trigger>svg{display:none}}
+@media(prefers-reduced-motion:reduce){.corbel .shop-context .shop-picker .select-trigger{transition:none}}
 .corbel .nav-search{width:100%;height:38px;display:flex;align-items:center;gap:9px;background:color-mix(in srgb,var(--surface) 50%,transparent);border:0;border-radius:11px;padding:0 12px;color:var(--ink-soft);font-size:13px;margin:0 0 18px;text-align:left;cursor:pointer}
 .corbel .nav-search .icon{width:16px;height:16px}
 .corbel .nav-search kbd{margin-left:auto;font-family:inherit;font-size:11px;color:var(--ink-mute);padding:1px 4px;border:1px solid var(--line);border-radius:4px}

@@ -60,6 +60,10 @@
   function sync(state) {
     state.wrap.hidden = state.select.hidden;
     state.label.textContent = state.select.selectedOptions[0]?.textContent || 'Нет доступных значений';
+    if (state.monogram) {
+      const words = state.select.selectedOptions[0]?.textContent.trim().split(/\s+/) || [];
+      state.monogram.textContent = (words.length > 1 ? words.slice(0,2).map(word=>[...word][0]).join('') : [...(words[0] || '')].slice(0,2).join('')).toLocaleUpperCase('ru-RU') || '—';
+    }
     state.button.disabled = state.select.disabled || !state.select.options.length;
     const label = state.select.getAttribute('aria-label') || [...(state.select.labels || [])].map(el => el.textContent.trim()).join(' ') || 'Выбрать значение';
     state.button.setAttribute('aria-label', label);
@@ -102,10 +106,18 @@
     const menu = document.createElement('div'); menu.className = 'corbel-select-menu'; menu.hidden = true; menu.id = `seller-select-${++sequence}`;
     menu.setAttribute('role', 'listbox'); if (menu.showPopover) menu.setAttribute('popover', 'manual');
     button.setAttribute('aria-controls', menu.id);
-    const label = document.createElement('span'); label.className = 'select-value'; button.append(label);
+    const label = document.createElement('span'); label.className = 'select-value';
+    let monogram = null;
+    if (select.id === 'shopSwitch') {
+      wrap.classList.add('shop-picker');
+      monogram = document.createElement('span'); monogram.className = 'shop-picker-mark'; monogram.setAttribute('aria-hidden','true');
+      const copy = document.createElement('span'); copy.className = 'shop-picker-copy'; copy.append(label);
+      const badge = document.getElementById('marketplaceBadge'); if (badge) copy.append(badge);
+      button.append(monogram,copy);
+    } else button.append(label);
     button.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>');
     wrap.append(button); document.body.append(menu);
-    const state = { select, wrap, button, label, menu, active: 0, activeOption: null, query: '', typedAt: 0 }; controls.set(select, state);
+    const state = { select, wrap, button, label, monogram, menu, active: 0, activeOption: null, query: '', typedAt: 0 }; controls.set(select, state);
     button.addEventListener('click', () => openControl === state ? close() : open(state));
     button.addEventListener('focus', () => sync(state));
     select.addEventListener('focus', () => button.focus());
