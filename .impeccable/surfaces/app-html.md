@@ -17,13 +17,17 @@ OWN-WORLD: Measured Corbel palette, typography, 66px header, 264px rail, compact
 
 STORY: Select a shop and marketplace, read verified monthly profit and expenses, click a KPI to inspect its trend, manage imports and costs, then configure API, tax and access. Profile displays the real Telegram identity; appearance is local, not a fake saved account update.
 
-FIRST VIEWPORT: Reference-aligned topbar with section icon, title, theme/profile tools; shop and search in the rail; four primary KPI cells only. Directly below, a half-circle profitability gauge on the left and reference-style monthly bars on the right. Advertising/DRR, expense breakdown and full-width SKU table follow below. Every important existing metric remains available.
+FIRST VIEWPORT: Reference-aligned topbar with section icon, title, theme/profile tools; shop and search in the rail; four primary KPI cells only. Directly below, a half-circle profitability gauge on the left and reference-style monthly bars on the right. Advertising/DRR follows, then expenses and SKU: paired on a sufficiently wide workspace, stacked otherwise. Every important existing metric remains available.
 
 FORM: User-pinned Corbel reference, code-led, no concept tournament. KPI-to-chart selection, travelling menu, masked headings, radial theme and compact rail follow the reference. Gauge is the real net-profit/sales ratio, never an invented performance score. Russian labels and working account/API/import controls remain. Fresh full finish review compares reference captures and build captures, not only isolated bug fixes.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 Constraints: preserve all data isolation, accounting, API, Ozon import, AI owner restriction, empty/loading/error states and existing interactive IDs. User files and untracked duplicate assets stay untouched.
+
+## Analytics pair layout
+
+When the actual analytics section reaches1100px, place expenses on the left (minimum460px, .9fr) and SKU on the right (1.2fr), with a16px gap and aligned top edges. Keep natural card heights, no blank stretched panels. Ring maximum180px in the paired expense panel; legend/comparisons remain beside it and retain every category. Give compact SKU rank/quantity/revenue stable44/90/138px columns, a flexible product column and16% relative-revenue bar. Expanded financial columns still scroll internally. Below1100px keep the original single column; expense cards below440px place the ring above the legend. Container-aware layout also follows sidebar collapse and zoom; no DOM reordering, new animation, service read or financial change. Apply to cabinet and public file-based storefront in both themes.
 
 ## Shop selector refinement
 

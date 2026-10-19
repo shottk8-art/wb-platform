@@ -54,6 +54,13 @@ body.corbel .is-products.is-sku-details .sku-col-revenue{width:14%}
 body.corbel .is-products.is-sku-details .sku-col-cost{width:12%}
 body.corbel .is-products.is-sku-details .sku-col-profit{width:17%}
 body.corbel .is-products.is-sku-details .sku-col-bar{width:15.5%}
+@container seller-analytics (min-width:1100px){
+  body.corbel .is-products:not(.is-sku-details) .sku-col-rank{width:44px}
+  body.corbel .is-products:not(.is-sku-details) .sku-col-product{width:auto}
+  body.corbel .is-products:not(.is-sku-details) .sku-col-units{width:90px}
+  body.corbel .is-products:not(.is-sku-details) .sku-col-revenue{width:138px}
+  body.corbel .is-products:not(.is-sku-details) .sku-col-bar{width:16%}
+}
 @media(max-width:760px){
   body.corbel .sku-card.is-products>.sku-panel-head{padding:16px 14px;gap:8px}
   body.corbel .is-products .sku-title{width:100%;gap:4px 10px}

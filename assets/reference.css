@@ -209,6 +209,23 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .expense-traffic-ring .expense-traffic-segment.is-selected{opacity:1;transform:scale(1.045)}
 @media(max-width:600px){.corbel .expense-card.is-traffic .exp-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;min-height:0;padding:14px;gap:22px}.corbel .expense-card.is-traffic .exp-chart{grid-column:1;grid-row:1;width:180px;height:180px}.corbel .expense-card.is-traffic #expList{grid-column:1;grid-row:2;max-height:none;padding:2px}.corbel .expense-card.is-traffic .exp-summary{grid-column:1;grid-row:3;gap:6px 12px}.corbel .expense-card.is-traffic .exp-row{padding:8px 10px}.corbel .expense-card.is-traffic .exp-chart-center strong{max-width:125px}}
 @media(prefers-reduced-motion:reduce){.corbel .expense-traffic-segment,.corbel .expense-card.is-traffic .exp-row{transition:none!important}}
+/* Pair analytical summaries only when their actual workspace has room. */
+.corbel .analytics-section{container:seller-analytics / inline-size}
+.corbel :is(#secAnalytics,.analytics-section)>.analytics-grid{grid-template-columns:minmax(0,1fr);gap:16px}
+.corbel .expense-card{container-name:expense-breakdown}
+@container seller-analytics (min-width:1100px){
+  .corbel :is(#secAnalytics,.analytics-section)>.analytics-grid{grid-template-columns:minmax(460px,.9fr) minmax(0,1.2fr);align-items:start}
+  .corbel .analytics-grid>div{min-width:0}
+  .corbel .analytics-grid>.expense-panel{margin-bottom:0}
+  .corbel .analytics-grid .expense-card.is-traffic .exp-body{grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:16px}
+  .corbel .analytics-grid .expense-card.is-traffic .exp-chart{max-width:180px}
+}
+@container expense-breakdown (max-width:440px){
+  .corbel .expense-card.is-traffic .exp-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;gap:22px;min-height:0}
+  .corbel .expense-card.is-traffic .exp-chart{grid-column:1;grid-row:1;width:180px;height:180px}
+  .corbel .expense-card.is-traffic #expList{grid-column:1;grid-row:2;align-self:start}
+  .corbel .expense-card.is-traffic .exp-summary{grid-column:1;grid-row:3}
+}
 .corbel .analytics-summary strong{font-family:var(--font-display);font-size:25px;font-weight:600;letter-spacing:-.02em}
 .corbel .analytics-summary>div{padding:16px 20px}
 .corbel .sku-card .skubar{height:180px}
