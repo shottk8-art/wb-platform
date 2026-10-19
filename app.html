@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
 <link rel="stylesheet" href="/assets/reference.css?v=20261019-traffic1">
+<link rel="stylesheet" href="/assets/sku-products.css?v=20261019-products1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-reference6" defer></script>
@@ -457,9 +458,12 @@
           </div>
         </div>
         <div>
-          <div class="section-head"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
           <div class="card analytics-card sku-card">
-            <div class="sku-toolbar">
+            <div class="section-head panel-heading sku-panel-head">
+              <div class="sku-title"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
+              <div class="sku-actions"><button type="button" id="skuFilterToggle" aria-expanded="false" aria-controls="skuToolbar">Фильтры</button><button type="button" id="skuDetailsToggle" aria-expanded="false" aria-controls="skuTable">Все показатели</button></div>
+            </div>
+            <div class="sku-toolbar" id="skuToolbar" hidden>
               <div class="sku-search-wrap">
                 <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-search"/></svg>
                 <input id="skuSearch" type="search" placeholder="Найти артикул или товар" aria-label="Поиск по товарам">
@@ -476,10 +480,12 @@
                 <option value="profit">По валовой прибыли</option>
               </select>
             </div>
-            <div class="skubar"><canvas id="skuChart"></canvas></div>
+            <div class="skubar" hidden><canvas id="skuChart"></canvas></div>
             <div class="tablewrap">
-              <table class="sku">
-                <thead><tr><th>Артикул</th><th class="num">Выкупили</th><th class="num">Выручка, ₽</th><th class="num">Себестоимость, ₽</th><th class="num" title="Выручка минус себестоимость товара">Валовая прибыль, ₽</th></tr></thead>
+              <table class="sku" id="skuTable">
+                <caption class="sr-only">Продажи всех артикулов за выбранный период. Полоса показывает выручку относительно лидера списка.</caption>
+                <colgroup><col class="sku-col-rank"><col class="sku-col-product"><col class="sku-col-units"><col class="sku-col-revenue"><col class="sku-detail sku-col-cost"><col class="sku-detail sku-col-profit"><col class="sku-col-bar"></colgroup>
+                <thead><tr><th scope="col" class="sku-rank">#</th><th scope="col">Товар</th><th scope="col" class="num">Выкупили</th><th scope="col" class="num">Выручка, ₽</th><th scope="col" class="num sku-detail">Себестоимость, ₽</th><th scope="col" class="num sku-detail" title="Выручка минус себестоимость товара">Валовая прибыль, ₽</th><th scope="col" class="sku-revenue-bar"><span class="sr-only">Выручка относительно лидера</span></th></tr></thead>
                 <tbody id="skuBody"></tbody>
                 <tfoot id="skuFoot"></tfoot>
               </table>
@@ -527,7 +533,8 @@
 <script src="/assets/upload.js?v=20261012-orders1"></script>
 <script src="/assets/trend-interaction.js?v=20261019-trend2"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
-<script src="/assets/dashboard.js?v=20261019-traffic1"></script>
+<script src="/assets/sku-products.js?v=20261019-products1"></script>
+<script src="/assets/dashboard.js?v=20261019-products1"></script>
 <script src="/assets/period-range.js?v=20261019-trend1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>

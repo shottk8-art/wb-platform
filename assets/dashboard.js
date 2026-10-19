@@ -28,7 +28,7 @@
   const MONTH_NAMES = ["", "январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 
   let charts = { pie: null, bar: null, trends: new WeakMap() };
-  let skuView = { abc: "all", query: "", sort: "qty" };
+  let skuView = { abc: "all", query: "", sort: "revenue" };
 
   const TREND_METRICS = {
     orders: { label: "Сумма заказов", unit: "₽", color: "#0071e3" },
@@ -776,6 +776,8 @@
   }
 
   function renderSkuTable(tbody, tfoot, hint, canvas, d, prevD) {
+    const productCard = tbody.closest?.('.sku-card');
+    if (productCard) productCard.classList.add('is-products');
     const counts = { A: 0, B: 0, C: 0 };
     const prevRows = prevD ? new Map(prevD.skuRows.map((row) => [articleKey(row.article), row])) : null;
     d.skuRows.forEach((s) => { counts[s.abc] = (counts[s.abc] || 0) + 1; });
@@ -817,10 +819,11 @@
 
     if (!rows.length) {
       const message = d.skuRows.length ? "По выбранному фильтру товары не найдены" : "Нет данных по артикулам за выбранный период";
-      tbody.innerHTML = `<tr><td colspan="5" class="empty">${message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${productCard ? 7 : 5}" class="empty">${message}</td></tr>`;
       tfoot.innerHTML = "";
     } else {
       const maxQty = Math.max(...rows.map((s) => s.bought_qty), 1);
+      const maxRevenue = rows.reduce((max,row)=>row.revenue == null ? max : Math.max(max,Number(row.revenue)||0),0);
       tbody.innerHTML = rows.map((s, index) => {
         const qtyPct = Math.max(3, Math.round((s.bought_qty / maxQty) * 100));
         const profitClass = s.profit >= 0 ? "profit-pos" : "profit-neg";
@@ -830,13 +833,21 @@
         const abcBadge = `<span class="abc-badge abc-badge--${s.abc}" title="${ABC_TITLE[s.abc]}">${s.abc}</span>`;
         const prev = prevRows ? prevRows.get(articleKey(s.article)) : null;
         const newBadge = prevRows && !prev ? `<span class="sku-new">Новый</span>` : "";
+        const initials = String(s.name || s.article || '').trim().split(/\s+/).slice(0,2).map(word=>Array.from(word)[0] || '').join('').toLocaleUpperCase('ru-RU');
+        const hue = Array.from(articleKey(s.article)).reduce((hash,char)=>(hash*31+char.codePointAt(0))%360,0);
+        const share = s.revenue == null || maxRevenue <= 0 ? 0 : Math.max(0,Number(s.revenue)/maxRevenue);
+        const identity = productCard
+          ? `<div class="sku-product"><span class="sku-thumb" style="--sku-hue:${hue}" aria-hidden="true">${escapeHtml(initials)}</span><div class="sku-identity"><span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-subline">${abcBadge}${newBadge}<span class="sku-art">${escapeHtml(s.article)}</span></span></div></div>`
+          : `${abcBadge}${newBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span>`;
         return `
           <tr style="--row-index:${Math.min(index, 12)}">
-            <td>${abcBadge}${newBadge}<span class="sku-name">${escapeHtml(s.name || s.article)}</span><span class="sku-art">${escapeHtml(s.article)}</span></td>
-            <td class="num" data-label="Выкупили, шт."><div class="sku-metric"><div class="qty-cell"><div class="qty-track" aria-hidden="true"><div class="qty-fill" style="width:${qtyPct}%"></div></div><span class="qty-num">${fmtQty.format(s.bought_qty)}</span></div>${prev ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
+            ${productCard ? `<td class="sku-rank">${index+1}</td>` : ''}
+            <td class="sku-product-cell">${identity}</td>
+            <td class="num sku-units" data-label="Выкупили, шт."><div class="sku-metric"><div class="qty-cell">${productCard ? '' : `<div class="qty-track" aria-hidden="true"><div class="qty-fill" style="width:${qtyPct}%"></div></div>`}<span class="qty-num">${s.bought_qty == null ? '—' : fmtQty.format(s.bought_qty)}</span></div>${prev && s.bought_qty != null ? renderSkuDelta(s.bought_qty, prev.bought_qty, "шт.") : ""}</div></td>
             <td class="num mono" data-label="Выручка, ₽"><div class="sku-metric"><strong>${s.revenue == null ? '—' : fmtMoney.format(Math.round(s.revenue))}</strong>${prev && s.revenue != null ? renderSkuDelta(s.revenue, prev.revenue, "₽") : ""}</div></td>
-            <td class="num mono" data-label="Себестоимость, ₽">${costCell}</td>
-            <td class="num ${profitClass}" data-label="Валовая прибыль, ₽"><div class="sku-metric"><strong>${s.profit == null ? '—' : fmtMoney.format(Math.round(s.profit))}</strong>${prev && s.profit != null ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
+            <td class="num mono sku-detail" data-label="Себестоимость, ₽">${costCell}</td>
+            <td class="num sku-detail ${profitClass}" data-label="Валовая прибыль, ₽"><div class="sku-metric"><strong>${s.profit == null ? '—' : fmtMoney.format(Math.round(s.profit))}</strong>${prev && s.profit != null ? renderSkuDelta(s.profit, prev.profit, "₽") : ""}</div></td>
+            ${productCard ? `<td class="sku-revenue-bar" title="${s.revenue == null ? 'Нет данных по выручке' : s.revenue < 0 ? 'Отрицательная выручка' : `${share > 0 && share < .001 ? 'менее 0,1' : fmtCompact.format(share*100)}% от максимальной выручки товара`}"><span class="sku-sales-track" aria-hidden="true"><span class="sku-sales-fill" style="--sku-share:${share}"></span></span></td>` : ''}
           </tr>`;
       }).join("");
 
@@ -845,15 +856,24 @@
       }), { qty: 0, rev: 0, cost: 0, profit: 0 });
       tfoot.innerHTML = `
         <tr>
+          ${productCard ? '<td class="sku-rank"></td>' : ''}
           <td>Итого</td>
           <td class="num mono" data-label="Выкупили, шт.">${fmtQty.format(tot.qty)}</td>
           <td class="num mono" data-label="Выручка, ₽">${tot.rev == null ? '—' : fmtMoney.format(Math.round(tot.rev))}</td>
-          <td class="num mono" data-label="Себестоимость, ₽">${tot.cost == null ? '—' : fmtMoney.format(Math.round(tot.cost))}</td>
-          <td class="num mono" data-label="Валовая прибыль, ₽">${tot.profit == null ? '—' : fmtMoney.format(Math.round(tot.profit))}</td>
+          <td class="num mono sku-detail" data-label="Себестоимость, ₽">${tot.cost == null ? '—' : fmtMoney.format(Math.round(tot.cost))}</td>
+          <td class="num mono sku-detail" data-label="Валовая прибыль, ₽">${tot.profit == null ? '—' : fmtMoney.format(Math.round(tot.profit))}</td>
+          ${productCard ? '<td class="sku-revenue-bar"></td>' : ''}
         </tr>`;
     }
 
     if (charts.bar) charts.bar.destroy();
+    if (productCard) {
+      charts.bar = null;
+      const oldChart = canvas.closest?.('.skubar');
+      if (oldChart) oldChart.hidden = true;
+      window.WBSkuProducts?.enhance(productCard);
+      return;
+    }
     const top = rows.slice(0, 10);
     const abcColors = {
       A: getComputedStyle(document.body).getPropertyValue("--good").trim(),
