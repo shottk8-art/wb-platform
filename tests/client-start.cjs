@@ -29,6 +29,12 @@ assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()')
 assert(demo.includes('Все данные вымышлены'));assert(client.includes('Wildberries и Ozon считаются двумя магазинами'));
 assert(demo.includes('id="periodSelect"'));assert(logic.includes('period.value=key(sample.periods[11])'));assert(logic.includes('sample.periods.findIndex(p=>key(p)===period.value)'));
 assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('selectReportMarketplace(marketplace).catch'));
+for(const step of [0,1,2])assert(client.includes(`data-client-step="${step}"`));
+assert(client.includes("root.querySelector('[data-create-shop]').onclick=async"));
+assert(!client.slice(client.indexOf('form.onsubmit=e=>'),client.indexOf("root.querySelector('[data-skip-payment]')")).includes('await createShop'));
+assert(client.includes("if(step===1)billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:"));
+assert(client.includes('data-payment-plans'));assert(client.includes("skip.hidden=['processing','result'].includes(screen)&&outcome==='success'"));
+const css=fs.readFileSync('assets/client-start.css','utf8');assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('client-success-draw'));assert(css.includes('font-size:16px'));assert(!/animation[^;\n]*infinite/.test(css));
 const routeSource=app.slice(app.indexOf('  async function selectReportMarketplace('),app.indexOf('  async function init()'));
 const calls=[],route={reportMarketplace:'wildberries',overviewScope:'wildberries',updateShareBox:()=>calls.push('share'),updateScopeButtons:()=>calls.push('scope'),reloadOverview:async()=>calls.push('overview'),refreshCostsTable:async()=>calls.push('costs'),refreshUploadsLog:async()=>calls.push('uploads')};
 vm.createContext(route);vm.runInContext(routeSource,route);
