@@ -4,8 +4,10 @@
   let theme='light';
   try{const saved=localStorage.getItem(key);if(saved==='dark'||saved==='light')theme=saved}catch(_){/* storage optional */}
   root.dataset.theme=theme;
+  let requestedTheme=theme,themeVersion=0;
   function applyTheme(next){
     if(!['light','dark'].includes(next))return;
+    ++themeVersion;requestedTheme=next;
     theme=next;root.dataset.theme=theme;
     try{localStorage.setItem(key,theme)}catch(_){/* private mode */}
     syncTheme();
@@ -33,8 +35,15 @@
     if(link){link.hidden=!/^[a-zA-Z0-9_]{5,32}$/.test(username);if(!link.hidden)link.href='https://t.me/'+encodeURIComponent(username)}
   }
   function wire(){
-    document.querySelectorAll('[data-theme-toggle]').forEach(button=>button.addEventListener('click',()=>applyTheme(theme==='dark'?'light':'dark')));
-    document.querySelectorAll('[data-theme-choice]').forEach(button=>button.addEventListener('click',()=>applyTheme(button.dataset.themeChoice)));
+    const choose=(next,button)=>{
+      if(next===requestedTheme)return;
+      requestedTheme=next;
+      const version=++themeVersion;
+      const commit=()=>{if(version===themeVersion)applyTheme(next)};
+      if(window.WBShell.motion)window.WBShell.motion.theme(next,button,commit);else commit();
+    };
+    document.querySelectorAll('[data-theme-toggle]').forEach(button=>button.addEventListener('click',()=>choose(requestedTheme==='dark'?'light':'dark',button)));
+    document.querySelectorAll('[data-theme-choice]').forEach(button=>button.addEventListener('click',()=>choose(button.dataset.themeChoice,button)));
     syncTheme();
   }
   window.WBShell={setProfile,applyTheme,chartStyle:'line'};

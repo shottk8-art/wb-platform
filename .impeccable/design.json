@@ -757,23 +757,33 @@
       },
       {
         "name": "workspace-enter",
-        "value": "280ms",
-        "purpose": "Вход секции: translateY(5px), blur(1px) → none; также длительность drawer."
+        "value": "900ms expo-out / 200ms exit",
+        "purpose": "Отменяемый выход и вход разделов; первое полотно 1100ms, masked title 800ms +20ms/letter."
       },
       {
         "name": "kpi-count-and-trend",
-        "value": "720ms easeOutQuart",
+        "value": "1200ms easeOutCubic",
         "purpose": "Обновление чисел и тренда."
       },
       {
         "name": "expenses",
-        "value": "760ms easeOutQuart",
+        "value": "1200ms easeOutCubic",
         "purpose": "Doughnut расходов."
       },
       {
         "name": "sku",
-        "value": "680ms easeOutQuart",
+        "value": "900ms easeOutCubic",
         "purpose": "Горизонтальная диаграмма SKU."
+      },
+      {
+        "name": "theme-circle",
+        "value": "620ms cubic-bezier(.65,0,.35,1)",
+        "purpose": "View Transition, круг от кнопки; fallback без движения."
+      },
+      {
+        "name": "nav-pill",
+        "value": "650ms expo-out",
+        "purpose": "Перемещение и растяжение текущего раздела; hover420ms, segmented550ms."
       },
       {
         "name": "reduced-motion",

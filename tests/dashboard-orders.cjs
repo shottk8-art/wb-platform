@@ -60,7 +60,8 @@ assert.doesNotMatch(button.html,/<div/,'no block div inside button');
 assert.doesNotMatch(cards(current)[0].html,/<button/,'public storefront remains read-only');
 window.matchMedia=()=>({matches:false});
 const animated=cards(current,previous)[0];
-while(frames.length)frames.shift()(720);
+for(let time=0;frames.length&&time<=2000;time+=100){const batch=frames.splice(0);batch.forEach(frame=>frame(time));}
+assert.equal(frames.length,0,'numeric animation finishes within its budget');
 assert.equal(animated.nodes['.kpi-number'].textContent,'700','remaining KPI animation is preserved');
 
 // Actual WB header names from the user-provided summary; basket count differs.

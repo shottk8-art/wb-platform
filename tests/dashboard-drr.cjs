@@ -139,7 +139,10 @@ async function main() {
   context.performance = { now: () => 0 };
   context.requestAnimationFrame = (callback) => frames.push(callback);
   const animated = cards(d, prev);
-  while (frames.length) frames.shift()(720);
+  for (let time = 0; frames.length && time <= 2000; time += 100) {
+    const batch = frames.splice(0); batch.forEach(frame => frame(time));
+  }
+  assert.equal(frames.length, 0, 'numeric animation finishes within its budget');
   assert.equal(find(animated, 'ДРР (заказа)').number.textContent, '8,8');
   assert.equal(find(animated, 'ДРР (выкупа)').number.textContent, '17,5');
   console.log('PASS: DRR cards, percentage-point deltas, zero/missing bases, promo exclusion, Ozon/WB totals, trend and unchanged net profit');

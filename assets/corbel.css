@@ -269,3 +269,68 @@ body.corbel{background:var(--page);font-family:var(--font-sans);color:var(--ink)
   .corbel .note{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.corbel .app-view.is-active{animation:none}.corbel *{scroll-behavior:auto!important;transition:none!important}.corbel .kpi-row .kpi{animation:none}}
+
+/* Motion reconstructed from the observable Corbel demo: masked type, travelling
+   selection, 200ms exits / 900ms entrances, 620ms radial theme reveal. */
+.corbel .app-view.is-active{animation:none}
+.corbel .motion-word{display:inline-block;overflow:clip;vertical-align:bottom;padding-bottom:.14em;margin-bottom:-.14em}
+.corbel .motion-letter{display:inline-block;transform-origin:0 100%}
+.corbel .side-menu.motion-tracked,.corbel .segmented-control.motion-tracked,.corbel .settings-tabs.motion-tracked{position:relative;isolation:isolate}
+.corbel .motion-nav-pill,.corbel .motion-tab-pill,.corbel .motion-nav-hover{position:absolute;pointer-events:none;z-index:-1;box-sizing:border-box}
+.corbel .motion-nav-hover{border-radius:12px;background:color-mix(in srgb,var(--surface) 45%,transparent);opacity:0;transition:opacity .25s}
+.corbel .side-menu.motion-tracked a:hover{background:transparent}
+.corbel .motion-nav-pill{border-radius:12px;background:color-mix(in srgb,var(--surface) 62%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);transition:background-color .45s,border-color .45s}
+.corbel .motion-tab-pill{border-radius:8px;background:var(--surface);box-shadow:0 1px 3px #161b3014}
+.corbel .side-menu.motion-tracked a.active{background:transparent;border-color:transparent}
+.corbel .side-menu.motion-tracked a{transition:color .2s}
+.corbel .side-menu .icon{transition:background-color .35s,color .35s}
+.corbel .segmented-control.motion-tracked button.active,.corbel .settings-tabs.motion-tracked a[aria-current=page]{background:transparent;box-shadow:none}
+.corbel .sidebar-brand{position:relative;padding-right:24px}
+.corbel .sidebar-collapse{position:absolute;top:24px;right:12px;width:26px;height:26px;padding:5px;z-index:2;border-radius:7px}
+.corbel .sidebar-collapse svg{width:17px;height:17px}
+.corbel .sidebar-inner{position:relative}
+.corbel .kpi-number.is-counting{animation:none;will-change:auto}
+.corbel .kpi--interactive{transition:background-color .2s,color .2s}
+.corbel .exp-row,.corbel table.sku tbody tr{transition:background-color .2s}
+.corbel .sku-card table.sku tbody tr{animation-duration:.45s;animation-delay:calc(min(var(--row-index,0),23) * 25ms)}
+.corbel .help-popover{transform-origin:90% 0%}
+.corbel .modal-backdrop,.corbel .modal-card{animation:none}
+.corbel .toast{animation:corbel-toast-in .55s cubic-bezier(.34,1.56,.64,1)}
+.corbel .toast.leaving{transition:opacity .25s,transform .25s;transform:translateY(10px) scale(.97)}
+@keyframes corbel-toast-in{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.motion-theme::view-transition-old(root),.motion-theme::view-transition-new(root){animation:none;mix-blend-mode:normal}
+.motion-theme::view-transition-new(root){z-index:2}
+.motion-theme::view-transition,.motion-rail::view-transition{pointer-events:none}
+.motion-rail .corbel .app-main{view-transition-name:workspace}
+.motion-rail .corbel #mobileSidebar{view-transition-name:sidebar}
+.motion-rail::view-transition-group(workspace),.motion-rail::view-transition-group(sidebar){animation-duration:.6s;animation-timing-function:cubic-bezier(.16,1,.3,1)}
+.motion-rail::view-transition-old(workspace),.motion-rail::view-transition-new(workspace){height:100%;object-fit:cover;object-position:top left}
+@media(min-width:901px){
+  .sidebar-compact .corbel #appScreen{padding-left:84px}
+  .sidebar-compact .corbel #appScreen>header.topnav{width:84px}
+  .sidebar-compact .corbel .sidebar-inner{padding-inline:10px;overflow-x:hidden}
+  .sidebar-compact .corbel .sidebar-brand{padding:0 0 0 4px;height:38px;margin-bottom:45px}
+  .sidebar-compact .corbel .sidebar-brand>div+div,.sidebar-compact .corbel .nav-group-label,.sidebar-compact .corbel .side-menu a>span,.sidebar-compact .corbel .context-label,.sidebar-compact .corbel .marketplace-badge,.sidebar-compact .corbel #userEmail{display:none}
+  .sidebar-compact .corbel .sidebar-collapse{top:66px;right:28px}
+  .sidebar-compact .corbel .sidebar-collapse svg{transform:rotate(180deg)}
+  .sidebar-compact .corbel .shop-context{padding:4px;margin-bottom:28px}
+  .sidebar-compact .corbel .shop-context select{font-size:0;min-height:32px;padding:0;min-width:0;width:100%}
+  .sidebar-compact .corbel .side-menu a{justify-content:center;padding:6px;min-height:44px}
+  .sidebar-compact .corbel .sidebar-action{font-size:0;justify-content:center;padding:6px}
+  .sidebar-compact .corbel .sidebar-user{justify-content:center}
+}
+@media(max-width:900px){
+  .corbel .sidebar-collapse{display:none}
+  .corbel #appScreen>header.topnav{transition:transform .35s cubic-bezier(.55,.085,.68,.53)}
+  .corbel #appScreen.menu-open>header.topnav{transition:transform .5s cubic-bezier(.16,1,.3,1)}
+  .corbel .menu-scrim{transition:opacity .3s,visibility .3s}
+}
+@media(max-width:600px){
+  .corbel .modal-backdrop{align-items:flex-end;padding:0}
+  .corbel .modal-card{width:100%;max-width:100%;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));max-height:90dvh;overflow:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .corbel .motion-letter{transform:none!important}
+  .corbel .toast,.corbel .sku-card table.sku tbody tr{animation:none!important}
+  .motion-theme::view-transition-group(root),.motion-rail::view-transition-group(workspace),.motion-rail::view-transition-group(sidebar){animation:none!important}
+}

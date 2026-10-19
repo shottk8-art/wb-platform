@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const fixture = `
 <script src="/assets/corbel.js"></script>
+<script src="/assets/corbel-motion.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/dashboard.js"></script>
 <script>
@@ -58,8 +59,8 @@ if(byId('costsBody')) byId('costsBody').innerHTML=rows.map(r=>'<tr><td class="mo
 if(byId('membersBody')) byId('membersBody').innerHTML='<tr><td>@very_long_username_for_test</td><td>Ожидает входа</td><td><button class="ghost small">Убрать</button></td></tr>';
 if(byId('uploadsBody')) byId('uploadsBody').innerHTML='<tr><td>Длинное название загруженного отчета за сентябрь 2026.xlsx</td><td>Wildberries</td><td>Сводный отчет</td><td>сентябрь 2026</td><td>10.10.2026</td><td><button class="ghost small">Отменить</button></td></tr>';
 if(byId('questionsBody')) byId('questionsBody').innerHTML='<tr><td>@example</td><td>Длинный вопрос пользователя о работе финансового отчёта</td><td>10.10.2026</td><td>Новый</td><td><button class="ghost small">Закрыть</button></td></tr>';
-const activate=()=>{const route=location.hash.slice(1)||'overview';document.querySelectorAll('.app-view').forEach(e=>{const active=e.dataset.view===route;e.hidden=!active;e.classList.toggle('is-active',active)});document.querySelectorAll('.side-menu [data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===route));screen.classList.remove('menu-open');if(byId('overviewControls'))byId('overviewControls').hidden=route!=='overview';if(byId('pageTitle'))byId('pageTitle').textContent=({overview:'Обзор',reports:'Отчёты',costs:'Себестоимость',team:'Команда',settings:'Настройки',account:'Учётная запись'})[route];window.scrollTo(0,0)};
-if(byId('appScreen')){activate();window.addEventListener('hashchange',activate);byId('mobileMenuBtn').onclick=()=>screen.classList.toggle('menu-open');byId('menuScrim').onclick=()=>screen.classList.remove('menu-open');byId('askQuestionBtn').onclick=()=>{screen.classList.remove('menu-open');byId('questionModal').hidden=false};byId('questionCancelBtn').onclick=()=>byId('questionModal').hidden=true;document.querySelectorAll('.collapse-btn').forEach(b=>b.onclick=()=>b.closest('section').classList.toggle('collapsed'));}
+const activate=()=>{const route=location.hash.slice(1)||'overview';document.querySelectorAll('.app-view').forEach(e=>{const active=e.dataset.view===route;e.hidden=!active;e.classList.toggle('is-active',active)});document.querySelectorAll('.side-menu [data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===route));screen.classList.remove('menu-open');if(byId('overviewControls'))byId('overviewControls').hidden=route!=='overview';if(byId('pageTitle'))byId('pageTitle').textContent=({overview:'Обзор',reports:'Отчёты',costs:'Себестоимость',team:'Команда',settings:'Настройки',account:'Учётная запись'})[route];window.scrollTo(0,0);WBShell.motion.enter(route)};
+if(byId('appScreen')){activate();window.addEventListener('hashchange',()=>WBShell.motion.navigate(activate));byId('mobileMenuBtn').onclick=()=>screen.classList.toggle('menu-open');byId('menuScrim').onclick=()=>screen.classList.remove('menu-open');byId('askQuestionBtn').onclick=()=>{screen.classList.remove('menu-open');byId('questionModal').hidden=false};byId('questionCancelBtn').onclick=()=>WBShell.motion.hideModal(byId('questionModal'));document.querySelectorAll('.collapse-btn').forEach(b=>b.onclick=()=>b.closest('section').classList.toggle('collapsed'));}
 </script><style>.fixture-static .app-view{animation:none!important}.fixture-static{scroll-behavior:auto!important}</style>`;
 http.createServer((req,res)=>{
   const url=new URL(req.url,'http://127.0.0.1');

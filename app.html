@@ -16,8 +16,9 @@
 <link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
-<link rel="stylesheet" href="/assets/corbel.css?v=20261019-1">
-<script src="/assets/corbel.js?v=20261019-1"></script>
+<link rel="stylesheet" href="/assets/corbel.css?v=20261019-motion2">
+<script src="/assets/corbel.js?v=20261019-motion2"></script>
+<script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 </head>
 <body class="corbel">
 
@@ -53,9 +54,10 @@
         <div class="brandmark brandmark--logo"><img src="/assets/icons/icon.svg?v=20261007-logo1" alt=""></div>
         <div><strong>Панель продавца</strong><span>WB · Ozon</span></div>
       </div>
+      <button class="shell-icon-button sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Свернуть боковое меню" aria-pressed="false" title="Свернуть боковое меню ([)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-12-4 4 4 4"/></svg></button>
       <div class="shop-context">
         <span class="context-label">Магазин</span>
-        <select id="shopSwitch"></select>
+        <select id="shopSwitch" aria-label="Выбрать магазин"></select>
         <span class="marketplace-badge" id="marketplaceBadge">Wildberries</span>
       </div>
       <nav class="side-menu" aria-label="Основная навигация">
@@ -83,8 +85,8 @@
   <button class="menu-scrim" id="menuScrim" aria-label="Закрыть меню" type="button"></button>
 
   <div class="modal-backdrop" id="questionModal" hidden>
-    <div class="modal-card">
-      <h3>Задать вопрос</h3>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="questionModalTitle">
+      <h3 id="questionModalTitle">Задать вопрос</h3>
       <p class="hint">Вопрос увидит владелец платформы — придёт ему в Telegram.</p>
       <textarea id="questionText" placeholder="Опишите вопрос или проблему…"></textarea>
       <div style="margin-top:10px;">
@@ -103,8 +105,8 @@
   </div>
 
   <div class="modal-backdrop" id="newShopModal" hidden>
-    <div class="modal-card compact-modal">
-      <h3>Новый магазин</h3>
+    <div class="modal-card compact-modal" role="dialog" aria-modal="true" aria-labelledby="newShopModalTitle">
+      <h3 id="newShopModalTitle">Новый магазин</h3>
       <p class="hint">Магазин объединяет Wildberries и Ozon. Площадки подключаются загрузкой соответствующих отчётов.</p>
       <label for="newShopName">Название магазина</label>
       <input id="newShopName" type="text" placeholder="Например, Основной магазин">
@@ -511,7 +513,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/dashboard.js?v=20261019-corbel1"></script>
+<script src="/assets/dashboard.js?v=20261019-motion2"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261011-production1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -555,6 +557,13 @@
   function setActiveView(view, updateHash = true) {
     if (view === 'api') view = 'overview'; // Existing bookmarks open the regular overview.
     if (!VIEW_META[view]) view = "overview";
+    if (updateHash && window.WBShell?.motion && view !== activeView) {
+      window.WBShell.motion.navigate(() => {
+        setActiveView(view, false);
+        history.replaceState(null, "", `#${view}`);
+      });
+      return;
+    }
     activeView = view;
     const meta = VIEW_META[view];
     document.querySelectorAll(".app-view").forEach((section) => {
@@ -575,7 +584,8 @@
     document.getElementById("overviewControls").hidden = !meta.period;
     updateOverviewSource();
     if (updateHash) history.replaceState(null, "", `#${view}`);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
+    window.WBShell?.motion?.enter(view);
   }
 
   let overviewSource = 'files', sourceShopId = null, sourcePreference = null;
@@ -1378,7 +1388,7 @@
       if (questionPhotoUrl) { URL.revokeObjectURL(questionPhotoUrl); questionPhotoUrl = null; }
     };
     const openQuestionModal = () => { closeMobileMenu(); questionText.value = ""; resetQuestionPhoto(); questionModal.hidden = false; questionText.focus(); };
-    const closeQuestionModal = () => { questionModal.hidden = true; };
+    const closeQuestionModal = () => { if(window.WBShell?.motion)window.WBShell.motion.hideModal(questionModal);else questionModal.hidden = true; };
     document.getElementById("askQuestionBtn").addEventListener("click", openQuestionModal);
     document.getElementById("questionCancelBtn").addEventListener("click", closeQuestionModal);
     questionModal.addEventListener("click", (e) => { if (e.target === questionModal) closeQuestionModal(); });
@@ -1425,7 +1435,7 @@
 
     const newShopModal = document.getElementById("newShopModal");
     const newShopName = document.getElementById("newShopName");
-    const closeNewShopModal = () => { newShopModal.hidden = true; };
+    const closeNewShopModal = () => { if(window.WBShell?.motion)window.WBShell.motion.hideModal(newShopModal);else newShopModal.hidden = true; };
     document.getElementById("newShopBtn").addEventListener("click", () => {
       newShopName.value = "";
       newShopModal.hidden = false;

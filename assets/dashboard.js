@@ -329,12 +329,12 @@
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || from === target) return;
 
     const startedAt = performance.now();
-    const duration = 720;
+    const duration = 1200;
     element.classList.add("is-counting");
     const frame = (now) => {
       if (!element.isConnected) return;
       const progress = Math.min(1, (now - startedAt) / duration);
-      const eased = 1 - Math.pow(1 - progress, 4);
+      const eased = 1 - Math.pow(1 - progress, 3);
       element.textContent = format.format(rounded(from + (target - from) * eased));
       if (progress < 1) requestAnimationFrame(frame);
       else {
@@ -508,7 +508,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 760, easing: "easeOutQuart" },
+        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 1200, easing: "easeOutCubic" },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${fmtMoney.format(ctx.parsed)} ₽ · ${chartTotal > 0 ? ((ctx.parsed / chartTotal) * 100).toFixed(1) : 0}%` } },
@@ -560,7 +560,7 @@
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
-        animation: reduceMotion ? false : { duration: 720, easing: "easeOutQuart" },
+        animation: reduceMotion ? false : { duration: 1200, easing: "easeOutCubic", delay: ctx => ctx.type === 'data' && ctx.mode === 'default' ? Math.min(ctx.dataIndex * 35, 385) : 0 },
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -717,7 +717,7 @@
         indexAxis: "y",
         responsive: true,
         maintainAspectRatio: false,
-        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 680, easing: "easeOutQuart" },
+        animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 900, easing: "easeOutCubic", delay: ctx => ctx.type === 'data' && ctx.mode === 'default' ? Math.min(ctx.dataIndex * 50, 350) : 0 },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => ` ${fmtQty.format(ctx.parsed.x)} шт. · группа ${top[ctx.dataIndex].abc}` } },
