@@ -55,6 +55,7 @@
   function dispose(chart) {
     const state=states.get(chart); if(!state)return;
     if(state.frame) cancelAnimationFrame(state.frame);
+    state.chart.canvas.parentElement?.removeEventListener('pointerleave',state.dismiss);
     state.root.remove();state.summary.remove();live.delete(state);states.delete(chart);
     state.chart.canvas.parentElement?.classList.remove('has-trend-interaction');
   }
@@ -71,14 +72,16 @@
     const state={chart,root,summary,plot:root.querySelector('.trend-months'),mark:root.querySelector('.trend-highlight'),cap:root.querySelector('.trend-highlight-cap'),tip:root.querySelector('.trend-tooltip'),guide:root.querySelector('.trend-average'),buttons:[],active:-1,frame:0,visual:[null,null,null],geometry:'',source:null};
     state.values=[root.querySelector('[data-tip-value]'),root.querySelector('[data-tip-secondary]'),root.querySelector('[data-tip-delta]')];
     const readIndex=event=>{const button=event.target.closest?.('[data-trend-index]');return button && state.plot.contains(button)?Number(button.dataset.trendIndex):null;};
-    state.plot.addEventListener('pointermove',event=>{const index=readIndex(event);if(index!=null)choose(state,index);});
-    state.plot.addEventListener('click',event=>{const index=readIndex(event);if(index!=null)choose(state,index);});
-    state.plot.addEventListener('focusin',event=>{const index=readIndex(event);if(index!=null)choose(state,index);});
-    state.plot.addEventListener('pointerleave',()=>choose(state,state.model.initial));
-    state.plot.addEventListener('focusout',event=>{if(!state.plot.contains(event.relatedTarget))choose(state,state.model.initial);});
+    state.plot.addEventListener('pointermove',event=>{const index=readIndex(event);if(index!=null)inspect(state,index);});
+    state.plot.addEventListener('click',event=>{const index=readIndex(event);if(index!=null)inspect(state,index);});
+    state.plot.addEventListener('focusin',event=>{const index=readIndex(event);if(index!=null)inspect(state,index);});
+    state.dismiss=()=>dismiss(state);
+    parent.addEventListener('pointerleave',state.dismiss);
+    state.plot.addEventListener('pointercancel',state.dismiss);
+    state.plot.addEventListener('focusout',event=>{if(!state.plot.contains(event.relatedTarget))dismiss(state);});
     state.plot.addEventListener('keydown',event=>{
       const index=readIndex(event);if(index==null)return;
-      if(event.key==='Escape'){event.preventDefault();choose(state,state.model.initial);state.buttons[state.model.initial]?.focus({preventScroll:true});return;}
+      if(event.key==='Escape'){event.preventDefault();state.buttons[state.model.initial]?.focus({preventScroll:true});dismiss(state);return;}
       if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
       event.preventDefault();
       const next=event.key==='Home'?0:event.key==='End'?state.buttons.length-1:Math.max(0,Math.min(state.buttons.length-1,index+(event.key==='ArrowRight'?1:-1)));
@@ -132,7 +135,6 @@
     if(state.active===index && !snap)return;
     const first=state.active<0;state.active=index;
     state.buttons.forEach((button,i)=>{button.classList.toggle('is-active',i===index);button.tabIndex=i===index?0:-1;button.setAttribute('aria-pressed',String(i===index));});
-    state.tip.hidden=false;
     state.tip.querySelector('.trend-tooltip-month').textContent=detail.month;
     state.tip.querySelector('.trend-tooltip-metric').textContent=state.model.metric.label;
     state.tip.querySelector('.trend-tooltip-secondary').textContent=detail.secondaryLabel;
@@ -141,6 +143,23 @@
     numbers(state,detail,!snap&&!first);
     state.root.classList.toggle('is-instant',snap||first||reduced());
     position(state);
+  }
+
+  function inspect(state,index) {
+    if(!state.model?.detail(index))return;
+    const unchanged=state.active===index;
+    const reveal=state.tip.hidden;
+    if(reveal)state.tip.hidden=false;
+    choose(state,index);
+    if(unchanged && reveal)position(state);
+  }
+
+  function dismiss(state) {
+    choose(state,state.model?.initial);
+    state.tip.hidden=true;
+    const detail=state.model?.detail(state.active);
+    // No invisible count loop; re-entering the same month shows final values.
+    if(detail)numbers(state,detail,false);
   }
 
   function sync(chart,force=false) {
@@ -156,6 +175,7 @@
     if(!changed && !force && geometry===state.geometry)return;
     state.root.hidden=false;
     if(changed){
+      state.tip.hidden=true;
       state.dataset=ds;state.source=rows;state.metricKey=ds.sellerMetric;state.selected=selected;state.type=chart.config.type;
       state.model=model(rows,ds.sellerMetric,window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace),selected);
       if(state.frame)cancelAnimationFrame(state.frame);state.frame=0;state.visual=[null,null,null];state.active=-1;
@@ -193,7 +213,7 @@
 
   const plugin={id:'seller-trend-interaction',afterUpdate:chart=>sync(chart,true),afterDraw:chart=>sync(chart),afterDestroy:dispose};
   window.WBTrend={plugin,model,format,numeric};
-  document.addEventListener?.('visibilitychange',()=>{if(document.hidden)for(const state of live)choose(state,state.active,true);});
+  document.addEventListener?.('visibilitychange',()=>{if(document.hidden)for(const state of live)dismiss(state);});
   const preference=window.matchMedia('(prefers-reduced-motion: reduce)');
   preference.addEventListener?.('change',()=>{for(const state of live)choose(state,state.active,true);});
 })();

@@ -18,6 +18,7 @@ class Element {
   remove(){this.removed=true;}
   setAttribute(name,value){this.attrs[name]=value;}
   addEventListener(name,handler){this.events[name]=handler;}
+  removeEventListener(name,handler){if(this.events[name]===handler)delete this.events[name];}
   contains(el){return this.children.includes(el);}
   closest(selector){return selector==='[data-trend-index]' && this.dataset.trendIndex!=null?this:null;}
   focus(){this.parentElement?.events.focusin?.({target:this});}
@@ -65,23 +66,32 @@ plugin.afterUpdate(chart);assert.equal(parent.children.length,2,'mounted exactly
 const root=parent.children[1],plot=root.querySelector('.trend-months'),tip=root.querySelector('.trend-tooltip'),mark=root.querySelector('.trend-highlight');
 const value=()=>root.querySelector('[data-tip-value]').textContent;
 assert.equal(clean(value()),'200₽');assert.equal(plot.children[1].attrs['aria-pressed'],'true');
-assert.equal(tip.hidden,false,'reference tooltip stays visible at rest');
+assert.equal(tip.hidden,true,'tooltip is hidden until the chart is inspected');
 assert.match(mark.style.transform,/translate\(440px,20px\)/);
 let before=writes;for(let i=0;i<40;i++)plugin.afterDraw(chart);assert.equal(writes,before,'no DOM work per canvas animation frame');
 plot.events.pointermove({target:plot.children[0]});assert.equal(frames.size,1);
+assert.equal(tip.hidden,false,'hover reveals the tooltip');
 assert.equal(plot.children[0].attrs['aria-pressed'],'true');
 function tick(time){clock=time;const batch=[...frames.values()];frames.clear();batch.forEach(cb=>cb(time));}
 tick(150);assert.ok(parseInt(clean(value()))>100 && parseInt(clean(value()))<200,'values genuinely interpolate');
 plot.events.pointermove({target:plot.children[1]});assert.equal(frames.size,1,'rapid hover cancels previous numeric loop');
 tick(600);assert.equal(clean(value()),'200₽');assert.equal(frames.size,0);
-plot.events.pointermove({target:plot.children[0]});plot.events.pointerleave();tick(1100);
+plot.events.pointermove({target:plot.children[0]});parent.events.pointerleave();
+assert.equal(tip.hidden,true,'leaving the whole chart hides the tooltip immediately');
+assert.equal(frames.size,0,'leaving cancels invisible number animation');tick(1100);
 assert.equal(plot.children[1].attrs['aria-pressed'],'true','pointer leave restores selected month');
+plot.events.pointermove({target:plot.children[1]});assert.equal(tip.hidden,false,'re-entering the same selected month reveals it again');assert.equal(clean(value()),'200₽');
+plot.events.focusout({relatedTarget:null});assert.equal(tip.hidden,true,'tabbing out hides the tooltip');
 reduce=true;plot.events.pointermove({target:plot.children[0]});assert.equal(frames.size,0);assert.equal(clean(value()),'100₽');assert.ok(root.classList.contains('is-instant'));
 plot.events.keydown({target:plot.children[0],key:'End',preventDefault(){}});assert.equal(plot.children[1].attrs['aria-pressed'],'true');
 plot.events.keydown({target:plot.children[1],key:'ArrowLeft',preventDefault(){}});assert.equal(plot.children[0].attrs['aria-pressed'],'true');
 plot.events.keydown({target:plot.children[0],key:'Escape',preventDefault(){}});assert.equal(plot.children[1].attrs['aria-pressed'],'true');
+assert.equal(tip.hidden,true,'Escape dismisses even after focus restores the selected month');
+plot.events.click({target:plot.children[1]});assert.equal(tip.hidden,false,'tap/click still opens the card');
+plot.events.pointercancel();assert.equal(tip.hidden,true,'cancelled touch hides the card');
 reduce=false;plot.events.pointermove({target:plot.children[0]});assert.equal(frames.size,1);
 chart.data.datasets[0].sellerRows=series.map(r=>({...r,sales:null}));plugin.afterUpdate(chart);assert.equal(frames.size,0);assert.equal(value(),'—');assert.equal(mark.hidden,true);
+assert.equal(tip.hidden,true,'source replacement cannot reopen a stale card');
 chart.data.datasets[0].sellerRows=series;chart.data.datasets[0].sellerMetric='quantity';plugin.afterUpdate(chart);assert.equal(clean(value()),'10шт.');
 chart.config.type='line';chart.scales.x.getPixelForValue=i=>50+i*540;plugin.afterUpdate(chart);
 assert.ok(mark.classList.contains('is-point'));assert.equal(plot.children[1].style['--month-x'],'270px');
@@ -93,6 +103,7 @@ metrics.sales.color='#7088f0';plugin.afterUpdate(chart);assert.equal(root.style[
 assert.equal(plot.children[1].attrs['aria-pressed'],'true','theme refresh preserves selected month');
 chart.data.datasets[0].sellerRows=[];plugin.afterUpdate(chart);assert.equal(root.hidden,true);assert.equal(heading.children[0].textContent,'');
 plugin.afterDestroy(chart);assert.ok(root.removed);assert.ok(heading.children[0].removed);assert.equal(frames.size,0);
+assert.equal(parent.events.pointerleave,undefined,'chart disposal removes its parent listener');
 assert.equal(parent.classList.contains('has-trend-interaction'),false);
 const emptyChart={...chart,data:{datasets:[{sellerRows:[],sellerMetric:'sales'}]}};
 plugin.afterUpdate(emptyChart);document.hidden=true;
