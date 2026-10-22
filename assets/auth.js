@@ -188,6 +188,24 @@
     return data;
   }
 
+  async function renameShop(shopId, name) {
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 80) {
+      throw new Error("Введите название магазина от 1 до 80 символов");
+    }
+    if (typeof shopId !== "string" || !shopId) throw new Error("Выберите магазин");
+    const session = await getSession();
+    if (!session) throw new Error("Сессия истекла. Войдите заново");
+    const { data, error } = await sb().from("shops")
+      .update({ name: name.trim() })
+      .eq("id", shopId).eq("owner_id", session.user.id)
+      .select("id,name,owner_id").single();
+    if (error) throw error;
+    if (!data || data.id !== shopId || data.owner_id !== session.user.id) {
+      throw new Error("Магазин недоступен или нет прав на изменение");
+    }
+    return data;
+  }
+
   // Удаляет магазин и каскадно все его данные (отчёты, продажи,
   // себестоимость — foreign key ... on delete cascade в schema.sql).
   async function deleteShop(shopId) {
@@ -197,7 +215,7 @@
 
   window.WBAuth = {
     signInWithMagicLink, signInWithTelegram, signOut, getSession, waitForSession,
-    ensureShop, listMyShops, createShop, updateShop, deleteShop, slugify,
+    ensureShop, listMyShops, createShop, updateShop, renameShop, deleteShop, slugify,
     listMembers, addMember, removeMember,
   };
 })();

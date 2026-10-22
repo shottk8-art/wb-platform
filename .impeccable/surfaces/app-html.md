@@ -7,7 +7,13 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+Shop-name extension, 22 October 2026: put a compact inline name form first in Settings, in the existing Corbel card/field/button vocabulary and both themes. Only the owner edits, members see a readonly field with an explanation. Accept a trimmed 1–80-character name and explicit Save; blank/unchanged/loading states disable Save, success and retry errors use the inline live status. Reset immediately on shop switch; a delayed result may only update its own shop option, never another shop's field or status. Update the native-backed selector and WB settings label without reloading analytics or API data. Preserve slug, owner, reports, costs, tax, keys, subscription and all existing permissions. No new motion or redesign.
+
 ## Approved extension: client start, 19 October 2026
+
+Latest owner correction, 21 October 2026: onboarding now creates a shared shop by name only, with no WB/Ozon choice. Both sources are configured afterward using existing settings/reports. The new entry matches the cabinet through an interactive, explicitly synthetic KPI/month preview rather than a large static illustration; travelling step selection, interruptible bar changes, hover/focus tooltip and the existing radial theme switch preserve the current component language. Real accounting, shop/member permissions, test tariffs and all source rules remain unchanged. See index-html.md for the current local contract; no global dashboard redesign is authorized.
+
+Entry timing clarification (owner request, 21 October 2026): show the same onboarding to anonymous visitors before Telegram. Authentication remains required before any real shop creation. Resume only a per-tab draft bound to the confirmed session user, on the final explicit «Создать магазин» step. Existing owned/member shops bypass this continuation and keep their data and access unchanged. Test-plan selection is still a browser-only simulation, never server permission or a real payment. The entry surface contract lives in index-html.md; no dashboard, API or financial redesign is authorized by this change.
 
 Demo navigation refinement (owner request, same date): remove the standalone demo action from the rail and place it after tax in Settings, using a compact responsive row, explicit synthetic-data copy and the existing `/demo.html` new-tab link. Preserve onboarding demo access, both themes, keyboard focus and every real data/API/auth/payment path. No new motion or service work.
 

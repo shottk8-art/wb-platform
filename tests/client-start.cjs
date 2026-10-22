@@ -30,23 +30,23 @@ const entries=['wildberries','ozon'].map(marketplace=>{const r=sample.data[marke
 const total=window.WBRange.aggregate(entries);assert.equal(total.netProfit,entries.reduce((sum,e)=>sum+e.derived.netProfit,0));assert.equal(total.rep.sales_amount,entries.reduce((sum,e)=>sum+e.derived.rep.sales_amount,0));assert.equal(total.rates.drrOrders,null);
 for(const {derived:d} of entries){assert.equal(d.netProfit,d.rep.transfer_total-d.cogs-d.ads-d.tax-d.manualExpenses);assert(d.netProfit>0);}
 assert(!/supabase|config\.js|auth\.js|wb-api|analysis\.js/.test(demo));assert(!/fetch\(|\.from\(|WBRange\.load/.test(logic));assert(!/fetch\(|\.from\(|payment_method|cardNumber/.test(client));
-assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(app.includes('firstSetup?.marketplace'));
+assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(app.includes("firstSetup ? 'settings'"));
+assert(!client.includes('name="marketplace"'));assert(!client.includes('form.elements.marketplace'));assert(client.includes('await createShop(name)'),'first creation is not a marketplace choice');
 assert(demo.includes('Все данные вымышлены'));assert(client.includes('Wildberries и Ozon считаются двумя магазинами'));
 assert(demo.includes('id="periodSelect"'));assert(logic.includes('period.value=key(sample.periods[11])'));assert(logic.includes('sample.periods.findIndex(p=>key(p)===period.value)'));
 assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('selectReportMarketplace(marketplace).catch'));
 for(const step of [0,1,2])assert(client.includes(`data-client-step="${step}"`));
 assert(client.includes("root.querySelector('[data-create-shop]').onclick=async"));
 assert(!client.slice(client.indexOf('form.onsubmit=e=>'),client.indexOf("root.querySelector('[data-skip-payment]')")).includes('await createShop'));
-assert(client.includes("if(step===1)billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:"));
+assert(client.includes("if(step===1){draftPlan=null;billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:"));
 assert(client.includes('data-payment-plans'));assert(client.includes("skip.hidden=['processing','result'].includes(screen)&&outcome==='success'"));
 for(const phrase of ['Выберите свой масштаб','Всё готово к тесту','Проверили сценарий отказа','Смоделировать отказ','Ваш кабинет почти готов','Реальная картина магазина'])assert(!client.includes(phrase));
-for(const phrase of ['Добавьте магазин','Укажите название и выберите маркетплейс.','Подтвердите тариф','К оплате сейчас','Подтвердить (тест)','Продолжить без оплаты','Проверьте данные','Создать магазин'])assert(client.includes(phrase));
+for(const phrase of ['Создайте свой кабинет','Обе площадки будут доступны внутри.','Подтвердите тариф','К оплате сейчас','Подтвердить (тест)','Продолжить без оплаты','Проверьте данные','Создать магазин'])assert(client.includes(phrase));
 assert(client.includes('<details class="client-test-details"><summary>Проверить отказ оплаты</summary>'));
 assert(client.includes('${!onContinue&&state.history.length?'));assert(client.includes('${!onContinue&&s?.status'));
-assert(client.includes('После создания загрузите отчёт Ozon в разделе «Отчёты».'));assert(client.includes('После создания подключите API-ключ Wildberries в настройках.'));
+assert(client.includes('После создания подключите API Wildberries в настройках или загрузите отчёт Ozon в разделе «Отчёты».'));
 const css=fs.readFileSync('assets/client-start.css','utf8');assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('client-success-draw'));assert(css.includes('font-size:16px'));assert(!/animation[^;\n]*infinite/.test(css));
-assert(client.includes('srcset="/assets/illustrations/seller-economics-480.webp 480w, /assets/illustrations/seller-economics-960.webp 960w"'));
-assert(client.includes('width="960" height="960" alt=""'));assert(css.includes('client-success-contour'));assert(css.includes('--market-color:var(--violet)'));
+assert(client.includes('data-welcome-preview'));assert(client.includes('preview?.setName(form.elements.shopName.value)'));assert(client.includes('preview?.dispose()'));assert(css.includes('client-success-contour'));assert(css.includes('.client-step-nav ol:before'));
 for(const size of [480,960]){const file=fs.readFileSync(`assets/illustrations/seller-economics-${size}.webp`);assert(file.length<100000);assert.equal(file.toString('ascii',0,4),'RIFF');assert.equal(file.toString('ascii',8,12),'WEBP');}
 const routeSource=app.slice(app.indexOf('  async function selectReportMarketplace('),app.indexOf('  async function init()'));
 const calls=[],route={reportMarketplace:'wildberries',overviewScope:'wildberries',updateShareBox:()=>calls.push('share'),updateScopeButtons:()=>calls.push('scope'),reloadOverview:async()=>calls.push('overview'),refreshCostsTable:async()=>calls.push('costs'),refreshUploadsLog:async()=>calls.push('uploads')};

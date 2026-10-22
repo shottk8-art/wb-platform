@@ -5,13 +5,16 @@
   const rub=n=>new Intl.NumberFormat('ru-RU').format(n)+' ₽';
   const date=s=>new Date(s).toLocaleDateString('ru-RU');
   let store,user;
-  function start(u) {if(user===u.id)return;user=u.id;let storage;try{storage=window.localStorage;}catch{storage=null;}store=WBTestSubscription.create(user,storage);}
+  const panelAnimations=new WeakMap();
+  function start(u) {const id=u?.id||'guest-onboarding';if(user===id)return;user=id;let storage;try{storage=u?window.localStorage:window.sessionStorage;}catch{storage=null;}store=WBTestSubscription.create(user,storage);}
   const checkIcon='<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29"/><path d="m19 32 9 9 18-19"/></svg>';
   const arrowIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg>';
   const planArt=plan=>`<svg class="client-plan-art" viewBox="0 0 72 48" aria-hidden="true">${[0,1,2,3,4,5].slice(0,plan.shops).map(i=>`<rect x="${4+(i%3)*22}" y="${plan.shops===2?13:3+Math.floor(i/3)*23}" width="18" height="18" rx="5"/>`).join('')}</svg>`;
   function enter(node,direction=1) {
-    if(!node||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    node.animate?.([{opacity:.4,transform:`translateX(${direction*12}px)`,clipPath:'inset(0 0 0 2%)'},{opacity:1,transform:'translateX(0)',clipPath:'inset(0)'}],{duration:240,easing:'cubic-bezier(.16,1,.3,1)'});
+    if(!node)return;panelAnimations.get(node)?.cancel();
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden)return;
+    const a=node.animate?.([{opacity:.35,transform:`translateX(${direction*20}px)`,clipPath:'inset(0 0 0 3%)'},{opacity:1,transform:'translateX(0)',clipPath:'inset(0)'}],{duration:460,easing:'cubic-bezier(.16,1,.3,1)'});
+    if(a){panelAnimations.set(node,a);a.finished.catch(()=>{}).finally(()=>{if(panelAnimations.get(node)===a)panelAnimations.delete(node);});}
   }
   function billing(root,{onContinue,onScreenChange}={}) {
     if(!root)return;
@@ -51,48 +54,60 @@
     paint();
   }
   function firstShop(u,{createShop,signOut}) {
-    start(u);const root=$('clientWelcome');
+    start(u);const root=$('clientWelcome'),guest=!u;
+    const draft=window.WBOnboardingDraft?.read(u?.id||null);
     $('loadingScreen').hidden=true;root.hidden=false;
     root.innerHTML=`
+      <h1 class="sr-only">Настройка магазина</h1>
       <header class="client-welcome-top">
         <a class="client-brand" href="/index.html"><img src="/assets/icons/icon.svg" width="34" height="34" alt=""><span>Панель продавца</span></a>
         <nav aria-label="Действия при первом входе"><button class="client-theme" type="button" data-client-theme aria-label="Переключить цветовую тему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg></button><a href="/demo.html"><span class="client-demo-full">Посмотреть </span>демо</a><button type="button" class="client-text-button" data-welcome-exit>Выйти</button></nav>
       </header>
       <div class="client-onboarding-shell">
-        <aside class="client-story">
-          <h1>Аналитика<br><span>вашего магазина.</span></h1>
-          <p>Продажи, расходы и прибыль Wildberries и Ozon в одном кабинете.</p>
-          <figure class="client-story-art"><img src="/assets/illustrations/seller-economics-480.webp" srcset="/assets/illustrations/seller-economics-480.webp 480w, /assets/illustrations/seller-economics-960.webp 960w" sizes="(max-width:900px) 128px, 360px" width="960" height="960" alt="" decoding="async"></figure>
-        </aside>
         <div class="client-onboarding-work">
           <nav class="client-step-nav" aria-label="Этапы настройки"><ol><li data-step-indicator="0" aria-current="step"><span>1</span>Магазин</li><li data-step-indicator="1"><span>2</span>Тариф</li><li data-step-indicator="2"><span>3</span>Проверка</li></ol><div class="client-step-progress"><i></i></div></nav>
           <div class="client-stage-surface">
-            <section class="client-stage" data-client-step="0"><form class="client-setup"><h2 tabindex="-1">Добавьте магазин</h2><p>Укажите название и выберите маркетплейс.</p><label for="welcomeShopName">Название магазина</label><input id="welcomeShopName" name="shopName" required maxlength="80" autocomplete="organization" placeholder="Например, Мой бренд"><fieldset><legend>Маркетплейс</legend><label class="client-market-option" data-market="wildberries"><input type="radio" name="marketplace" value="wildberries" checked><span class="client-market-mark">WB</span><span><strong>Wildberries</strong><small>Подключение по API-ключу</small></span><i aria-hidden="true"></i></label><label class="client-market-option" data-market="ozon"><input type="radio" name="marketplace" value="ozon"><span class="client-market-mark">O</span><span><strong>Ozon</strong><small>Загрузка файла с отчётом</small></span><i aria-hidden="true"></i></label></fieldset><button class="primary" type="submit">Выбрать тариф ${arrowIcon}</button><p class="client-count-note">Второй маркетплейс можно добавить позже.</p></form></section>
+            <section class="client-stage" data-client-step="0"><form class="client-setup"><h2 tabindex="-1">Создайте свой кабинет</h2><p>Начните с названия магазина.<br>Обе площадки будут доступны внутри.</p><label for="welcomeShopName">Название магазина</label>
+              <div class="welcome-name-field"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6M3 10c0 3 4 3 4 0 0 3 5 3 5 0 0 3 5 3 5 0 0 3 4 3 4 0M9 20v-6h6v6"/></svg><input id="welcomeShopName" name="shopName" required maxlength="80" autocomplete="organization" placeholder="Например, Мой бренд"></div>
+              <div class="welcome-sources"><p>Подключите после входа</p><div><span class="welcome-source-mark" aria-hidden="true">WB</span><span><strong>Wildberries</strong><small>Автоматически по API-ключу</small></span></div><div><span class="welcome-source-mark" aria-hidden="true">O</span><span><strong>Ozon</strong><small>Загрузка отчёта из кабинета</small></span></div></div>
+              <button class="primary" type="submit">Продолжить ${arrowIcon}</button></form></section>
             <section class="client-stage" data-client-step="1" hidden><div class="client-stage-tools"><button class="client-back" type="button" data-step-back="0">Назад к магазину</button><button class="client-skip" type="button" data-skip-payment>Продолжить без оплаты ${arrowIcon}</button></div><div id="welcomeBilling"></div></section>
-            <section class="client-stage client-ready" data-client-step="2" hidden><div class="client-result-mark">${checkIcon}</div><h2 tabindex="-1">Проверьте данные</h2><p data-ready-next></p><dl class="client-ready-summary"><div><dt>Магазин</dt><dd data-ready-name></dd></div><div><dt>Маркетплейс</dt><dd data-ready-market></dd></div><div><dt>Тариф</dt><dd data-ready-plan></dd></div></dl><button class="primary" type="button" data-create-shop>Создать магазин ${arrowIcon}</button><button class="client-text-button" type="button" data-step-back="0">Изменить данные</button><p class="client-form-status" role="status" aria-live="polite"></p></section>
+            <section class="client-stage client-ready" data-client-step="2" hidden><div class="client-result-mark">${checkIcon}</div><h2 tabindex="-1">Проверьте данные</h2><p data-ready-next></p><dl class="client-ready-summary"><div><dt>Магазин</dt><dd data-ready-name></dd></div><div><dt>Площадки</dt><dd>Wildberries и Ozon</dd></div><div><dt>Тариф</dt><dd data-ready-plan></dd></div></dl><button class="primary" type="button" data-create-shop>Создать магазин ${arrowIcon}</button><button class="client-text-button" type="button" data-step-back="0">Изменить данные</button><p class="client-form-status" role="status" aria-live="polite"></p></section>
           </div>
         </div>
+        <aside class="client-story">
+          <h2>Два маркетплейса.<br><span>Один кабинет.</span></h2>
+          <p>Видеть прибыль. Понимать расходы.<br>Принимать решения на основе цифр.</p>
+          <div class="welcome-board" data-welcome-preview aria-label="Интерактивный пример аналитики на вымышленных данных"></div>
+        </aside>
       </div>`;
-    root.querySelector('[data-welcome-exit]').onclick=signOut;
-    root.querySelector('[data-client-theme]').onclick=()=>window.WBShell?.applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+    const preview=window.WBWelcomePreview?.mount(root.querySelector('[data-welcome-preview]'));
+    root.querySelector('[data-client-theme]').onclick=e=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark',commit=()=>window.WBShell?.applyTheme(next);if(window.WBShell?.motion)window.WBShell.motion.theme(next,e.currentTarget,commit);else commit();};
     return new Promise(resolve=>{
-      const form=root.querySelector('form');let busy=false,step=0;
+      const form=root.querySelector('form');let busy=false,step=0,draftPlan=draft?.planId||null;
+      if(draft)form.elements.shopName.value=draft.name;
+      preview?.setName(form.elements.shopName.value);
+      const selectedPlan=()=>draftPlan||((store.state.subscription?.status==='active')?store.state.subscription.plan:null);
+      const exit=root.querySelector('[data-welcome-exit]');
+      if(guest)exit.textContent='Войти';
+      exit.onclick=()=>{preview?.dispose();if(guest){window.WBOnboardingDraft?.clear();root.hidden=true;resolve({loginOnly:true});}else signOut();};
+      if(guest)root.querySelector('[data-create-shop]').innerHTML='Продолжить через Telegram '+arrowIcon;
       function go(next){
         const previous=step;step=next;
+        root.querySelector('.client-step-nav').style.setProperty('--client-step',String(step));
         root.querySelectorAll('[data-client-step]').forEach(panel=>panel.hidden=Number(panel.dataset.clientStep)!==step);
         root.querySelectorAll('[data-step-indicator]').forEach(item=>{const index=Number(item.dataset.stepIndicator);item.classList.toggle('is-complete',index<step);if(index===step)item.setAttribute('aria-current','step');else item.removeAttribute('aria-current');});
         root.querySelector('.client-step-progress i').style.transform=`scaleX(${(step+1)/3})`;
-        if(step===1)billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:(screen,outcome)=>{
+        if(step===1){draftPlan=null;billing($('welcomeBilling'),{onContinue:()=>go(2),onScreenChange:(screen,outcome)=>{
           const skip=root.querySelector('[data-skip-payment]');
           skip.hidden=['processing','result'].includes(screen)&&outcome==='success';
           skip.textContent=store.state.subscription?.status==='active'?'К созданию магазина':'Продолжить без оплаты';
-        }});
+        }});}
         if(step===2){
-          const s=store.state.subscription,p=WBTestSubscription.PLANS.find(p=>p.id===s?.plan),ozon=form.elements.marketplace.value==='ozon';
+          const planId=selectedPlan(),p=WBTestSubscription.PLANS.find(p=>p.id===planId);
           root.querySelector('[data-ready-name]').textContent=form.elements.shopName.value.trim();
-          root.querySelector('[data-ready-market]').textContent=ozon?'Ozon':'Wildberries';
-          root.querySelector('[data-ready-plan]').textContent=s?.status==='active'?`${p.name} (тест)`:'Не выбран';
-          root.querySelector('[data-ready-next]').textContent=ozon?'После создания загрузите отчёт Ozon в разделе «Отчёты».':'После создания подключите API-ключ Wildberries в настройках.';
+          root.querySelector('[data-ready-plan]').textContent=p?`${p.name} (тест)`:'Не выбран';
+          root.querySelector('[data-ready-next]').textContent=guest?'Сохраните настройки и войдите через Telegram. Магазин создадим после вашего подтверждения.':'После создания подключите API Wildberries в настройках или загрузите отчёт Ozon в разделе «Отчёты».';
         }
         const panel=root.querySelector(`[data-client-step="${step}"]`);if(step!==1)enter(panel,step>=previous?1:-1);panel.querySelector('h2')?.focus({preventScroll:true});
       }
@@ -104,13 +119,23 @@
       root.querySelectorAll('[data-step-back]').forEach(button=>button.onclick=()=>{if(!busy){store.finish('cancelled');go(Number(button.dataset.stepBack));}});
       root.querySelector('[data-create-shop]').onclick=async()=>{
         if(busy)return;busy=true;
+        if(guest){
+          const saved=window.WBOnboardingDraft?.save({name:form.elements.shopName.value.trim(),planId:selectedPlan()});
+          if(!saved){root.querySelector('.client-form-status').textContent='Проверьте название магазина.';busy=false;return;}
+          preview?.dispose();root.hidden=true;resolve({requiresAuth:true});return;
+        }
         const submit=root.querySelector('[data-create-shop]'),status=root.querySelector('.client-form-status');submit.disabled=true;submit.textContent='Создаём магазин…';root.querySelectorAll('[data-step-back]').forEach(b=>b.disabled=true);status.textContent='';
         const name=form.elements.shopName.value.trim();
-        const marketplace=form.elements.marketplace.value;
-        try {const shop=await createShop(name,marketplace);if(!shop?.id)throw new Error('Магазин не был создан');store.finish('cancelled');store.guide(false);root.hidden=true;$('loadingScreen').hidden=false;resolve({shop,marketplace});}
-        catch(error){status.textContent='Не удалось создать магазин. Проверьте соединение и попробуйте снова.';submit.disabled=false;submit.textContent='Создать магазин';root.querySelectorAll('[data-step-back]').forEach(b=>b.disabled=false);busy=false;}
+        let shop;
+        try {shop=await createShop(name);if(!shop?.id)throw new Error('Магазин не был создан');}
+        catch(error){status.textContent='Не удалось создать магазин. Проверьте соединение и попробуйте снова.';submit.disabled=false;submit.textContent='Создать магазин';root.querySelectorAll('[data-step-back]').forEach(b=>b.disabled=false);busy=false;return;}
+        // Local test-plan/storage failures must not suggest retrying a real creation.
+        try{const s=store.state.subscription;if(draftPlan&&(s?.status!=='active'||s.plan!==draftPlan)){store.begin(draftPlan);store.finish('success');}store.finish('cancelled');store.guide(false);window.WBOnboardingDraft?.clear(u.id);}catch{}
+        preview?.dispose();root.hidden=true;$('loadingScreen').hidden=false;resolve({shop});
       };
-      form.elements.shopName.oninput=()=>form.elements.shopName.setCustomValidity('');
+      form.elements.shopName.oninput=()=>{form.elements.shopName.setCustomValidity('');preview?.setName(form.elements.shopName.value);};
+      if(draft&&!guest)go(2);
+      else enter(root.querySelector('[data-client-step="0"]'));
     });
   }
   function mount(u,{navigate}) {

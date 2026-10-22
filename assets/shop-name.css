@@ -1,0 +1,12 @@
+.shop-name-card{padding:24px}
+.shop-name-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px;max-width:680px}
+.shop-name-field{min-width:0}
+.shop-name-field label{display:block;margin-bottom:8px;font-size:13px;font-weight:600}
+.corbel .shop-name-field input{width:100%;min-height:44px;box-sizing:border-box;font-size:16px}
+.corbel .shop-name-row>button{min-height:44px;white-space:nowrap}
+.shop-name-hint{margin:12px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.65}
+.shop-name-status{min-height:1.5em;margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink-soft);overflow-wrap:anywhere}
+.shop-name-status[data-tone=success]{color:var(--good)}
+.shop-name-status[data-tone=error]{color:var(--bad)}
+.shop-name-field input[readonly]{color:var(--ink-soft);background:var(--surface-2)}
+@media(max-width:600px){.shop-name-card{padding:20px}.shop-name-row{grid-template-columns:minmax(0,1fr)}.shop-name-row>button{justify-self:start}}

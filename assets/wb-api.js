@@ -72,7 +72,7 @@
   el('wbApiDisconnectBtn').addEventListener('click', () => {
     if (canManage() && confirm(`Отключить API от магазина «${context.name}»? Ключ и API-выгрузки будут удалены. Отчёты из файлов сохранятся.`)) run('disconnect');
   });
-  window.WBApi = {setContext, get connected() { return !!(context?.allowed && connection); }, subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);}, cabinet: async (action, month, refresh = false, payload = {}) => {
+  window.WBApi = {setContext, setShopName:(shopId,name)=>{if(context?.shopId===shopId){context={...context,name};el('wbApiShopName').textContent=name;}}, get connected() { return !!(context?.allowed && connection); }, subscribe:listener=>{listeners.add(listener);return()=>listeners.delete(listener);}, cabinet: async (action, month, refresh = false, payload = {}) => {
     if (!context?.allowed) throw new Error('API недоступен');
     return request(action, {...payload, month, refresh}, {...context});
   }};

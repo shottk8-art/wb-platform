@@ -19,7 +19,8 @@
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
 <link rel="stylesheet" href="/assets/reference.css?v=20261019-center1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
-<link rel="stylesheet" href="/assets/client-start.css?v=20261019-start4">
+<link rel="stylesheet" href="/assets/client-start.css?v=20261021-welcome2">
+<link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
@@ -183,6 +184,17 @@
     </section>
 
     <nav class="section app-view settings-tabs" data-view="settings" aria-label="Разделы настроек"><a href="#account" data-open-view="account">Профиль</a><a href="#settings" data-open-view="settings" aria-current="page">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
+    <section class="section app-view" id="secShopName" data-view="settings">
+      <div class="section-head"><h2>Магазин</h2></div>
+      <form class="card shop-name-card" id="shopNameForm">
+        <div class="shop-name-row">
+          <div class="shop-name-field"><label for="shopNameInput">Название магазина</label><input id="shopNameInput" type="text" required maxlength="80" autocomplete="organization" aria-describedby="shopNameHint" disabled></div>
+          <button class="primary" type="submit" id="saveShopNameBtn" disabled>Сохранить</button>
+        </div>
+        <p class="shop-name-hint" id="shopNameHint">Название в меню и на витрине. Отчёты и адрес ссылки сохранятся.</p>
+        <p class="shop-name-status" id="shopNameStatus" role="status" aria-live="polite"></p>
+      </form>
+    </section>
     <section class="section app-view" id="secSettings" data-view="settings">
       <div class="section-head"><h2>Публичная витрина</h2><span class="hint">ссылка на ваш магазин в режиме просмотра — включите переключателем, если хотите поделиться</span></div>
       <div class="card settings-share-card">
@@ -539,9 +551,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
-<script src="/assets/auth.js"></script>
+<script src="/assets/auth.js?v=20261022-rename1"></script>
+<script src="/assets/shop-name.js?v=20261022-rename1"></script>
 <script src="/assets/test-subscription.js?v=20261019-start1"></script>
-<script src="/assets/client-start.js?v=20261019-start4"></script>
+<script src="/assets/onboarding-draft.js?v=20261021-welcome2"></script>
+<script src="/assets/demo-data.js?v=20261019-start1"></script>
+<script src="/assets/welcome-preview.js?v=20261021-welcome2"></script>
+<script src="/assets/client-start.js?v=20261021-welcome2"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
@@ -552,7 +568,7 @@
 <script src="/assets/dashboard.js?v=20261019-products1"></script>
 <script src="/assets/period-range.js?v=20261019-trend1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
-<script src="/assets/wb-api.js?v=20261011-production1"></script>
+<script src="/assets/wb-api.js?v=20261022-rename1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
 <script>
 (function () {
@@ -584,6 +600,11 @@
   function isOwner() {
     return !!(shop && session && shop.owner_id === session.user.id);
   }
+  window.WBShopName.mount({
+    form:document.getElementById('shopNameForm'),input:document.getElementById('shopNameInput'),
+    button:document.getElementById('saveShopNameBtn'),status:document.getElementById('shopNameStatus'),hint:document.getElementById('shopNameHint'),
+    rename:(id,name)=>window.WBAuth.renameShop(id,name),onSaved:applyShopRename,
+  });
   function apiCabinetAllowed() {
     return !!(shop && session && window.WBApi?.connected);
   }
@@ -708,6 +729,17 @@
     sel.value = shop.id;
   }
 
+  function applyShopRename(updated, userId) {
+    if(session?.user.id!==userId||updated.owner_id!==userId)return;
+    for(const option of document.getElementById('shopSwitch').options){
+      if(option.value===updated.id)option.textContent=updated.name;
+    }
+    if(shop?.id===updated.id&&shop.owner_id===userId){
+      shop={...shop,name:updated.name};
+      window.WBApi?.setShopName(shop.id,shop.name);
+    }
+  }
+
   function scopeLabel() {
     return overviewScope === "all" ? "Wildberries и Ozon" : overviewScope === "ozon" ? "Ozon" : "Wildberries";
   }
@@ -780,6 +812,7 @@
     // владелец: RLS всё равно отклонит эти действия от участника, поэтому
     // прячем элементы управления, чтобы не показывать ложные ошибки.
     const owner = isOwner();
+    window.WBShopName?.setContext({shop,userId:session.user.id});
     window.WBShell?.setProfile(session.user, owner);
     window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
     window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
@@ -967,6 +1000,7 @@
   }
 
   function resetShopDisplay() {
+    window.WBShopName?.setContext(null);
     window.WBRange?.reset();
     overviewPending = false; overviewLoadError = '';
     for (const id of ['secKpis', 'secOverviewCharts', 'secAdvertising', 'secTrend', 'secAnalytics']) document.getElementById(id)?.setAttribute('aria-busy', 'false');
@@ -1321,9 +1355,10 @@
     const accessibleShops = await window.WBAuth.listMyShops();
     let firstSetup = null;
     shop = accessibleShops[0] || null;
+    if (shop) window.WBOnboardingDraft?.clear(session.user.id);
     if (!shop) {
       firstSetup = await window.WBClientStart.firstShop(session.user, {
-        createShop: (name, marketplace) => window.WBAuth.createShop(name, marketplace),
+        createShop: (name) => window.WBAuth.createShop(name),
         signOut: () => window.WBAuth.signOut(),
       });
       shop = firstSetup.shop;
@@ -1334,8 +1369,8 @@
         shop = accessibleShops.find((s) => s.id === selectedId) || shop;
       }
     } catch (_) { /* storage may be unavailable */ }
-    overviewScope = firstSetup?.marketplace || "wildberries";
-    reportMarketplace = firstSetup?.marketplace || "wildberries";
+    overviewScope = "wildberries";
+    reportMarketplace = "wildberries";
     await refreshShopSwitch();
     updateShareBox();
     updateScopeButtons();
@@ -1358,7 +1393,7 @@
       if (marketplace) selectReportMarketplace(marketplace).catch(error=>toast(error.message,true));
       setActiveView(view);
     }});
-    const initialView = firstSetup ? (firstSetup.marketplace === 'ozon' ? 'reports' : 'settings') : location.hash.replace(/^#/, "");
+    const initialView = firstSetup ? 'settings' : location.hash.replace(/^#/, "");
     setActiveView(VIEW_META[initialView] ? initialView : "overview", !!firstSetup);
 
     document.getElementById("adminLink").hidden = !aiAllowed;

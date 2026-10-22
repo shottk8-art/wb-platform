@@ -32,11 +32,13 @@
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
 <link rel="stylesheet" href="/assets/reference.css?v=20261019-center1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
+<link rel="stylesheet" href="/assets/client-start.css?v=20261021-welcome2">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
 </head>
 <body class="corbel">
+<main class="client-welcome" id="clientWelcome" hidden></main>
 <button class="shell-icon-button standalone-theme" type="button" data-theme-toggle aria-label="Включить тёмную тему" aria-pressed="false"><svg data-moon viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg><svg data-sun viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button>
 
 <svg class="icon-sprite" aria-hidden="true">
@@ -51,16 +53,12 @@
 <div id="authScreen" class="auth-shell" hidden>
   <div class="card auth-card">
     <div class="brandmark brandmark--logo" style="margin:0 auto;"><img class="brandmark-light" src="/assets/icons/icon-light.svg?v=20261019-icon1" width="128" height="128" alt=""><img class="brandmark-dark" src="/assets/icons/icon-dark.svg?v=20261019-icon1" width="128" height="128" alt=""></div>
-    <h1>Экономика магазина.<br>В одном месте.</h1>
-    <p>Wildberries и Ozon: продажи, расходы и прибыль. Войдите через Telegram, чтобы открыть свои магазины.</p>
-    <div id="telegramLoginBox" style="display:flex; justify-content:center; margin:16px 0;">
-      <script async src="https://telegram.org/js/telegram-widget.js?22"
-        data-telegram-login="wb_platformbot"
-        data-size="large"
-        data-radius="8"
-        data-onauth="onTelegramAuth(user)"></script>
-    </div>
-    <div id="authMsg" class="auth-msg"></div>
+    <h1 id="authTitle" tabindex="-1">Войдите через Telegram</h1>
+    <p id="authLead">Откройте свой кабинет продавца.</p>
+    <div id="telegramLoginBox" style="display:flex; justify-content:center; margin:16px 0;"></div>
+    <p id="authDraftNotice" role="status" hidden>В этом браузере настройки не сохраняются. После входа укажите магазин ещё раз.</p>
+    <div id="authMsg" class="auth-msg" role="status" aria-live="polite"></div>
+    <p><button class="client-text-button" type="button" id="backToOnboarding">Назад к настройке магазина</button></p>
     <p><a href="/demo.html">Посмотреть демо без регистрации</a></p>
 
     <div class="divider-or">или</div>
@@ -162,6 +160,11 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
+<script src="/assets/test-subscription.js?v=20261019-start1"></script>
+<script src="/assets/onboarding-draft.js?v=20261021-welcome2"></script>
+<script src="/assets/demo-data.js?v=20261019-start1"></script>
+<script src="/assets/welcome-preview.js?v=20261021-welcome2"></script>
+<script src="/assets/client-start.js?v=20261021-welcome2"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
 <script src="/assets/dashboard.js?v=20261019-products1"></script>
@@ -177,6 +180,36 @@
   const loading = document.getElementById("loadingScreen");
   const authScreen = document.getElementById("authScreen");
   const publicScreen = document.getElementById("publicScreen");
+  let onboardingIntent = false;
+  function showAuthScreen(intent=false) {
+    onboardingIntent=intent;
+    document.getElementById('clientWelcome').hidden=true;
+    authScreen.hidden=false;
+    document.querySelector('.standalone-theme').hidden=false;
+    document.getElementById('authLead').textContent=intent?'Войдите, чтобы подтвердить создание магазина.':'Откройте свой кабинет продавца.';
+    document.getElementById('authDraftNotice').hidden=!intent||window.WBOnboardingDraft.persistent;
+    document.getElementById('authTitle').focus({preventScroll:true});
+    const box=document.getElementById('telegramLoginBox');
+    if(!box.querySelector('script')) {
+      const widget=document.createElement('script');widget.async=true;widget.src='https://telegram.org/js/telegram-widget.js?22';
+      widget.setAttribute('data-telegram-login','wb_platformbot');widget.setAttribute('data-size','large');widget.setAttribute('data-radius','8');widget.setAttribute('data-onauth','onTelegramAuth(user)');
+      widget.onerror=()=>{document.getElementById('authMsg').textContent='Не удалось загрузить вход через Telegram. Проверьте соединение и обновите страницу.';};
+      box.appendChild(widget);
+    }
+  }
+  async function showGuestOnboarding() {
+    authScreen.hidden=true;
+    document.querySelector('.standalone-theme').hidden=true;
+    const result=await window.WBClientStart.firstShop(null,{});
+    showAuthScreen(!!result.requiresAuth);
+  }
+  document.getElementById('backToOnboarding').addEventListener('click',()=>{showGuestOnboarding().catch(showEntryError);});
+  function showEntryError(error) {
+    loading.hidden=true;authScreen.hidden=false;document.getElementById('clientWelcome').hidden=true;
+    document.getElementById('authMsg').textContent='Не удалось открыть настройку магазина. Обновите страницу и попробуйте ещё раз.';
+    console.error('Ошибка входного экрана',error);
+    showAuthScreen(false);
+  }
 
   document.getElementById("openShopBtn").addEventListener("click", () => {
     const v = document.getElementById("shopSlugInput").value.trim();
@@ -187,7 +220,8 @@
     const msg = document.getElementById("authMsg");
     msg.textContent = "Входим через Telegram…"; msg.className = "auth-msg";
     try {
-      await window.WBAuth.signInWithTelegram(tgUser);
+      const confirmedSession = await window.WBAuth.signInWithTelegram(tgUser);
+      if (onboardingIntent) window.WBOnboardingDraft.bind(confirmedSession.user.id);
       // Даём браузеру завершить запись сессии до загрузки новой страницы.
       await new Promise((resolve) => setTimeout(resolve, 250));
       location.href = "/app.html";
@@ -202,7 +236,7 @@
       .from("shops").select("*").eq("slug", slug).eq("share_enabled", true).maybeSingle();
     loading.hidden = true;
     if (error || !shop) {
-      authScreen.hidden = false;
+      showAuthScreen(false);
       document.getElementById("authMsg").textContent = "Магазин не найден или ссылка отключена владельцем.";
       document.getElementById("authMsg").className = "auth-msg err";
       return;
@@ -253,11 +287,11 @@
     const session = await window.WBAuth.getSession();
     loading.hidden = true;
     if (session) { location.href = "/app.html"; return; }
-    authScreen.hidden = false;
+    await showGuestOnboarding();
   }
 
   if (slug) initPublic(slug);
-  else initAuthGate();
+  else initAuthGate().catch(showEntryError);
 })();
 </script>
 </body>
