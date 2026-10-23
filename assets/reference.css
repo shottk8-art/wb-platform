@@ -123,6 +123,11 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .segmented-control.chart-style{background:var(--surface-2);padding:3px;border-radius:9px}
 .corbel .segmented-control.chart-style button{font-size:11px;min-height:26px;padding:0 10px}
 .corbel .profitability-card{display:flex;flex-direction:column;overflow:hidden}
+.corbel [data-shop-state="empty"] .app-view:not(#secAccount){display:none!important}
+.corbel .empty-shop{max-width:640px;margin-block:24px;padding:24px}
+.corbel .empty-shop h2{font-size:20px;margin:0 0 12px}
+.corbel .empty-shop p{font-size:14px;line-height:1.6;color:var(--ink-soft);margin:0 0 20px}
+.corbel .empty-shop button{min-height:44px}
 .corbel .profitability-card h2{font-size:15px;margin:0;line-height:20px;display:flex;align-items:center;gap:6px}
 .corbel .gauge-info{display:inline-grid;place-items:center;cursor:help;border:0;border-radius:50%;width:28px;min-height:28px;padding:5px;background:transparent;color:var(--ink-soft);transition:color .18s,background-color .18s}
 .corbel .gauge-info svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}

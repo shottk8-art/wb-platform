@@ -8,7 +8,7 @@ const end = html.indexOf('    try {\n      const selectedId', start);
 assert(start >= 0 && end > start, 'actual first-entry boundary must be present');
 const entry = html.slice(start, end) + '\n  }';
 
-async function check(label, owned, memberships, expectedOnboarding) {
+async function check(label, owned, memberships, expectedShop) {
   const reads = [], writes = [], onboarded = [], cleared = [];
   const current = { user: { id: 'entry-test-user', user_metadata: {} } };
   const nodes = new Map();
@@ -41,16 +41,17 @@ async function check(label, owned, memberships, expectedOnboarding) {
   vm.runInContext(fs.readFileSync('assets/auth.js', 'utf8'), state);
   vm.runInContext(entry, state);
   await state.init();
-  assert.equal(onboarded.length, expectedOnboarding ? 1 : 0, label);
+  assert.equal(onboarded.length, 0, 'no onboarding, even for a fresh account');
+  assert.equal(state.shop?.id || null, expectedShop, label);
   assert.equal(writes.length, 0, 'opening the cabinet must not create a shop');
-  assert.deepEqual(cleared,expectedOnboarding?[]:[current.user.id],'only a returning session owner can discard its own setup draft');
+  assert.deepEqual(cleared,[],'old drafts are inactive, not deleted or resumed');
   assert(reads.some(r => r.table === 'shops' && r.filters.owner_id === current.user.id));
   assert(reads.some(r => r.table === 'shop_members' && r.filters.user_id === current.user.id));
   console.log(`${label}: PASS`);
 }
 
 (async () => {
-  await check('New user with no shops opens onboarding', [], [], true);
-  await check('Existing owner opens their cabinet', [{ id: 'owned-shop' }], [], false);
-  await check('Invited member keeps team access', [], [{ shops: { id: 'invited-shop' } }], false);
+  await check('New user opens an empty cabinet without creating data', [], [], null);
+  await check('Existing owner opens their cabinet', [{ id: 'owned-shop' }], [], 'owned-shop');
+  await check('Invited member keeps team access', [], [{ shops: { id: 'invited-shop' } }], 'invited-shop');
 })().catch(error => { console.error(error); process.exitCode = 1; });

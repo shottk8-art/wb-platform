@@ -17,9 +17,8 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
-<link rel="stylesheet" href="/assets/reference.css?v=20261023-margin1">
+<link rel="stylesheet" href="/assets/reference.css?v=20261023-direct1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
-<link rel="stylesheet" href="/assets/client-start.css?v=20261021-welcome2">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
@@ -28,7 +27,6 @@
 <script src="/assets/reference.js?v=20261019-reference4" defer></script>
 </head>
 <body class="corbel">
-<main class="client-welcome" id="clientWelcome" hidden></main>
 
 <svg class="icon-sprite" aria-hidden="true">
   <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"/></symbol>
@@ -78,7 +76,6 @@
         <a href="#account" data-view="account"><svg class="icon"><use href="#icon-people"/></svg><span>Учётная запись</span></a>
       </nav>
       <div class="sidebar-actions">
-        <button class="sidebar-action" type="button" id="showClientGuide"><svg class="icon"><use href="#icon-help"/></svg> Начало работы</button>
         <button class="sidebar-action" id="newShopBtn"><svg class="icon"><use href="#icon-plus"/></svg>Новый магазин</button>
         <button class="sidebar-action" id="askQuestionBtn"><svg class="icon"><use href="#icon-help"/></svg>Задать вопрос</button>
         <button class="sidebar-action" id="adminLink" hidden><svg class="icon"><use href="#icon-shield"/></svg>Админка</button>
@@ -158,7 +155,12 @@
 
     <p class="hint" id="shopLoading" role="status" aria-live="polite" hidden>Загружаем данные магазина…</p>
 
-    <section class="section app-view" data-view="overview"><aside id="clientGuide" class="client-guide" hidden></aside></section>
+    <section class="card empty-shop" id="emptyShopNotice" aria-labelledby="emptyShopTitle" hidden>
+      <h2 id="emptyShopTitle">Добавьте магазин</h2>
+      <p>Создайте магазин, чтобы подключить Wildberries или загрузить отчёты Ozon.</p>
+      <button class="primary" type="button" id="emptyShopCreateBtn"><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg> Новый магазин</button>
+    </section>
+
     <section class="section app-view" id="secAccount" data-view="account">
       <nav class="settings-tabs" aria-label="Разделы настроек"><a href="#account" data-open-view="account" aria-current="page">Профиль</a><a href="#settings" data-open-view="settings">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
       <div class="card profile-grid">
@@ -174,7 +176,6 @@
           <a class="profile-telegram" id="profileTelegramLink" target="_blank" rel="noopener noreferrer" hidden>Открыть профиль в Telegram</a>
         </div>
       </div>
-      <div id="testBillingRoot"></div>
       <div class="card profile-appearance">
         <div class="profile-description"><h2>Оформление</h2><p>Выберите комфортную тему. Изменение применяется сразу и сохраняется на этом устройстве.</p></div>
         <div class="appearance-row"><span>Тема</span><div class="appearance-options" role="group" aria-label="Тема оформления">
@@ -560,11 +561,6 @@
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js?v=20261022-rename1"></script>
 <script src="/assets/shop-name.js?v=20261022-rename1"></script>
-<script src="/assets/test-subscription.js?v=20261019-start1"></script>
-<script src="/assets/onboarding-draft.js?v=20261021-welcome2"></script>
-<script src="/assets/demo-data.js?v=20261019-start1"></script>
-<script src="/assets/welcome-preview.js?v=20261021-welcome2"></script>
-<script src="/assets/client-start.js?v=20261021-welcome2"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
@@ -657,6 +653,7 @@
       return;
     }
     activeView = view;
+    document.getElementById('emptyShopNotice').hidden = !!shop || view === 'account';
     const meta = VIEW_META[view];
     document.querySelectorAll(".app-view").forEach((section) => {
       section.classList.toggle("is-active", section.dataset.view === view);
@@ -673,7 +670,7 @@
         ? (reportMarketplace === "ozon" ? "Ozon" : "Wildberries")
         : "Wildberries и Ozon";
     document.getElementById("pageSubtitle").textContent = view === "api" ? meta.subtitle : `${meta.subtitle} · ${market}`;
-    document.getElementById("overviewControls").hidden = !meta.period;
+    document.getElementById("overviewControls").hidden = !shop || !meta.period;
     updateOverviewSource();
     if (updateHash) history.replaceState(null, "", `#${view}`);
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -757,10 +754,13 @@
   async function refreshShopSwitch() {
     const shops = await window.WBAuth.listMyShops();
     const sel = document.getElementById("shopSwitch");
-    sel.innerHTML = shops.map((s) => {
+    sel.innerHTML = shops.length ? shops.map((s) => {
       return `<option value="${s.id}">${escapeHtml(s.name)}</option>`;
-    }).join("");
-    sel.value = shop.id;
+    }).join("") : '<option value="">Нет магазинов</option>';
+    sel.value = shop?.id || '';
+    sel.disabled = !shops.length;
+    appScreen.dataset.shopState = shop ? 'ready' : 'empty';
+    document.getElementById('emptyShopNotice').hidden = !!shop || activeView === 'account';
   }
 
   function applyShopRename(updated, userId) {
@@ -814,6 +814,12 @@
   }
 
   function updateShareBox() {
+    if (!shop) {
+      document.getElementById('marketplaceBadge').textContent = 'WB · Ozon';
+      window.WBShell?.setProfile(session.user, false);
+      document.getElementById('profileRole').value = 'Магазин не выбран';
+      return;
+    }
     const marketplace = reportMarketplace;
     const marketplaceName = marketplace === "ozon" ? "Ozon" : "Wildberries";
     const badge = document.getElementById("marketplaceBadge");
@@ -1397,16 +1403,7 @@
 
     // Do not create a real shop just because somebody signed in or opened a demo.
     const accessibleShops = await window.WBAuth.listMyShops();
-    let firstSetup = null;
     shop = accessibleShops[0] || null;
-    if (shop) window.WBOnboardingDraft?.clear(session.user.id);
-    if (!shop) {
-      firstSetup = await window.WBClientStart.firstShop(session.user, {
-        createShop: (name) => window.WBAuth.createShop(name),
-        signOut: () => window.WBAuth.signOut(),
-      });
-      shop = firstSetup.shop;
-    }
     try {
       const selectedId = localStorage.getItem("wb-selected-shop:" + session.user.id);
       if (selectedId) {
@@ -1433,12 +1430,8 @@
 
     loading.hidden = true;
     appScreen.hidden = false;
-    window.WBClientStart.mount(session.user, {navigate:(view,marketplace)=>{
-      if (marketplace) selectReportMarketplace(marketplace).catch(error=>toast(error.message,true));
-      setActiveView(view);
-    }});
-    const initialView = firstSetup ? 'settings' : location.hash.replace(/^#/, "");
-    setActiveView(VIEW_META[initialView] ? initialView : "overview", !!firstSetup);
+    const initialView = location.hash.replace(/^#/, "");
+    setActiveView(VIEW_META[initialView] ? initialView : "overview", false);
 
     document.getElementById("adminLink").hidden = !aiAllowed;
 
@@ -1610,6 +1603,7 @@
       newShopModal.hidden = false;
       newShopName.focus();
     });
+    document.getElementById('emptyShopCreateBtn').addEventListener('click', () => document.getElementById('newShopBtn').click());
     document.getElementById("newShopCancelBtn").addEventListener("click", closeNewShopModal);
     newShopModal.addEventListener("click", (e) => { if (e.target === newShopModal) closeNewShopModal(); });
     document.getElementById("newShopCreateBtn").addEventListener("click", async () => {

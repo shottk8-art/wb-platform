@@ -19,7 +19,7 @@ function entryFixture({signedIn=false,fresh=false,authFail=false,settings=false,
     window.supabaseClient={
       auth:{
         getSession:async()=>({data:{session:sessionStorage.getItem('fixture-auth')?fixtureSession:null}}),
-        verifyOtp:async()=>({data:{session:fixtureSession},error:null}),
+        verifyOtp:async()=>{sessionStorage.setItem('fixture-auth','yes');return{data:{session:fixtureSession},error:null};},
         setSession:async()=>{sessionStorage.setItem('fixture-auth','yes');return{error:null};},
         signOut:async()=>{sessionStorage.removeItem('fixture-auth');return{error:null};}
       },
@@ -74,7 +74,7 @@ http.createServer((req,res)=>{
   }
   if(u.pathname==='/frame.html'){
     const width=Math.max(320,Math.min(1920,Number(u.searchParams.get('width'))||390)),height=Math.max(600,Math.min(1200,Number(u.searchParams.get('height'))||844));
-    const page=u.searchParams.get('page')==='profit'?'/profit-preview.html?fresh=1#overview':u.searchParams.get('page')==='settings'?'/settings-preview.html?fresh=1#settings':u.searchParams.get('page')==='demo'?'/demo.html':u.searchParams.get('page')==='guest'?'/guest-preview.html?fresh=1':'/client-preview.html?mode='+(['welcome','account','error'].includes(u.searchParams.get('page'))?u.searchParams.get('page'):'welcome');
+    const page=u.searchParams.get('page')==='entry'?'/entry-preview.html?fresh=1#overview':u.searchParams.get('page')==='profit'?'/profit-preview.html?fresh=1#overview':u.searchParams.get('page')==='settings'?'/settings-preview.html?fresh=1#settings':u.searchParams.get('page')==='demo'?'/demo.html':u.searchParams.get('page')==='guest'?'/guest-preview.html?fresh=1':'/client-preview.html?mode='+(['welcome','account','error'].includes(u.searchParams.get('page'))?u.searchParams.get('page'):'welcome');
     res.setHeader('Content-Type','text/html');res.end(`<html><body style="margin:0"><iframe title="Client preview" style="display:block;border:0" width="${width}" height="${height}" src="${page}"></iframe></body></html>`);return;
   }
   if(u.pathname==='/client-preview.html'){
@@ -87,4 +87,4 @@ http.createServer((req,res)=>{
   const file=path.resolve(root,'.'+decodeURIComponent(u.pathname));
   if(!file.startsWith(root+path.sep)||(!u.pathname.startsWith('/assets/')&&u.pathname!=='/demo.html')){res.writeHead(404).end();return;}
   try{const data=fs.readFileSync(file);res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2'})[path.extname(file)]||'application/octet-stream');res.end(data);}catch{res.writeHead(404).end();}
-}).listen(4182,'127.0.0.1',()=>console.log('Client-only fixture: http://127.0.0.1:4182/client-preview.html'));
+}).listen(Number(process.env.WB_PREVIEW_PORT)||4182,'127.0.0.1',()=>console.log('Client-only fixture port: '+(Number(process.env.WB_PREVIEW_PORT)||4182)));

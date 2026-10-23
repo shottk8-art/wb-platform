@@ -30,11 +30,11 @@ const entries=['wildberries','ozon'].map(marketplace=>{const r=sample.data[marke
 const total=window.WBRange.aggregate(entries);assert.equal(total.netProfit,entries.reduce((sum,e)=>sum+e.derived.netProfit,0));assert.equal(total.rep.sales_amount,entries.reduce((sum,e)=>sum+e.derived.rep.sales_amount,0));assert.equal(total.rates.drrOrders,null);
 for(const {derived:d} of entries){assert.equal(d.netProfit,d.rep.transfer_total-d.cogs-d.ads-d.tax-d.manualExpenses);assert(d.netProfit>0);}
 assert(!/supabase|config\.js|auth\.js|wb-api|analysis\.js/.test(demo));assert(!/fetch\(|\.from\(|WBRange\.load/.test(logic));assert(!/fetch\(|\.from\(|payment_method|cardNumber/.test(client));
-assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(app.includes("firstSetup ? 'settings'"));
+assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(!app.includes('WBClientStart'),'archived first-run/payment module is disconnected');
 assert(!client.includes('name="marketplace"'));assert(!client.includes('form.elements.marketplace'));assert(client.includes('await createShop(name)'),'first creation is not a marketplace choice');
 assert(demo.includes('Все данные вымышлены'));assert(client.includes('Wildberries и Ozon считаются двумя магазинами'));
 assert(demo.includes('id="periodSelect"'));assert(logic.includes('period.value=key(sample.periods[11])'));assert(logic.includes('sample.periods.findIndex(p=>key(p)===period.value)'));
-assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('selectReportMarketplace(marketplace).catch'));
+assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('async function selectReportMarketplace(marketplace)'));
 for(const step of [0,1,2])assert(client.includes(`data-client-step="${step}"`));
 assert(client.includes("root.querySelector('[data-create-shop]').onclick=async"));
 assert(!client.slice(client.indexOf('form.onsubmit=e=>'),client.indexOf("root.querySelector('[data-skip-payment]')")).includes('await createShop'));

@@ -15,7 +15,7 @@ assert(!/fetch\(|\.from\(|supabase|localStorage|sessionStorage/.test(source),'pr
 for(const marker of ['Демо-данные','onpointerenter','onfocus','ArrowRight','Escape','prefers-reduced-motion','visibilitychange','dispose()'])assert(source.includes(marker));
 assert(source.includes("$('[data-preview-name]').textContent=name"),'user-supplied name is text, not HTML');
 for(const file of ['index.html','app.html']){
-  const html=fs.readFileSync(file,'utf8');assert(html.includes('/assets/welcome-preview.js?'));assert(html.includes('/assets/demo-data.js?'));
+  const html=fs.readFileSync(file,'utf8');assert(!html.includes('/assets/welcome-preview.js?'),'archived onboarding preview is disconnected');assert(!html.includes('/assets/demo-data.js?'),'entry pages do not load synthetic onboarding data');
 }
 console.log('Welcome preview: PASS (coherent six-month synthetic data, no services/storage, named demo, keyboard, cleanup and reduced motion).');
 

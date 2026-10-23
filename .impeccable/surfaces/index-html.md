@@ -5,9 +5,13 @@ primary_target: "index.html"
 related_targets: ["assets/client-start.js","assets/client-start.css","assets/welcome-preview.js","assets/onboarding-draft.js","app.html"]
 ---
 
-# Вход и настройка магазина до Telegram
+# Прямой вход через Telegram
 
-## Current refinement — 21 October 2026
+## Решение владельца — 23 October 2026
+
+Временно отключить весь онбординг, тарифы и тестовую оплату. Это решение отменяет прежний активный сценарий ниже. Гость сразу видит существующую Telegram-карточку в стиле Corbel, вошедший пользователь сразу направляется в app.html. Не читать, не связывать и не удалять старые черновики/тестовые подписки; не загружать модули client-start, onboarding-draft, test-subscription и welcome-preview на входе или в кабинете. Ссылки на отдельное демо и публичные витрины сохраняются. В новом аккаунте без магазинов — пустой рабочий кабинет и обычная явная кнопка «Новый магазин», без автоматической записи, мастера или выбора тарифа. Не менять Telegram-проверку, реальные магазины, участников, финансовые данные и права. Оставить прежние модули отключёнными в исходниках для возможного возврата. Обе темы, мобильный экран и клавиатура обязательны; новой анимации не требуется. Публикация — только по отдельной просьбе владельца.
+
+## Архив отключённого сценария — 21 October 2026
 
 Mode: Operate. This is an extension of the current Corbel platform, not a new identity or new financial workflow. The owner rejected the static illustration-led entry and explicitly removed marketplace selection. Keep the actual pre-auth sequence, test prices/capacities, identity binding and explicit authenticated create.
 
