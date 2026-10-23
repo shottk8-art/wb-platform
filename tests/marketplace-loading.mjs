@@ -16,6 +16,7 @@ function fixture(realRenderer=false) {
   el('kpiRow').textContent='OLD WB SALES';el('expList').innerHTML='OLD WB EXPENSES';el('skuBody').innerHTML='OLD WB PRODUCTS';
   for(const scope of ['wildberries','ozon','all'])buttons.push({dataset:{scope},addEventListener(event,fn){this.click=fn}});
   const state={console,shop:{id:'shop-a'},shopLoading:false,activeView:'overview',overviewScope:'wildberries',dashboardRequest:0,overviewPending:false,overviewLoadError:'',currentTrend:[],apiDisplayedPeriod:null,trendMetric:'sales',
+    profitNotice:{reset(){el('profitNotice').hidden=true;},update(d){el('profitNotice').hidden=!d.missing?.length;}},clearProfitCostFilter(){el('profitCostFilter').hidden=true;},
     document:{getElementById:el,querySelectorAll:()=>buttons},
     scopeLabel:()=>state.overviewScope==='ozon'?'Ozon':'Wildberries',usesApiData:()=>false,
     updateScopeButtons(){},updateOverviewSource(){state.updateOverviewLoadStatus()},setShopLoading(){},showManualExpenses(){},selectTrendMetric(){},refreshTrendChart(){el('trendEmpty').textContent='EMPTY'},toast(){},

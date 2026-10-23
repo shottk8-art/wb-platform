@@ -1,0 +1,11 @@
+.profit-notice{display:flex;align-items:center;gap:12px;margin-top:12px;padding:14px 16px;background:var(--warm-bg);color:var(--ink);border-radius:12px}
+.profit-notice[hidden],.profit-cost-filter[hidden],#costsBody tr[hidden]{display:none!important}
+.profit-notice>.icon{color:var(--warm);width:20px;height:20px;flex:none;align-self:flex-start;margin-top:2px}
+.profit-notice-copy{flex:1;min-width:0}
+.profit-notice-copy strong{display:block;font-size:13px;font-weight:600;line-height:1.5}
+.profit-notice-copy p{margin:4px 0 0;font-size:12px;line-height:1.65;overflow-wrap:anywhere;max-width:75ch}
+.corbel .profit-notice>button{min-height:44px;flex:none;white-space:normal}
+.profit-cost-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.profit-cost-filter p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-soft)}
+.corbel .profit-cost-filter button{min-height:44px}
+@media(max-width:600px){.profit-notice{flex-wrap:wrap;padding:14px}.profit-notice-copy{flex-basis:calc(100% - 32px)}.profit-notice>button{margin-left:32px}}

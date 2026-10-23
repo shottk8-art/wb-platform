@@ -253,7 +253,7 @@
     return {rep,commission,skuRows,cogs,tax,netProfit:n(c.net_profit),ads:e.advertising_total == null ? null : n(e.internal_ads)+n(s.media?.amount),
       manualExpenses:(rep.operational_expenses || 0)+(rep.external_promotion_expenses || 0),expenses,
       ordersSummary: s.orders?.status === 'downloaded' ? {amount:rep.orders_amount,qty:rep.orders_qty} : {amount:null,qty:null},
-      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,missing:e.missing || []};
+      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,missing:e.missing || [],missingCosts:c.missing_costs || []};
   }
 
   function combineDerived(entries) {
@@ -284,7 +284,8 @@
       const values = entries.map(({derived,shop}) => shop?.marketplace === 'ozon' ? null : derived.ordersSummary?.[field]);
       ordersSummary[field] = values.every(value => Number.isFinite(value)) ? values.reduce((sum,value) => sum+value,0) : null;
     }
-    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary };
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary,
+      missing:[...new Set(entries.flatMap(({derived})=>derived.missing || []))],missingCosts:entries.flatMap(({derived})=>derived.missingCosts || []) };
   }
 
   function combineTrend(lists, ordersComplete = true) {
@@ -407,6 +408,7 @@
     const interactive = interaction && typeof interaction.onSelect === "function";
     const activeMetric = visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
     visibleCards.forEach((c, index) => {
+      const unavailable = c.metric === 'profit' ? window.WBProfitNotice?.describe(d) : null;
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
@@ -419,7 +421,7 @@
           ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
           <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}></${block}>
-          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${c.value != null && c.prev != null ? escapeHtml(interaction?.comparisonLabel || 'к предыдущему месяцу') : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
+          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${unavailable ? escapeHtml(unavailable.short) : c.value != null && c.prev != null ? escapeHtml(interaction?.comparisonLabel || 'к предыдущему месяцу') : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
           ${asContent(c.extra || "")}
           ${interactive ? '<span class="kpi-action"><span>Смотреть динамику</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>' : ''}
         </${tag}>

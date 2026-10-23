@@ -1,0 +1,37 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const notice=require('../assets/profit-notice.js');
+const window={WBProfitNotice:notice},context=vm.createContext({window,document:{},Intl,Map,Set,Date});
+for(const file of ['assets/dashboard.js','assets/period-range.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
+const cabinet={finance:{retailAmount:'1000',bought_qty:7},net_profit:null,cogs:null,economy:{missing:['Не заполнена себестоимость']},missing_costs:['9209','5101','420','6001'],products:[],sources:{},settings:{}};
+const derived=window.WBDashboard.fromApiCabinet(cabinet),state=notice.describe(derived);
+assert.equal(state.articles.length,4);assert.match(state.message,/себестоимость 4 товаров/);assert.equal(state.action,'costs');
+assert.equal(notice.describe(window.WBDashboard.fromApiCabinet(null)),null,'initial loading dashes do not claim missing prices');
+for(const value of [0,-1,125])assert.equal(notice.describe({...derived,netProfit:value}),null,'known zero, loss and profit clear the notice');
+const media=notice.describe({...derived,missingCosts:[],missing:['Не все источники загружены','Расходы WB Медиа ещё не получены из API']});
+assert.match(media.message,/WB Медиа/);assert.equal(media.action,'settings');
+assert.match(notice.describe({...derived,missingCosts:[],missing:['Есть неизвестные типы или даты рекламных списаний']}).message,/тип|дат/);
+const repeated=notice.describe({...derived,missingCosts:[' Top-1 ','top-1','TOP-1']});assert.equal(repeated.articles.length,1);assert.match(repeated.message,/1 товара\./);
+for(const n of [2,5,11,21]){const s=notice.describe({...derived,missingCosts:Array.from({length:n},(_,i)=>String(i))});assert.match(s.message,new RegExp(n+' '+(n===21?'товара':'товаров')+'\\.'));}
+const range=window.WBRange.aggregate([{marketplace:'wildberries',derived},{marketplace:'wildberries',derived:{...derived,missingCosts:['5101','OLD']}}]);
+assert.equal(notice.describe(range).articles.length,5,'range preserves and deduplicates missing articles');
+const combined=window.WBDashboard.combineDerived([{derived,shop:{marketplace:'wildberries',name:'WB'}},{derived:{...derived,missingCosts:['5101']},shop:{marketplace:'ozon',name:'Ozon'}}]);
+assert.ok(combined.missingCosts.includes('420'),'combined view preserves underlying article identities');
+
+const el=()=>({hidden:false,textContent:'',events:{},addEventListener(type,fn){this.events[type]=fn;}}),root=el(),title=el(),body=el(),action=el(),actions=[];
+const controller=notice.create({root,title,body,action,onAction:state=>actions.push(state.action)});
+controller.update(derived);assert(!root.hidden);assert.match(body.textContent,/4 товаров/);action.events.click();assert.deepEqual(actions,['costs']);
+controller.reset();assert(root.hidden);assert.equal(body.textContent,'');action.events.click();assert.equal(actions.length,1,'reset clears stale shop actions');
+controller.update({...derived,netProfit:0});assert(root.hidden);controller.update({...derived,missingCosts:[],missing:['Не все источники загружены']});assert(!root.hidden);assert.equal(action.textContent,'Проверить загрузку');
+controller.update(null);assert(root.hidden);
+const cards={children:[],id:'test-kpis',contains:()=>false,set innerHTML(v){this.children=[];},appendChild(card){this.children.push(card);}};
+context.document={getElementById:()=>null,createElement(){return{set innerHTML(html){this.content={firstChild:{html,querySelector:()=>({textContent:'',classList:{add(){},remove(){}}}),addEventListener(){}}};}};}};
+window.matchMedia=()=>({matches:true});window.WBDashboard.renderKPI(cards,derived,null,'wildberries',{onSelect(){}});
+const profitCard=cards.children.find(c=>c.html.includes('Чистая прибыль'));assert.match(profitCard.html,/Не заполнена себестоимость/);assert.doesNotMatch(profitCard.html,/Нет данных для сравнения/);assert.equal((profitCard.html.match(/<button\b/g)||[]).length,1,'recovery action is not a nested button in the KPI');
+const app=fs.readFileSync('app.html','utf8');assert.match(app,/id="profitNotice"[^>]*hidden/);assert.match(app,/profitNotice\.update\(derived\)/);assert.match(app,/function beginOverviewLoad\(\)[\s\S]*?profitNotice\.reset\(\)/);assert.match(app,/function resetShopDisplay\(\)[\s\S]*?profitNotice\.reset\(\)/);
+const costRows=[{dataset:{article:' TOP-1 '}},{dataset:{article:'other'}}],filterRoot=el(),filterLabel=el(),allButton=el();
+const filterState={Set,profitCostFilter:{shopId:'a',articles:['top-1']},shop:{id:'a'},window:{WBDashboard:{articleKey:v=>String(v).trim().toLowerCase()}},document:{querySelectorAll:()=>costRows,getElementById:id=>id==='profitCostFilter'?filterRoot:id==='profitCostFilterLabel'?filterLabel:allButton}};
+vm.createContext(filterState);vm.runInContext(app.slice(app.indexOf('  function applyProfitCostFilter()'),app.indexOf('  async function openProfitIssue(')),filterState);
+filterState.applyProfitCostFilter();assert(!costRows[0].hidden);assert(costRows[1].hidden);assert(!filterRoot.hidden);
+filterState.shop={id:'b'};filterState.applyProfitCostFilter();assert(costRows.every(row=>!row.hidden));assert(filterRoot.hidden,'another shop never inherits the recovery filter');
+filterState.shop={id:'a'};filterState.clearProfitCostFilter();assert.equal(filterState.profitCostFilter,null);assert(costRows.every(row=>!row.hidden));
+console.log('Profit notice: PASS (missing costs, zero/loss/ready, sources, deduplication, range, combined scope, filter and stale reset).');

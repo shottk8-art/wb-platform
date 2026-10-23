@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/client-start.css?v=20261021-welcome2">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
+<link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
@@ -400,6 +401,11 @@
 
     <section class="section app-view" id="secKpis" data-view="overview">
       <div class="kpi-row" id="kpiRow"></div>
+      <div class="profit-notice" id="profitNotice" role="status" aria-live="polite" aria-atomic="true" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-help"/></svg>
+        <div class="profit-notice-copy"><strong id="profitNoticeTitle"></strong><p id="profitNoticeText"></p></div>
+        <button class="ghost small" id="profitNoticeAction" type="button"></button>
+      </div>
     </section>
 
     <section class="section app-view" id="secTrend" data-view="overview">
@@ -530,6 +536,7 @@
       </div>
       <div class="collapsible-body"><div>
       <div class="card">
+        <div class="profit-cost-filter" id="profitCostFilter" hidden><p id="profitCostFilterLabel"></p><button class="ghost small" id="showAllCosts" type="button">Показать все товары</button></div>
         <div class="tablewrap">
           <table class="costs">
             <thead><tr><th>Артикул</th><th>Наименование</th><th>Себестоимость за шт., ₽</th><th></th></tr></thead>
@@ -565,8 +572,9 @@
 <script src="/assets/trend-interaction.js?v=20261019-trend2"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
-<script src="/assets/dashboard.js?v=20261019-products1"></script>
-<script src="/assets/period-range.js?v=20261019-trend1"></script>
+<script src="/assets/profit-notice.js?v=20261023-profit1"></script>
+<script src="/assets/dashboard.js?v=20261023-profit1"></script>
+<script src="/assets/period-range.js?v=20261023-profit1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261022-rename1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261012-media-finance1"></script>
@@ -587,6 +595,32 @@
   let aiAllowed = false;
   let trendMetric = "sales";
   let currentTrend = [];
+  let profitCostFilter = null;
+  const profitNotice = window.WBProfitNotice.create({
+    root:document.getElementById('profitNotice'),title:document.getElementById('profitNoticeTitle'),body:document.getElementById('profitNoticeText'),action:document.getElementById('profitNoticeAction'),onAction:openProfitIssue,
+  });
+
+  function applyProfitCostFilter() {
+    const filter = profitCostFilter?.shopId === shop?.id ? profitCostFilter : null;
+    const keys = new Set((filter?.articles || []).map(window.WBDashboard.articleKey));
+    for(const row of document.querySelectorAll('#costsBody tr[data-article]')) row.hidden=!!filter && !keys.has(window.WBDashboard.articleKey(row.dataset.article));
+    document.getElementById('profitCostFilter').hidden=!filter;
+    document.getElementById('profitCostFilterLabel').textContent=filter ? `Товары для расчёта прибыли: ${filter.articles.length}. Себестоимость общая для WB и Ozon.` : '';
+  }
+  function clearProfitCostFilter(){profitCostFilter=null;applyProfitCostFilter();}
+  document.getElementById('showAllCosts').addEventListener('click',clearProfitCostFilter);
+  async function openProfitIssue(issue) {
+    if(issue.action!=='costs'){setActiveView('settings');return;}
+    const shopId=shop?.id,selection=dashboardRequest;
+    profitCostFilter=issue.articles.length?{shopId,articles:issue.articles}:null;
+    const section=document.getElementById('secCosts');section.classList.remove('collapsed');section.querySelector('.collapse-btn').setAttribute('aria-expanded','true');
+    setActiveView('costs',false);history.replaceState(null,'','#costs');applyProfitCostFilter();
+    try{
+      await refreshCostsTable();
+      if(shop?.id!==shopId||selection!==dashboardRequest||activeView!=='costs')return;
+      document.querySelector('#costsBody tr:not([hidden]) .cost-input')?.focus({preventScroll:true});
+    }catch{if(shop?.id===shopId&&activeView==='costs')toast('Не удалось загрузить себестоимость. Проверьте соединение и откройте раздел ещё раз.',true);}
+  }
 
   const VIEW_META = {
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
@@ -957,6 +991,7 @@
   }
 
   function beginOverviewLoad() {
+    profitNotice.reset();clearProfitCostFilter();
     apiDisplayedPeriod = null;
     currentTrend = [];
     window.WBAnalysis.reset();
@@ -1000,6 +1035,7 @@
   }
 
   function resetShopDisplay() {
+    profitNotice.reset();clearProfitCostFilter();
     window.WBShopName?.setContext(null);
     window.WBRange?.reset();
     overviewPending = false; overviewLoadError = '';
@@ -1027,6 +1063,7 @@
   }
 
   function renderDashboardKpis(derived, previous, marketplace) {
+    profitNotice.update(derived);
     setShopLoading(false);
     trendMetric = window.WBDashboard.renderKPI(document.getElementById("kpiRow"), derived, previous, marketplace, {
       activeMetric: trendMetric,
@@ -1276,6 +1313,7 @@
         <td data-label="Себестоимость за шт., ₽"><input type="number" min="0" step="1" inputmode="decimal" aria-label="Себестоимость ${escapeHtml(c.article)}" value="${c.cost_price || 0}" class="cost-input"></td>
         <td><button class="ghost small save-cost-btn" disabled>Сохранить</button></td>
       </tr>`).join("");
+    applyProfitCostFilter();
     tbody.querySelectorAll("tr").forEach((row) => {
       const input = row.querySelector(".cost-input");
       const btn = row.querySelector(".save-cost-btn");

@@ -21,6 +21,7 @@ function fixture() {
   for(const id of ['membersBody','costsBody','uploadsBody']) el(id).innerHTML='rows of toplash';
   let notify;
   const state={console,shop:{id:'toplash'},session:{user:{id:'owner'}},activeView:'overview',overviewScope:'wildberries',reportMarketplace:'wildberries',
+    profitNotice:{reset(){el('profitNotice').hidden=true;}},clearProfitCostFilter(){el('profitCostFilter').hidden=true;},
     dashboardRequest:0,periodsRequest:0,shopChange:0,shopLoading:false,overviewPending:false,overviewLoadError:'',apiDisplayedPeriod:'toplash:wildberries:2026-10',periods:[],currentTrend:[],
     document:{getElementById:el},localStorage:{setItem(){}},
     window:{WBAuth:{listMyShops:()=>{const d=deferred();lists.push(d);return d.promise;}},WBAnalysis:{reset(){}},
@@ -48,6 +49,8 @@ function fixture() {
   assert.equal(f.el('kpiRow').textContent,'','previous store KPI is removed synchronously');
   assert.equal(f.el('secondaryKpiRow').textContent,'','previous store advertising is removed synchronously');
   assert.equal(f.el('profitabilityValue').textContent,'—','previous store profitability is removed synchronously');
+  assert.equal(f.el('profitNotice').hidden,true,'previous shop reason is removed synchronously');
+  assert.equal(f.el('profitCostFilter').hidden,true,'previous shop cost filter is removed synchronously');
   assert.equal(f.el('secOverviewCharts').hidden,true);
   assert.equal(f.el('secAdvertising').hidden,true);
   assert.equal(f.el('periodSelect').disabled,true);

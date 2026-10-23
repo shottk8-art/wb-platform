@@ -7,6 +7,8 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+Profit availability, 23 October 2026: explain a real null net profit visibly below the primary KPI row and in its comparison caption. Preserve the established Operate/Corbel light/dark world. State the actual missing-cost count, or the existing incomplete-source/media/advertising reason, with a specific recovery action. Cost recovery opens the shared catalogue filtered to the raw missing article identities, retaining existing save behavior and a show-all action. Clear the explanation and filter synchronously on source/month/shop changes and hide them for a known zero/loss/profit. Preserve formulas, null semantics, imports, API reads and permissions; aggregate diagnostic metadata across month ranges and marketplaces without changing totals. No new motion or production data writes.
+
 Shop-name extension, 22 October 2026: put a compact inline name form first in Settings, in the existing Corbel card/field/button vocabulary and both themes. Only the owner edits, members see a readonly field with an explanation. Accept a trimmed 1–80-character name and explicit Save; blank/unchanged/loading states disable Save, success and retry errors use the inline live status. Reset immediately on shop switch; a delayed result may only update its own shop option, never another shop's field or status. Update the native-backed selector and WB settings label without reloading analytics or API data. Preserve slug, owner, reports, costs, tax, keys, subscription and all existing permissions. No new motion or redesign.
 
 ## Approved extension: client start, 19 October 2026

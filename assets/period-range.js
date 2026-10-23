@@ -20,7 +20,7 @@
   const sum = values => values.every(Number.isFinite) ? Math.round(values.reduce((a,b)=>a+b,0)*100)/100 : null;
   function aggregate(entries) {
     if(!entries.length) return window.WBDashboard.fromApiCabinet(null);
-    const output={rep:{},skuRows:[],expenses:[],missing:[...new Set(entries.flatMap(e=>e.derived.missing || []))],isApi:entries.some(e=>e.derived.isApi)};
+    const output={rep:{},skuRows:[],expenses:[],missing:[...new Set(entries.flatMap(e=>e.derived.missing || []))],missingCosts:entries.flatMap(e=>e.derived.missingCosts || []),isApi:entries.some(e=>e.derived.isApi)};
     const fields=new Set(entries.flatMap(e=>Object.keys(e.derived.rep).filter(k=>typeof e.derived.rep[k]==='number'||e.derived.rep[k]===null)));
     for(const field of fields) output.rep[field]=sum(entries.map(e=>Object.hasOwn(e.derived.rep,field)?e.derived.rep[field]:0));
     for(const field of ['commission','cogs','ads','tax','manualExpenses','netProfit']) output[field]=sum(entries.map(e=>e.derived[field]));
