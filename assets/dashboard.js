@@ -36,6 +36,7 @@
     quantity: { label: "Выкупили", unit: "шт.", color: "#0071e3" },
     transfer: { label: "К выплате после удержаний", unit: "₽", color: "#0071e3" },
     profit: { label: "Чистая прибыль", unit: "₽", color: "#187a32" },
+    profitability: { label: "Рентабельность", unit: "%", color: "#187a32" },
     internalAds: { label: "Внутренняя реклама", unit: "₽", color: "#0071e3" },
     mediaAds: { label: "Медийная реклама", unit: "₽", color: "#af52de" },
     drrOrders: { label: "ДРР (заказа)", unit: "%", color: "#ff9f0a" },
@@ -46,7 +47,7 @@
   function getTrendMetric(key, marketplace) {
     const metric = { ...(TREND_METRICS[key] || TREND_METRICS.sales) };
     if(typeof getComputedStyle==='function' && document.body){
-      const token=key==='profit'?'--good':key==='mediaAds'||key==='drrSales'?'--violet':key==='drrOrders'?'--warm':'--accent';
+      const token=key==='profit'||key==='profitability'?'--good':key==='mediaAds'||key==='drrSales'?'--violet':key==='drrOrders'?'--warm':'--accent';
       metric.color=getComputedStyle(document.body).getPropertyValue(token).trim() || metric.color;
     }
     if (key === "internalAds" && marketplace === "ozon") metric.label = "Продвижение Ozon";
@@ -406,7 +407,7 @@
     ];
     const visibleCards = cards.filter((c) => (!c.hideWhenZero || Math.abs(c.value || 0) > 0.005) && !(c.hideForOzon && marketplace === "ozon"));
     const interactive = interaction && typeof interaction.onSelect === "function";
-    const activeMetric = visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
+    const activeMetric = interaction?.activeMetric === 'profitability' || visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
     visibleCards.forEach((c, index) => {
       const unavailable = c.metric === 'profit' ? window.WBProfitNotice?.describe(d) : null;
       const heroClass = c.hero ? " kpi--hero" : "";
@@ -436,7 +437,15 @@
 
   function profitMargin(derived) {
     const sales = derived?.rep?.sales_amount, profit = derived?.netProfit;
-    return typeof sales === 'number' && sales > 0 && typeof profit === 'number' && Number.isFinite(profit) ? profit / sales * 100 : null;
+    return typeof sales === 'number' && Number.isFinite(sales) && sales > 0 && typeof profit === 'number' && Number.isFinite(profit) ? profit / sales * 100 : null;
+  }
+  // Derive rates from the same loaded profit and sales for API, files and
+  // combined marketplaces; never turn an unavailable profit into zero.
+  function trendMetricValue(row, metric) {
+    const numeric = value => (typeof value === 'number' || typeof value === 'string' && value.trim() !== '') && Number.isFinite(Number(value)) ? Number(value) : null;
+    return metric === 'profitability'
+      ? profitMargin({ netProfit: numeric(row?.profit), rep: { sales_amount: numeric(row?.sales) } })
+      : numeric(row?.[metric]);
   }
   function renderProfitability(derived, previous) {
     const output = document.getElementById?.('profitabilityValue');
@@ -678,12 +687,7 @@
     const metric = getTrendMetric(metricKey, marketplace);
     const inkMute = getComputedStyle(document.body).getPropertyValue("--ink-mute").trim();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const values = rows.map(row => {
-      const raw = row[metricKey];
-      if ((typeof raw !== 'number' && typeof raw !== 'string') || String(raw).trim() === '') return null;
-      const value = Number(raw);
-      return Number.isFinite(value) ? value : null;
-    });
+    const values = rows.map(row => trendMetricValue(row, metricKey));
     const singlePoint = values.length === 1 && values[0] != null;
     const formatValue = (value, compact) => {
       if (value == null) return "нет данных";
@@ -946,5 +950,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadPeriodRange, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability, expenseItems };
+  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadPeriodRange, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, trendMetricValue, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability, expenseItems };
 })();

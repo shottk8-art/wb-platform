@@ -150,6 +150,39 @@
     new MutationObserver(() => sync(state)).observe(select, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label', 'hidden', 'required', 'aria-label', 'aria-invalid'] });
     sync(state);
   }
+  function wireProfitabilityHelp(button, popover) {
+    // Portal outside animated/overflow-hidden cards so the explanation never clips.
+    document.body.append(popover);
+    let pinned = false, closeTimer;
+    const hide = () => {
+      clearTimeout(closeTimer);
+      pinned = false; popover.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+    };
+    const show = () => {
+      clearTimeout(closeTimer);
+      popover.hidden = false;
+      button.setAttribute('aria-expanded', 'true');
+      const rect = button.getBoundingClientRect(), width = popover.offsetWidth;
+      popover.style.left = `${Math.max(16, Math.min(rect.left, window.innerWidth - width - 16))}px`;
+      popover.style.top = `${Math.max(16, Math.min(rect.bottom + 8, window.innerHeight - popover.offsetHeight - 16))}px`;
+    };
+    const leave = () => { if (!pinned && document.activeElement !== button) closeTimer = setTimeout(hide, 120); };
+    button.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') show(); });
+    button.addEventListener('pointerleave', leave);
+    popover.addEventListener('pointerenter', show);
+    popover.addEventListener('pointerleave', leave);
+    button.addEventListener('focus', show);
+    button.addEventListener('blur', () => { if (!pinned) hide(); });
+    button.addEventListener('click', () => { if (pinned) hide(); else { pinned = true; show(); } });
+    button.addEventListener('pointercancel', hide);
+    document.addEventListener('pointerdown', event => { if (!button.contains(event.target) && !popover.contains(event.target)) hide(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') hide(); });
+    window.addEventListener('resize', hide);
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('seller:themechange', hide);
+  }
+
   function layout() {
     const trend = document.getElementById('secTrend'), expense = document.querySelector('.expense-card');
     if (!trend || !expense || document.querySelector('.overview-chart-deck')) return;
@@ -158,7 +191,8 @@
     deck.classList.toggle('is-active', trend.classList.contains('is-active'));
     trend.before(deck); trend.classList.remove('app-view', 'is-active'); trend.removeAttribute('hidden');
     const gauge = document.createElement('div'); gauge.className = 'card profitability-card';
-    gauge.innerHTML = `<h2>Рентабельность <span class="gauge-info" title="Чистая прибыль ÷ сумма продаж × 100%. Это фактическая доля прибыли, не рейтинг магазина.">i</span></h2>
+    gauge.innerHTML = `<h2>Рентабельность <button id="profitabilityHelp" type="button" class="gauge-info" aria-label="Как считается рентабельность" aria-expanded="false" aria-controls="profitabilityHelpText" aria-describedby="profitabilityHelpText"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.7 2.2c-.8.4-1.2.9-1.2 1.8M12 16h.01"/></svg></button></h2>
+      <span id="profitabilityHelpText" role="tooltip" class="help-popover gauge-help-popover" hidden>Чистая прибыль ÷ сумма продаж × 100%. Показывает, какая доля продаж остаётся прибылью. За диапазон месяцев считаем по общим суммам, а не усредняем проценты. Если прибыль ещё не рассчитана, показываем прочерк. Сравнение — в процентных пунктах.</span>
       <div class="gauge-figure"><svg id="profitabilityGauge" viewBox="0 0 320 190" role="img" aria-label="Рентабельность: недостаточно данных">
       <defs><linearGradient id="profitGradient"><stop stop-color="#93a3ec"/><stop offset="1" stop-color="#2a45cc"/></linearGradient></defs>
       <g class="gauge-ticks"></g><path class="gauge-track" d="M40 154 A120 120 0 0 1 280 154"/>
@@ -166,7 +200,7 @@
       <circle id="profitabilityMarker" cx="40" cy="154" r="9" visibility="hidden"/></svg>
       <div class="gauge-number"><strong id="profitabilityValue">—</strong><span class="gauge-delta" id="profitabilityDelta"></span><small>% от суммы продаж</small></div></div>
       <h3 id="profitabilityCaption">Заполните недостающие данные</h3><p id="profitabilityNote">Для расчёта нужны продажи и чистая прибыль.</p>
-      <button class="gauge-details" type="button">Структура расходов <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button>`;
+      <div class="gauge-actions"><button id="profitabilityTrend" class="gauge-details" type="button" data-trend-metric="profitability" aria-pressed="false" aria-controls="trendChart">Смотреть динамику <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><button class="gauge-details gauge-expenses" type="button" aria-label="Структура расходов">Расходы <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div>`;
     for (let i=0;i<=40;i++) {
       const angle=Math.PI-i/40*Math.PI, tick=document.createElementNS('http://www.w3.org/2000/svg','line');
       const inner=i%5===0?135:139, outer=146;
@@ -176,7 +210,8 @@
     }
     expenseSection.classList.add('expense-panel'); expenseSection.id='secExpenseSummary';
     deck.append(gauge, trend);
-    gauge.querySelector('button').addEventListener('click',()=>expenseSection.scrollIntoView({behavior:reduce()?'instant':'smooth',block:'start'}));
+    wireProfitabilityHelp(gauge.querySelector('#profitabilityHelp'), gauge.querySelector('#profitabilityHelpText'));
+    gauge.querySelector('.gauge-expenses').addEventListener('click',()=>expenseSection.scrollIntoView({behavior:reduce()?'instant':'smooth',block:'start'}));
     const advertising=document.createElement('section'); advertising.className='section app-view advertising-section';advertising.dataset.view='overview';advertising.id='secAdvertising';
     advertising.classList.toggle('is-active',deck.classList.contains('is-active'));
     const advertisingHeading=document.createElement('div');advertisingHeading.className='section-head';

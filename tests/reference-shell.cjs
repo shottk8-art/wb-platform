@@ -21,4 +21,5 @@ assert.equal(api.profitMargin({...data,netProfit:1200}),120,'display preserves v
 assert.equal(api.profitMargin({...data,netProfit:null}),null);
 assert.equal(api.profitMargin({rep:{sales_amount:0},netProfit:0}),null);
 assert.equal(api.profitMargin(null),null);
+assert.equal(api.renderKPI(root,data,null,'wildberries',{activeMetric:'profitability',onSelect(){}}),'profitability','gauge metric survives KPI rerenders');
 console.log('Reference shell: PASS (four main KPIs, all secondary metrics, Ozon/promo reset, true profitability incl. negative and unknown).');

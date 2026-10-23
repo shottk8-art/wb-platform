@@ -15,9 +15,15 @@
   const total = values => values.length && values.every(v=>v!=null) ? values.reduce((a,b)=>a+b,0) : null;
 
   function model(rows, metricKey, metric, selected, now = new Date()) {
-    const values = rows.map(row=>numeric(row[metricKey]));
+    const valueOf = row => metricKey === 'profitability' ? window.WBDashboard.trendMetricValue(row, metricKey) : numeric(row?.[metricKey]);
+    const values = rows.map(valueOf);
     const byMonth = new Map(rows.map(row=>[key(row),row]));
     const periodRate = () => {
+      if (metricKey === 'profitability') {
+        const profit = total(rows.map(row=>numeric(row.profit)));
+        const sales = total(rows.map(row=>numeric(row.sales)));
+        return window.WBDashboard.profitMargin({ netProfit: profit, rep: { sales_amount: sales } });
+      }
       const base = metricKey === 'drrOrders' ? 'orders' : 'sales';
       // A weighted monthly rate is exact only when every monthly denominator
       // is known and positive. Never average rates or drop a zero-base month.
@@ -36,7 +42,7 @@
         const row=rows[index]; if(!row)return null;
         const date=new Date(Number(row.year),Number(row.month)-2,1);
         const prior=byMonth.get(`${date.getFullYear()}-${date.getMonth()+1}`);
-        const previous=numeric(prior?.[metricKey]);
+        const previous=valueOf(prior);
         const value=values[index];
         const partial=Number(row.year)===now.getFullYear() && Number(row.month)===now.getMonth()+1;
         let delta=null;
@@ -204,8 +210,9 @@
       if(state.model.average!=null){
         const y=chart.scales.y.getPixelForValue(state.model.average);
         Object.assign(state.guide.style,{left:`${area.left}px`,width:`${area.right-area.left}px`,transform:`translateY(${y}px)`});
-        state.guide.querySelector('span').textContent=`${state.model.metric.unit==='%'?'ДРР периода':'ср.'} ${format(state.model.average,state.model.metric.unit,true)}`;
-        state.guide.title=state.model.metric.unit==='%'?'ДРР взвешен по суммам заказов или продаж':'Среднее по месяцам с известным значением';
+        const profitability = state.model.metricKey === 'profitability';
+        state.guide.querySelector('span').textContent=`${profitability?'За период':state.model.metric.unit==='%'?'ДРР периода':'ср.'} ${format(state.model.average,state.model.metric.unit,true)}`;
+        state.guide.title=profitability?'Общая чистая прибыль / общая сумма продаж × 100%':state.model.metric.unit==='%'?'ДРР взвешен по суммам заказов или продаж':'Среднее по месяцам с известным значением';
       }
     }
     if(changed)choose(state,state.model.initial,true);else position(state);

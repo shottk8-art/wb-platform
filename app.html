@@ -17,14 +17,14 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261012-loading2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
-<link rel="stylesheet" href="/assets/reference.css?v=20261019-center1">
+<link rel="stylesheet" href="/assets/reference.css?v=20261023-margin1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/client-start.css?v=20261021-welcome2">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
-<script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
+<script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
 <script src="/assets/reference.js?v=20261019-reference4" defer></script>
 </head>
 <body class="corbel">
@@ -569,11 +569,11 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261012-orders1"></script>
-<script src="/assets/trend-interaction.js?v=20261019-trend2"></script>
+<script src="/assets/trend-interaction.js?v=20261023-margin1"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
 <script src="/assets/profit-notice.js?v=20261023-profit1"></script>
-<script src="/assets/dashboard.js?v=20261023-profit1"></script>
+<script src="/assets/dashboard.js?v=20261023-margin1"></script>
 <script src="/assets/period-range.js?v=20261023-profit1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261022-rename1"></script>
@@ -957,18 +957,24 @@
     item.append(dot, document.createTextNode(metric.label));
     legend.replaceChildren(item);
     const empty = document.getElementById("trendEmpty");
-    empty.hidden = currentTrend.some((row) => Number.isFinite(row[trendMetric]));
+    const valueOf = row => window.WBDashboard.trendMetricValue(row, trendMetric);
+    empty.hidden = currentTrend.some((row) => valueOf(row) != null);
     empty.textContent = currentTrend.length
       ? "Нет данных для расчёта выбранного показателя"
       : "Загрузите отчёты, чтобы увидеть динамику";
     window.WBDashboard.renderTrend(document.getElementById("trendChart"), currentTrend, trendMetric, overviewScope);
     document.getElementById('trendChart').setAttribute('aria-label', `${metric.label}: динамика магазина${range ? ' за '+window.WBRange.label(currentTrend) : ''}`);
-    document.getElementById('trendValues').textContent = currentTrend.map(row => `${window.WBDashboard.formatPeriod(row.year,row.month)}: ${row[trendMetric] == null ? 'нет данных' : Number(row[trendMetric]).toLocaleString('ru-RU')} ${row[trendMetric] == null ? '' : metric.unit}`).join('; ');
+    document.getElementById('trendValues').textContent = currentTrend.map(row => {
+      const value = valueOf(row);
+      return `${window.WBDashboard.formatPeriod(row.year,row.month)}: ${value == null ? 'нет данных' : value.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + ' ' + metric.unit}`;
+    }).join('; ');
+    const profitabilityButton = document.getElementById('profitabilityTrend');
+    profitabilityButton?.setAttribute('aria-pressed', String(trendMetric === 'profitability'));
   }
 
   function selectTrendMetric(metric) {
     trendMetric = metric;
-    document.querySelectorAll("#kpiRow [data-trend-metric], #secondaryKpiRow [data-trend-metric]").forEach((card) => {
+    document.querySelectorAll("#kpiRow [data-trend-metric], #secondaryKpiRow [data-trend-metric], #profitabilityTrend").forEach((card) => {
       const selected = card.dataset.trendMetric === metric;
       card.classList.toggle("is-selected", selected);
       card.setAttribute("aria-pressed", String(selected));
@@ -1482,6 +1488,10 @@
       popover.style.left=`${Math.max(16,Math.min(rect.left,window.innerWidth-width-16))}px`;
       popover.style.top=`${Math.max(16,Math.min(rect.bottom+8,window.innerHeight-popover.offsetHeight-16))}px`;
     };
+    // The Corbel gauge may be mounted after the account's async initialization.
+    document.addEventListener('click', event => {
+      if (event.target.closest?.('#profitabilityTrend')) selectTrendMetric('profitability');
+    });
     document.querySelectorAll('.help-button').forEach(button=>{
       button.addEventListener('pointerenter',()=>{button.closest('.metric-help').classList.remove('is-dismissed');positionHelp(button);});
       button.addEventListener('focus',()=>{button.closest('.metric-help').classList.remove('is-dismissed');positionHelp(button);});
