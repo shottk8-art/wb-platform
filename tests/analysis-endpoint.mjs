@@ -17,7 +17,7 @@ const data={
   wb_api_preview_jobs:[{
     id:'api-september',shop_id:shopId,status:'complete',date_from:'2026-09-01',date_to:'2026-09-30',cursor_id:'0',row_count:3,
     finance_model:aggregateFinanceRows([
-      {vendorCode:'TOP-114',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,retailAmount:4000,forPay:3000},
+      {vendorCode:'TOP-114',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,retailPriceWithDisc:4000,retailAmount:3500,forPay:3000},
       {deduction:70,bonusTypeName:'Оказание услуг «WB Медиа», документ №1'},
       {deduction:20,bonusTypeName:'Оказание услуг «WB Продвижение», документ №2'},
     ]),

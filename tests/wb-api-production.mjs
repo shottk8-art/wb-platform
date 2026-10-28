@@ -32,5 +32,6 @@ assert.doesNotMatch(html,/только для @karlshott|Загрузкой ме
 assert.match(html,/overviewScope !== 'ozon'/);
 assert.match(html,/loadPeriodData\(shop.id,year,month,'ozon'\)/);
 assert.match(html,/sourcePreference/);
-assert.match(html,/wb-api.js\?v=20261011-production1/,'changed public client must bypass the previous script cache');
+assert.match(html,/wb-api\.js\?v=\d{8}-[a-z0-9]+/,'the public API client must retain an explicit cache version');
+assert.match(html,/dashboard\.js\?v=20261027-sales1/,'the sales correction must bypass the previous dashboard script cache');
 console.log('WB production: separate shop calculations/keys, no pilot allowlist, Ozon files, scoped/fair queues PASS.');

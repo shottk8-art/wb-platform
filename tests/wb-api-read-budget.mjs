@@ -5,7 +5,7 @@ const now=new Date(Date.now()+3*3600000);
 const jobs=Array.from({length:12},(_,i)=>{
   const period=cabinetPeriod(new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)).toISOString().slice(0,7));
   return {id:`synthetic-${i}`,date_from:period.dateFrom,date_to:period.dateTo,status:'complete',cursor_id:'10000',row_count:10000,
-    finance_model:{version:1,cursor_id:'10000',row_count:10000,bought_qty:10000,totals:{retailAmount:'10000.00',forPay:'10000.00'},products:[{article:'SKU',name:'Test',bought_qty:10000,revenue:'10000.00',for_pay:'10000.00'}]},
+    finance_model:{version:1,cursor_id:'10000',row_count:10000,sales_covered_rows:10000,bought_qty:10000,totals:{salesAmount:'10000.00',retailAmount:'10000.00',forPay:'10000.00'},products:[{article:'SKU',name:'Test',bought_qty:10000,revenue:'10000.00',sales_revenue:'10000.00',for_pay:'10000.00'}]},
     summary:{pilot:{stage:'done'},api_sources:{orders:{status:'downloaded',orders_amount:'20000.00',rows:[]},internal_ads:{status:'downloaded',period_totals:{}},media:{status:'downloaded',date_from:period.dateFrom,date_to:period.dateTo,amount:'0.00'}}}};
 });
 let queries=0,tax=0,price='0.50';
@@ -22,8 +22,10 @@ price='0.70';tax=5;
 assert.equal((await readCabinetTrend(admin,PILOT_SHOP_ID))[0].profit,2500,'cached finance must not freeze current cost prices or tax');
 const status=await readCabinetStatus(admin,PILOT_SHOP_ID);
 assert.equal(status.history_loading,false);assert.equal(JSON.parse(status.revision).length,12);
-assert.ok(JSON.parse(status.revision).every(row=>row[5]==='media-finance-v1'),'open clients must invalidate pre-fix financial caches once');
+assert.ok(JSON.parse(status.revision).every(row=>row[5]==='seller-sales-v1'),'open clients must invalidate pre-fix financial caches once');
 jobs[0].row_count++;
 assert.equal((await readCabinetStatus(admin,PILOT_SHOP_ID)).revision,status.revision,'page progress must not invalidate completed chart data');
+jobs[0].sales_covered='10000';
+assert.notEqual((await readCabinetStatus(admin,PILOT_SHOP_ID)).revision,status.revision,'a repaired completed month must invalidate cached pre-repair figures');
 await assert.rejects(()=>readCabinetStatus(admin,'another-shop'));
 console.log('Read budget: passed (4 queries for 12 months, zero raw rows, live tax/costs, cheap isolated status).');

@@ -227,7 +227,7 @@
     const c = cabinet || {}, f = c.finance || {}, e = c.economy || {}, s = c.sources || {};
     const n = value => value == null || value === '' ? null : Number(value);
     const rep = {
-      sales_amount:n(f.retailAmount), orders_amount:n(s.orders?.amount), orders_qty:n(s.orders?.count), bought_qty:n(f.bought_qty),
+      sales_amount:n(f.salesAmount), orders_amount:n(s.orders?.amount), orders_qty:n(s.orders?.count), bought_qty:n(f.bought_qty),
       transfer_total:n(e.payout), transfer_goods:n(f.forPay),
       delivery_cost:n(f.deliveryService), storage_cost:n(f.paidStorage), fines:n(f.penalty), acceptance_ops:n(f.paidAcceptance),
       other_fees:n(f.deduction), damage_comp:0, return_comp:0,
@@ -254,7 +254,7 @@
     return {rep,commission,skuRows,cogs,tax,netProfit:n(c.net_profit),ads:e.advertising_total == null ? null : n(e.internal_ads)+n(s.media?.amount),
       manualExpenses:(rep.operational_expenses || 0)+(rep.external_promotion_expenses || 0),expenses,
       ordersSummary: s.orders?.status === 'downloaded' ? {amount:rep.orders_amount,qty:rep.orders_qty} : {amount:null,qty:null},
-      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,missing:e.missing || [],missingCosts:c.missing_costs || []};
+      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,salesRefreshRequired:!!c.finance && rep.sales_amount == null,missing:e.missing || [],missingCosts:c.missing_costs || []};
   }
 
   function combineDerived(entries) {
@@ -264,7 +264,8 @@
     const skuRows = [];
     entries.forEach(({ derived, shop }) => {
       Object.entries(derived.rep || {}).forEach(([key, value]) => {
-        if (typeof value === "number") rep[key] = (rep[key] || 0) + value;
+        if (value == null || rep[key] === null) rep[key] = null;
+        else if (typeof value === "number") rep[key] = (rep[key] || 0) + value;
       });
       commission += derived.commission || 0;
       cogs += derived.cogs || 0;
@@ -286,6 +287,7 @@
       ordersSummary[field] = values.every(value => Number.isFinite(value)) ? values.reduce((sum,value) => sum+value,0) : null;
     }
     return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary,
+      salesRefreshRequired:entries.some(({derived})=>derived.salesRefreshRequired),
       missing:[...new Set(entries.flatMap(({derived})=>derived.missing || []))],missingCosts:entries.flatMap(({derived})=>derived.missingCosts || []) };
   }
 
@@ -295,7 +297,7 @@
       const key = `${row.year}-${row.month}`;
       const current = periods.get(key) || { year: row.year, month: row.month };
       ["sales", "profit", "orders", "ads", "quantity", "transfer", "internalAds", "mediaAds", "promo"].forEach((field) => {
-        current[field] = field === 'orders' && (!ordersComplete || row[field] == null || current[field] === null) ? null : (current[field] || 0) + (row[field] || 0);
+        current[field] = row[field] === null || current[field] === null || field === 'orders' && (!ordersComplete || row[field] == null) ? null : (current[field] || 0) + (row[field] || 0);
       });
       periods.set(key, current);
     });
@@ -409,7 +411,8 @@
     const interactive = interaction && typeof interaction.onSelect === "function";
     const activeMetric = interaction?.activeMetric === 'profitability' || visibleCards.some((c) => c.metric === (interaction && interaction.activeMetric)) ? interaction.activeMetric : "sales";
     visibleCards.forEach((c, index) => {
-      const unavailable = c.metric === 'profit' ? window.WBProfitNotice?.describe(d) : null;
+      const unavailable = c.metric === 'profit' ? window.WBProfitNotice?.describe(d)
+        : c.metric === 'sales' && d.salesRefreshRequired ? {short:'Обновите месяц — нужны цены выкупов'} : null;
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));

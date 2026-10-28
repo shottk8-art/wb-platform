@@ -193,30 +193,54 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   return { retry_after: 63 };
 }
 
-// Reference reducer for regression/differential tests of the persisted SQL model.
-// Serving the cabinet never fetches raw operation pages.
+// Seller-price buyouts are distinct from WB's retailAmount (realization) and
+// forPay (payout). Price is per unit. Service/correction rows are not new sales.
+// https://dev.wildberries.ru/docs/openapi/documents-and-accounting#tag/financialReports/operation/postV1SalesReportsDetailed
+function buyoutValue(row: any): bigint | null {
+  const operation = String(row.sellerOperName || '').trim().toLowerCase();
+  if (!['продажа','возврат'].includes(operation)) return 0n;
+  const quantity = Number(row.quantity);
+  if (row.quantity == null || row.quantity === '' || !Number.isSafeInteger(quantity) || quantity < 0) return null;
+  if (quantity === 0) return 0n;
+  if (row.retailPriceWithDisc == null || row.retailPriceWithDisc === '') return null;
+  try {
+    const price = cents(row.retailPriceWithDisc);
+    if (price < 0n) return null;
+    const document = String(row.docTypeName || operation).trim().toLowerCase();
+    if (!['продажа','возврат'].includes(document)) return null;
+    return (document === 'возврат' ? -1n : 1n) * BigInt(quantity) * price;
+  } catch { return null; }
+}
+
+// The durable read model grows with SKU count, never with raw operations.
+// Keep upstream financial totals intact; versioned coverage prevents a partial
+// new page from inventing seller-price sales for an older compact snapshot.
 export function aggregateFinanceRows(rows: any[], cursor = '0') {
   const summarized = summarize(rows).totals;
   const totals = Object.fromEntries(['retailAmount','forPay','deliveryService','paidStorage','paidAcceptance','penalty','deduction','cashbackAmount','cashbackDiscount','cashbackCommissionChange'].map(key=>[key,summarized[key] || '0.00']));
   const products = new Map<string, any>();
   let additional = 0n, advertisingDeductions = 0n, wbMediaDeductions = 0n, mediaDeductionCount = 0, bought = 0;
+  let sales: bigint | null = 0n;
   for (const p of rows) {
+    const sale = buyoutValue(p);
+    sales = sales == null || sale == null ? null : sales + sale;
     additional += cents(p.additionalPayment);
     const label = String(p.bonusTypeName || p.sellerOperName || '').toLowerCase();
     if (/(?:вб|wb)[.\s]*(?:продвижение|медиа|media)|услуги (?:по )?реклам/.test(label)) advertisingDeductions += cents(p.deduction);
     if (cents(p.deduction) !== 0n && isMediaDeduction(label)) { wbMediaDeductions += cents(p.deduction); mediaDeductionCount++; }
     const article = String(p.vendorCode || p.nmId || '');
     if (!article) continue;
-    const row = products.get(article) || {article,name:text(p.title),bought_qty:0,for_pay:0n,revenue:0n};
+    const row = products.get(article) || {article,name:text(p.title),bought_qty:0,for_pay:0n,revenue:0n,sales_revenue:0n};
     if (!row.name) row.name = text(p.title);
     const sign = p.docTypeName === 'Возврат' ? -1 : 1;
     if (['Продажа','Возврат'].includes(p.sellerOperName)) {row.bought_qty += sign*Number(p.quantity || 0);bought += sign*Number(p.quantity || 0);}
     row.for_pay += BigInt(sign)*cents(p.forPay); row.revenue += BigInt(sign)*cents(p.retailAmount);
+    row.sales_revenue = row.sales_revenue == null || sale == null ? null : row.sales_revenue + sale;
     products.set(article,row);
   }
-  return {version:1,cursor_id:cursor,row_count:rows.length,bought_qty:bought,media_deduction_count:mediaDeductionCount,
-    totals:{...totals,additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions),wbMediaDeductions:rub(wbMediaDeductions)},
-    products:[...products.values()].map(p=>({...p,for_pay:rub(p.for_pay),revenue:rub(p.revenue)}))};
+  return {version:1,cursor_id:cursor,row_count:rows.length,sales_covered_rows:rows.length,bought_qty:bought,media_deduction_count:mediaDeductionCount,
+    totals:{...totals,salesAmount:sales == null ? null : rub(sales),additionalPayment:rub(additional),advertisingDeductions:rub(advertisingDeductions),wbMediaDeductions:rub(wbMediaDeductions)},
+    products:[...products.values()].map(p=>({...p,for_pay:rub(p.for_pay),revenue:rub(p.revenue),sales_revenue:p.sales_revenue == null ? null : rub(p.sales_revenue)}))};
 }
 
 // The durable state grows with distinct products, not the number of operations.
@@ -229,13 +253,18 @@ export function mergeFinanceModels(previous: any, page: any) {
     products.set(p.article, old ? {...old, name:old.name || p.name,
       bought_qty:old.bought_qty + p.bought_qty,
       for_pay:rub(cents(old.for_pay) + cents(p.for_pay)),
-      revenue:rub(cents(old.revenue) + cents(p.revenue))} : {...p});
+      revenue:rub(cents(old.revenue) + cents(p.revenue)),
+      sales_revenue:old.sales_revenue == null || p.sales_revenue == null ? null : rub(cents(old.sales_revenue) + cents(p.sales_revenue))} : {...p});
   }
   const keys = new Set([...Object.keys(previous.totals), ...Object.keys(page.totals)]);
-  return {version:1, cursor_id:page.cursor_id, row_count:previous.row_count + page.row_count,
+  const covered = (previous.sales_covered_rows || 0) + (page.sales_covered_rows || 0);
+  const count = previous.row_count + page.row_count;
+  const sales = covered === count && previous.totals.salesAmount != null && page.totals.salesAmount != null
+    ? rub(cents(previous.totals.salesAmount) + cents(page.totals.salesAmount)) : null;
+  return {version:1, cursor_id:page.cursor_id, row_count:count,sales_covered_rows:covered,
     bought_qty:previous.bought_qty + page.bought_qty,
     media_deduction_count:(previous.media_deduction_count || 0) + (page.media_deduction_count || 0),
-    totals:Object.fromEntries([...keys].map(key=>[key,rub(cents(previous.totals[key]) + cents(page.totals[key]))])),
+    totals:{...Object.fromEntries([...keys].filter(key=>key !== 'salesAmount').map(key=>[key,rub(cents(previous.totals[key]) + cents(page.totals[key]))])),salesAmount:sales},
     products:[...products.values()]};
 }
 
@@ -279,19 +308,20 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   }
   for (const p of model.products) {
     const row = products.get(p.article) || {article:p.article,name:p.name,orders_count:null,orders_amount:null};
-    products.set(p.article,{...row,name:row.name || p.name,bought_qty:p.bought_qty,for_pay:cents(p.for_pay),revenue:cents(p.revenue)});
+    products.set(p.article,{...row,name:row.name || p.name,bought_qty:p.bought_qty,for_pay:cents(p.for_pay),
+      revenue:model.sales_covered_rows === model.row_count && p.sales_revenue != null ? cents(p.sales_revenue) : null});
   }
   const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await readCostPrices(admin,shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
   const prices = costCatalogue(costs || []);
-  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null }));
+  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: p.revenue == null ? null : rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const media = mediaFinancialSource(job.summary?.deductions, financialComplete, period.dateFrom, period.dateTo, job.updated_at ?? null, model)
     || mediaSource(sources.media, period.dateFrom, period.dateTo);
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
-  const finance = financialComplete ? {...model.totals,bought_qty:model.bought_qty} : null;
+  const finance = financialComplete ? {...model.totals,salesAmount:model.sales_covered_rows === model.row_count ? model.totals.salesAmount ?? null : null,bought_qty:model.bought_qty} : null;
   const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: model.row_count, updated_at: job.updated_at, error_message: job.error_message },
@@ -320,13 +350,13 @@ export function monthSettings(body: any) {
 export async function readCabinetStatus(admin: any, shopId: string) {
   validateShopId(shopId);
   const {data,error} = await admin.from('wb_api_preview_jobs')
-    .select('id,date_from,date_to,status,row_count,stage:summary->pilot->>stage')
+    .select('id,date_from,date_to,status,row_count,stage:summary->pilot->>stage,sales_covered:finance_model->>sales_covered_rows')
     .eq('shop_id',shopId).gte('date_from',oldestMonth()).order('created_at',{ascending:false});
   if (error) throw new ApiError(500,'Не удалось прочитать статус истории');
   const jobs = (data || []).map((j:any)=>({id:j.id,date_from:j.date_from,date_to:j.date_to,status:j.status,row_count:j.row_count,stage:j.stage}));
   return {history_loading:jobs.some((j:any)=>j.status==='loading'),
     jobs,
-    revision:JSON.stringify(jobs.map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage,'media-finance-v1'])
+    revision:JSON.stringify((data || []).map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage,'seller-sales-v1',j.status === 'complete' ? j.sales_covered ?? null : null])
       .sort((a:any,b:any)=>a[0].localeCompare(b[0])))};
 }
 
@@ -355,7 +385,7 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id,
       {shop:shopResult.data,settings:settingsResult.data || [],costs:costsResult.data || [],job});
     if (!c.complete) continue;
-    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:Number(c.finance?.retailAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
+    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:c.finance?.salesAmount == null ? null : Number(c.finance.salesAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo) });
     if (byMonth.size >= 12) break;
   }
   return [...byMonth.values()].sort((a,b)=>a.year-b.year || a.month-b.month).slice(-12);

@@ -56,6 +56,20 @@ cursor AND operation count before committing the model, summary and cursor.
 Retries cannot double-count; compact snapshots reject raw-operation writes.
 Storage grows with distinct products, not the number of financial operations.
 
+Seller-price sales are stored separately as `totals.salesAmount` and per-SKU
+`sales_revenue`: agreed unit price times sale quantity, less returns. Service
+and correction rows do not create new buyouts. `sales_covered_rows` prevents
+old/partial aggregates from masquerading as a complete sales total. Original
+WB financial totals and the payout calculation are not replaced.
+
+`tools/repair-wb-sales.mjs` defaults to a read-only plan. Explicit `--apply`
+enriches saved months only after every original total, product money/quantity,
+cursor and count matches, with a compare-and-swap on the saved JSON. It does
+not update sources, expenses, payout, timestamps or files, persist raw rows,
+or trigger the year-wide multi-source queue. Normal dashboard reads never
+initiate this maintenance. In-place completed-model coverage invalidates the
+client revision without making row-count progress reload the chart.
+
 Legacy raw rows must be archived, authenticated-decrypted and checked against
 every committed cursor/count/summary and existing valid model before cleanup.
 `tools/verify-wb-archive.mjs` verifies chunk hashes and continuity offline and

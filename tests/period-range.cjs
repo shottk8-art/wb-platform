@@ -37,7 +37,7 @@ async function main(){
   assert.equal((await r.load({...selection,scope:'wildberries'})).previous,null,'incomplete earlier coverage suppresses comparison');
   assert.equal(await r.load({...selection,isCurrent:()=>false}),null,'abandoned selection cannot paint another shop');
   let calls=0;
-  const cabinet={complete:true,finance:{retailAmount:100,forPay:80,bought_qty:1},economy:{payout:70,tax:0,internal_ads:10,advertising_total:10,drr_sales:10,drr_orders:5},sources:{ads:{status:'downloaded'},media:{amount:0},orders:{status:'downloaded',amount:200}},products:[],cogs:0,net_profit:60};
+  const cabinet={complete:true,finance:{salesAmount:100,retailAmount:90,forPay:80,bought_qty:1},economy:{payout:70,tax:0,internal_ads:10,advertising_total:10,drr_sales:10,drr_orders:5},sources:{ads:{status:'downloaded'},media:{amount:0},orders:{status:'downloaded',amount:200}},products:[],cogs:0,net_profit:60};
   window.WBApiCabinet.overview=async()=>{calls++;return {cabinet,trend:[month(2026,8),month(2026,9)]};};
   const api=await r.load({...selection,scope:'wildberries',api:true,start:'2026-8',end:'2026-9'});
   assert.equal(api.derived.netProfit,120);assert.equal(api.previous,null);assert.ok(calls<=3,'unavailable historical months are not queried');

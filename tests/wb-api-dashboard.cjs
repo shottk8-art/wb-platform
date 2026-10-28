@@ -6,7 +6,7 @@ const document={createElement(){return{set innerHTML(html){this.content={firstCh
 vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../assets/dashboard.js'),'utf8'),{window,document,Intl,Map,Date});
 const api=window.WBDashboard;
 const cabinet={complete:true,net_profit:'792508.25',cogs:'696198.00',settings:{operational_expenses:'0',external_promotion_expenses:'0'},
-  finance:{retailAmount:'2231707.63',forPay:'2096453.30',bought_qty:1455,deliveryService:'238987.73',paidStorage:'70.09',paidAcceptance:'4030',penalty:'6642.80',deduction:'23440',additionalPayment:'0',cashbackAmount:'20',cashbackCommissionChange:'569.02',cashbackDiscount:'4150.97',advertisingDeductions:'0'},
+  finance:{salesAmount:'2231707.63',retailAmount:'2231707.63',forPay:'2096453.30',bought_qty:1455,deliveryService:'238987.73',paidStorage:'70.09',paidAcceptance:'4030',penalty:'6642.80',deduction:'23440',additionalPayment:'0',cashbackAmount:'20',cashbackCommissionChange:'569.02',cashbackDiscount:'4150.97',advertisingDeductions:'0'},
   sources:{orders:{amount:'3583156.00'},ads:{status:'downloaded'},media:{status:'confirmed_by_user',amount:'0'}},
   economy:{payout:'1826844.63',tax:'111585.38',internal_ads:'226553.00',promo:'77511',advertising_total:'226553',advertising_already_withheld:'0.00',drr_orders:6.322,drr_sales:10.151,missing:[]},
   products:[{article:'SKU',name:'Название',revenue:'1000',for_pay:'800',bought_qty:2,cost_price:'100'}]};
@@ -14,6 +14,7 @@ const d=api.fromApiCabinet(cabinet);
 assert.equal(d.netProfit,792508.25,'server-rounded profit is preserved, not recomputed with file formula');
 assert.equal(d.tax,111585.38);
 assert.equal(d.rep.transfer_total,1826844.63);
+assert.equal(d.rep.sales_amount,2231707.63);
 assert.equal(d.rep.bought_qty,1455);
 assert.equal(d.rep.ads_spend,226553);
 assert.equal(d.rep.ads_promo_spend,77511);

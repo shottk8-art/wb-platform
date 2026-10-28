@@ -6,7 +6,7 @@ const known = (value: unknown) => value == null || value === '' ? null : Number.
 // API profit from file reports or subtract financial advertising a second time.
 export function apiMetrics(cabinet: any) {
   const f=cabinet.finance, e=cabinet.economy, s=cabinet.sources;
-  const sales=known(f.retailAmount), profit=known(cabinet.net_profit);
+  const sales=known(f.salesAmount), profit=known(cabinet.net_profit);
   const ads=s.ads?.status==='downloaded' && s.media?.amount!=null ? num(e.internal_ads)+num(s.media.amount) : null;
   return {
     sales, orders:s.orders?.status==='downloaded' ? known(s.orders.amount) : null, bought_qty:known(f.bought_qty),
@@ -16,7 +16,7 @@ export function apiMetrics(cabinet: any) {
     promo_bonuses:s.ads?.status==='downloaded' ? known(e.promo) : null,
     operational_expenses:num(cabinet.settings.operational_expenses),external_promotion:num(cabinet.settings.external_promotion_expenses),
     cogs:known(cabinet.cogs),tax:known(e.tax),net_profit:profit,
-    margin_percent:profit==null ? null : sales ? profit/sales*100 : 0,
+    margin_percent:profit==null || sales==null ? null : sales ? profit/sales*100 : 0,
     ad_share_of_sales:known(e.drr_sales),ad_share_of_orders:known(e.drr_orders),
     additional_payment:known(f.additionalPayment),loyalty_points:known(f.cashbackAmount),loyalty_commission:known(f.cashbackCommissionChange),
     loyalty_discount:known(f.cashbackDiscount),advertising_already_withheld:known(e.advertising_already_withheld),

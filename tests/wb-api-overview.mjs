@@ -20,7 +20,7 @@ assert.equal(el('secApiCabinet').hidden,false,'section is gated but routed only 
 assert.equal(el('secKpis').hidden,false,'API uses the established KPI surface');
 assert.equal(el('secTrend').hidden,false);
 assert.equal(el('secAnalytics').hidden,false);
-assert.equal(el('secAiAnalysis').hidden,true,'file-only AI does not analyze API results');
+assert.equal(el('secAiAnalysis').hidden,false,'the authorized platform owner retains AI for the selected API data');
 assert.equal(el('overviewHelp').hidden,false);
 assert.equal(el('overviewRefresh').hidden,false);
 state.overviewScope='ozon';state.updateOverviewSource();

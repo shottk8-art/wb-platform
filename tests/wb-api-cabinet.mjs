@@ -48,14 +48,14 @@ assert.equal(job.summary.api_sources.media.amount,'0.00','documented empty media
 await assert.rejects(()=>processCabinetSource(admin,{...job,shop_id:'other'},fetcher));
 // Exercise the read model: corrections carry money but never another bought unit.
 const data={shops:{id:PILOT_SHOP_ID,name:'GREEN FLOW',tax_rate:0},wb_api_preview_jobs:[{...job,summary:{...job.summary,totals:{retailAmount:'100.00'}}}],
-wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,forPay:80,retailAmount:100}},
+wb_api_preview_rows:[{payload:{vendorCode:'SKU',title:'Товар',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:1,retailPriceWithDisc:100,forPay:80,retailAmount:100}},
 {payload:{vendorCode:'SKU',sellerOperName:'Коррекция продаж',docTypeName:'Продажа',quantity:1,forPay:5}},
-{payload:{vendorCode:'SKU',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
+{payload:{vendorCode:'SKU',sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1,retailPriceWithDisc:100,forPay:80}}],sku_costs:[{article:'SKU',cost_price:7}]};
 const reader={rpc:async()=>({data:aggregateFinanceRows(data.wb_api_preview_rows.map(r=>r.payload)),error:null}),from(table){assert.notEqual(table,'wb_api_preview_rows','cabinet must serve aggregates, not raw operations');const q={select(){return q;},eq(){return q;},gte(){return q;},range(){return q;},order(){return q;},limit(){return q;},single:async()=>({data:data[table]}),then(resolve,reject){return Promise.resolve({data:data[table],error:null}).then(resolve,reject);}};return q;}};
 const result=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.equal(result.products[0].bought_qty,0);
 assert.equal(result.products[0].for_pay,'5.00');
-assert.equal(result.products[0].revenue,'100.00','retail sales are distinct from payout');
+assert.equal(result.products[0].revenue,'0.00','seller-price sales less returns are distinct from payout');
 assert.equal(result.net_profit,'-5.00');
 assert.equal(result.cogs,'0.00');
 assert.equal(result.sources.ads.totals['Баланс'].amount,'10.00');
@@ -92,7 +92,7 @@ const returnOnly=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to
 assert.equal(returnOnly.cogs,null,'return-only products also need a known cost for reversal');
 assert.deepEqual(returnOnly.missing_costs,['RETURN-ONLY']);
 // A seeded lowercase placeholder must not mask an entered uppercase price.
-data.wb_api_preview_rows=[{payload:{vendorCode:'top-114',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,forPay:3000,retailAmount:4000}}];
+data.wb_api_preview_rows=[{payload:{vendorCode:'top-114',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,retailPriceWithDisc:2000,forPay:3000,retailAmount:4000}}];
 data.sku_costs=[{article:'Top-114',cost_price:1160},{article:'top-114',cost_price:0}];
 const caseVariant=await readCabinet(reader,PILOT_SHOP_ID,{dateFrom:from,dateTo:to});
 assert.deepEqual(caseVariant.missing_costs,[],'article casing is not a missing cost');

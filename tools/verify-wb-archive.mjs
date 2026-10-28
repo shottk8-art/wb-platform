@@ -7,6 +7,7 @@ import {createRequire} from 'node:module';
 import {resolve,join} from 'node:path';
 import {aggregateFinanceRows,mergeFinanceModels} from '../supabase/functions/wb-api/cabinet.ts';
 import {cents} from '../supabase/functions/wb-api/core.ts';
+import {withoutSalesFields} from '../supabase/functions/wb-api/sales-repair.ts';
 
 const directory=resolve(process.argv[2]), runtime=resolve(process.argv[3]);
 const openpgp=createRequire(join(runtime,'package.json'))('openpgp');
@@ -50,7 +51,8 @@ for(const job of jobs) {
  for(const [key,value] of Object.entries(job.summary?.totals || {})) assert.equal(cents(value),cents(model.totals[key]),`snapshot total mismatch: ${key}`);
  if(job.finance_model?.version===1 && Number(job.finance_model.row_count)===job.row_count && job.finance_model.cursor_id===String(job.cursor_id)) {
   const canonical=m=>JSON.stringify(canonicalObject({...m,products:[...m.products].sort((a,b)=>a.article<b.article?-1:a.article>b.article?1:0)}));
-  assert.equal(canonical(model),canonical(job.finance_model),'existing dashboard model changed');matched++;
+  const legacy=job.finance_model.sales_covered_rows !== job.finance_model.row_count || job.finance_model.totals.salesAmount == null;
+  assert.equal(canonical(legacy?withoutSalesFields(model):model),canonical(legacy?withoutSalesFields(job.finance_model):job.finance_model),'existing dashboard model changed');matched++;
  }
  models.push({id:job.id,shop_id:job.shop_id,cursor_id:String(job.cursor_id),row_count:job.row_count,finance_model:model});
  archived.set(job.id,[]);
