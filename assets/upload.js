@@ -149,13 +149,15 @@
       name: r.name || nameByArticle.get(window.WBDashboard.articleKey(r.article)) || "",
       cost_price: r.cost_price,
     }));
-    const { error } = await sb().rpc("save_cost_prices", { p_shop_id: shopId, p_rows: payload });
+    const { data, error } = await sb().rpc("save_cost_prices", { p_shop_id: shopId, p_rows: payload });
     if (error) throw error;
+    const articles = [...new Map(rows.map(r => [window.WBDashboard.articleKey(r.article), r.article])).values()];
+    const saved = Number.isInteger(data) ? data : articles.length;
     await logUpload(shopId, marketplace, "costs", filename || "себестоимость.xlsx", {
-      articles: rows.map((r) => r.article),
-      row_count: payload.length,
+      articles,
+      row_count: saved,
     });
-    return payload.length;
+    return saved;
   }
 
   // ---- Журнал загрузок ----

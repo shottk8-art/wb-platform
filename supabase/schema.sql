@@ -101,6 +101,8 @@ create index if not exists sku_costs_shop_idx on sku_costs(shop_id);
 create index if not exists sku_costs_shop_article_folded_idx on sku_costs(shop_id,lower(btrim(article)));
 -- Регистр артикула не влияет на себестоимость; атомарное сохранение всех
 -- вариантов и get_file_trend описаны в миграции case_insensitive_costs.
+-- bulk_cost_price_save сохраняет импорт двумя пакетными запросами под RLS,
+-- не превышая лимит времени на больших файлах; повтор артикула — последняя цена.
 
 -- ---------------------------------------------------------------------
 -- 5. ЖУРНАЛ ЗАГРУЗОК (для отмены случайно загруженного файла)

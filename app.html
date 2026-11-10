@@ -564,7 +564,7 @@
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
-<script src="/assets/upload.js?v=20261012-orders1"></script>
+<script src="/assets/upload.js?v=20261110-costs1"></script>
 <script src="/assets/trend-interaction.js?v=20261023-margin1"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
@@ -1838,15 +1838,32 @@
       const file = e.target.files[0];
       e.target.value = "";
       if (!file) return;
+      const selectedShop = { ...shop };
+      const selectedMarketplace = reportMarketplace;
+      const button = document.getElementById("importCostsBtn");
+      const label = button.innerHTML;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "Загружаем себестоимость…";
+      let saved = false;
       try {
         const rows = await window.WBParse.parseCostsFile(file);
-        const n = await window.WBUpload.importCosts(shop.id, reportMarketplace, rows, file.name);
-        await refreshCostsTable();
-        await renderCurrentPeriod();
-        await refreshUploadsLog();
-        toast(`Себестоимость обновлена: ${n} артикулов`);
+        const n = await window.WBUpload.importCosts(selectedShop.id, selectedMarketplace, rows, file.name);
+        saved = true;
+        if (shop?.id === selectedShop.id) {
+          await refreshCostsTable();
+          await renderCurrentPeriod();
+          await refreshUploadsLog();
+        }
+        toast(`Себестоимость обновлена: ${n} артикулов${shop?.id !== selectedShop.id ? ` · ${selectedShop.name}` : ""}`);
       } catch (err) {
-        toast("Ошибка импорта: " + err.message, true);
+        toast(saved ? "Себестоимость сохранена. Не удалось обновить данные на экране — обновите страницу." : "Ошибка импорта: " + (err.code === "57014"
+          ? "Сервер не успел сохранить файл. Повторите загрузку — цены не были изменены."
+          : err.message), true);
+      } finally {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.innerHTML = label;
       }
     });
   }
