@@ -60,11 +60,19 @@ stored. Advertising stores day/payment-type totals. Preparing an older month
 explicitly uses the existing durable refresh queue and preserves the previous
 complete snapshot. Reads have no upstream WB calls. `daily.ts` verifies full
 row/cursor/period coverage, daily advertising totals, and day/month profit
-equality. Operation dates use `rrDate` (Moscow); out-of-period/undated amounts
+equality before monthly manual expenses. Operation dates use `rrDate` (Moscow); out-of-period/undated amounts
 remain a separate visible bucket. Current cost catalogue and tax remain live.
-Monthly manual expenses are allocated equally across the snapshot's calendar
-days; tax rounding reconciles to the monthly amount. Ozon is excluded because
+By the owner's explicit correction, operational and external promotion expenses
+are excluded from daily profit and its breakdown, while the monthly overview
+still deducts them. Only month-only Media uses labelled allocation; tax rounding
+reconciles to the monthly amount. Ozon is excluded because
 its manual reports do not establish a complete daily ledger.
+
+Comparisons read the same daily models with this exclusion policy in both
+periods. Closed months use the full prior month, partial months the matching
+elapsed calendar days. The graph compares calendar day numbers; table deltas
+use the previous actual calendar day. Unknown/zero bases never invent a percent.
+Missing comparison data has a preparation action and never blocks current data.
 
 ## Storage and query budgets
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {aggregateFinanceRows,mergeFinanceModels,adsSnapshot,readCabinet} from '../supabase/functions/wb-api/cabinet.ts';
-import {aggregateDailyFinance,mergeDailyFinance,calculateDaily,allocateAmount,operationDay,readDaily} from '../supabase/functions/wb-api/daily.ts';
+import {aggregateDailyFinance,mergeDailyFinance,calculateDaily,allocateAmount,operationDay,readDaily,compareDaily} from '../supabase/functions/wb-api/daily.ts';
 import {DAILY_SHOP_ID,DAILY_USER_ID,dailyAllowed,authorizeDaily} from '../supabase/functions/wb-api/daily-access.ts';
 import {cents} from '../supabase/functions/wb-api/core.ts';
 const period={dateFrom:'2026-10-01',dateTo:'2026-10-31'};
@@ -39,8 +39,9 @@ for(const [user,shop] of [['member',DAILY_SHOP_ID],[DAILY_USER_ID,'11111111-1111
 }
 const f=await fixture(),result=calculateDaily(f.cabinet,f.daily,ads.daily_totals);
 assert.equal(result.status,'ready');assert.equal(result.days.length,31);
-assert.equal(result.monthly_profit,f.cabinet.net_profit);
-assert.equal(result.days.reduce((n,d)=>n+cents(d.net_profit),0n),cents(f.cabinet.net_profit),'all daily profits add up to the actual monthly overview');
+const beforeManual=cents(f.cabinet.net_profit)+10001n+3002n;
+assert.equal(cents(result.monthly_profit),beforeManual);
+assert.equal(result.days.reduce((n,d)=>n+cents(d.net_profit),0n),beforeManual,'daily profit reconciles with the overview BEFORE its monthly manual expenses');
 for(const day of result.days) {
   assert.equal(cents(day.sales)-day.expenses.reduce((n,e)=>n+cents(e.amount),0n),cents(day.net_profit),'every expense is deducted once, including loyalty/corrections/withheld ads');
 }
@@ -48,8 +49,11 @@ assert.equal(result.days[1].cogs,'-100.00','returns restore cost at the same liv
 assert.equal(result.days[1].promo,'10.00','promotional credit stays reference-only');
 assert.equal(result.days[2].media_ads,'50.00');
 assert.equal(result.days[3].advertising_already_withheld,'30.00');
-assert.equal(result.days.reduce((n,d)=>n+cents(d.operational_expenses),0n),10001n);
-assert.equal(result.days.reduce((n,d)=>n+cents(d.external_promotion_expenses),0n),3002n);
+assert.ok(result.days.every(d=>d.operational_expenses===undefined && d.external_promotion_expenses===undefined));
+assert.ok(result.days.every(d=>d.expenses.every(e=>!['operating','external'].includes(e.key))),'manual categories must not appear as daily costs');
+const noManual=await fixture(rows,[{article:'SKU',cost_price:100}],{operational_expenses:'0.00',external_promotion_expenses:'0.00'});
+assert.deepEqual(calculateDaily(noManual.cabinet,noManual.daily,ads.daily_totals),result,'changing monthly manual expenses must never change any daily result');
+assert.equal(cents(noManual.cabinet.net_profit)-cents(f.cabinet.net_profit),13003n,'monthly overview still deducts manual expenses');
 assert.equal(result.days.reduce((n,d)=>n+cents(d.tax),0n),cents(f.cabinet.economy.tax),'tax rounding reconciles exactly in kopecks');
 
 let merged=null;
@@ -67,7 +71,7 @@ assert.equal(unknown.days[4].cumulative_profit,null,'cumulative chart must not b
 const withoutDates=await fixture(rows.map(row=>({...row,rrDate:undefined,saleDt:'2026-10-01'})));
 const undated=calculateDaily(withoutDates.cabinet,withoutDates.daily,ads.daily_totals);
 assert.ok(undated.unallocated);assert.equal(undated.unallocated.rows,6,'sale date must not silently replace operation date');
-assert.equal(undated.monthly_profit,withoutDates.cabinet.net_profit);
+assert.equal(cents(undated.monthly_profit),cents(withoutDates.cabinet.net_profit)+13003n);
 
 for(const value of ['100.01','0.00','-0.17'])for(const length of [1,11,28,31])assert.equal([...allocateAmount(value,Array.from({length},(_,i)=>String(i))).values()].reduce((n,v)=>n+v,0n),cents(value));
 const repeated=Array.from({length:50000},(_,i)=>({...rows[0],rrdId:String(i+1),rrDate:`2026-10-${String(i%31+1).padStart(2,'0')}`}));
@@ -88,8 +92,24 @@ const reader={from(table){
   const q={select(c){columns=c;return q;},eq(k,v){filters[k]=v;return q;},order(){return q;},limit(){return q;},range(){return q;},
     single:async()=>run(),then:(a,b)=>Promise.resolve(run()).then(a,b)};return q;
 }};
-const response=await readDaily(reader,DAILY_SHOP_ID,period);
-assert.equal(response.status,'ready');assert.equal(response.monthly_profit,f.cabinet.net_profit);
+const response=await readDaily(reader,DAILY_SHOP_ID,period,false);
+assert.equal(response.status,'ready');assert.equal(cents(response.monthly_profit),beforeManual);
 assert.ok(reads.every(r=>r.table==='shops'?r.filters.id===DAILY_SHOP_ID:r.filters.shop_id===DAILY_SHOP_ID));
 assert.equal(reads.find(r=>r.columns.includes('daily:')).filters.id,'test-job','read daily aggregates from the SAME completed snapshot as the monthly overview');
-console.log('Daily profit: PASS (private gate, all expenses once, returns, day/month equality, tax, ads dates, unknowns, pagination, Moscow dates, allocation, bounded storage).');
+const series=(month,length,amount)=>Array.from({length},(_,i)=>({date:`${month}-${String(i+1).padStart(2,'0')}`,net_profit:amount}));
+const previous={status:'ready',period:{dateFrom:'2026-10-01',dateTo:'2026-10-31'},days:series('2026-10',31,'10.00')};
+const now={status:'ready',period:{dateFrom:'2026-11-01',dateTo:'2026-11-11'},days:series('2026-11',11,'20.00'),monthly_profit:'220.00'};
+const compared=compareDaily(structuredClone(now),previous);
+assert.equal(compared.comparison.profit,'110.00','current partial month compares only the same elapsed days');
+assert.equal(compared.comparison.change.amount,'110.00');assert.equal(compared.comparison.change.percent,100);
+assert.equal(compared.days[0].previous_day.date,'2026-10-31');assert.equal(compared.days[0].previous_day.profit,'10.00','first day uses the actual previous calendar day');
+assert.equal(compared.days[1].previous_day.profit,'20.00');
+assert.equal(compared.days[3].previous_period.date,'2026-10-04');assert.equal(compared.days[3].previous_period.change.amount,'10.00');
+const unknownPrevious=structuredClone(previous);unknownPrevious.days[3].net_profit=null;
+assert.equal(compareDaily(structuredClone(now),unknownPrevious).comparison.change,null,'unknown previous profit is never zero');
+const zeroPrevious=structuredClone(previous);zeroPrevious.days.forEach(d=>d.net_profit='0.00');
+assert.equal(compareDaily(structuredClone(now),zeroPrevious).comparison.change.percent,null,'zero denominator has no invented percentage');
+const closed={...now,period:{dateFrom:'2026-11-01',dateTo:'2026-11-30'},days:series('2026-11',30,'20.00'),monthly_profit:'600.00'};
+assert.equal(compareDaily(closed,previous).comparison.profit,'310.00','closed months use actual full prior months, including different month lengths');
+assert.equal(compareDaily(structuredClone(now),{status:'needs_preparation',days:[]}).days[1].previous_day.change.amount,'0.00','missing prior month does not prevent within-month day comparison');
+console.log('Daily profit: PASS (private gate, manual costs excluded, prior-month and prior-day comparisons, returns, tax, ads, unknowns, pagination, bounded storage).');

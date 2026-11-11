@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
-<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-daily1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-daily2">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
@@ -535,21 +535,24 @@
         <div><label for="dailyMonth">Месяц</label><select id="dailyMonth" aria-label="Месяц ежедневной аналитики"></select><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
       </div>
       <p class="daily-status" id="dailyStatus" role="status" aria-live="polite"></p>
+      <p class="daily-note">Операционные расходы и внешнее продвижение не учитываются в ежедневной прибыли.</p>
       <div id="dailyResults" hidden>
         <dl class="card daily-summary">
-          <div><dt>Чистая прибыль за период</dt><dd id="dailyProfit">—</dd></div>
-          <div><dt>В среднем за день</dt><dd id="dailyAverage">—</dd></div>
-          <div><dt>Дней с прибылью</dt><dd id="dailyPositive">—</dd></div>
+          <div><dt>Чистая прибыль за период</dt><dd id="dailyProfit">—</dd><p class="daily-comparison" id="dailyProfitChange"></p></div>
+          <div><dt>В среднем за день</dt><dd id="dailyAverage">—</dd><p class="daily-comparison" id="dailyAverageChange"></p></div>
+          <div><dt>Дней с прибылью</dt><dd id="dailyPositive">—</dd><p class="daily-comparison" id="dailyPositiveChange"></p></div>
         </dl>
+        <div class="daily-compare-info"><p class="daily-note" id="dailyComparisonInfo" role="status"></p><button type="button" class="ghost small" id="dailyPrepareComparison" hidden>Подготовить сравнение</button></div>
         <div class="card daily-chart-card">
           <div class="daily-chart-heading"><h2>Динамика чистой прибыли</h2><div class="segmented-control" id="dailyMode" role="group" aria-label="Режим ежедневного графика"><button type="button" data-daily-mode="daily" class="active" aria-pressed="true">По дням</button><button type="button" data-daily-mode="cumulative" aria-pressed="false">Накопительно</button></div></div>
+          <div class="daily-chart-legend"><span><i></i>Выбранный месяц</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий месяц</span></div>
           <div class="daily-chart-wrap"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
           <div class="sr-only" id="dailyChartValues"></div>
         </div>
         <div id="dailyUnallocated" class="daily-unallocated" hidden></div>
         <div class="daily-lower">
-          <div class="card daily-table-card"><h2 class="daily-table-title">Результаты по дням</h2><div class="daily-table-wrap"><table class="daily-table"><thead><tr><th scope="col">День</th><th scope="col">Продажи, ₽</th><th scope="col">Все расходы, ₽</th><th scope="col">Чистая прибыль, ₽</th></tr></thead><tbody id="dailyRows"></tbody></table></div></div>
-          <div class="card daily-breakdown"><h2 id="dailyDetailTitle">Расходы за день</h2><p class="daily-note" id="dailyNoOperations" hidden>В полученной выгрузке нет финансовых операций за этот день. Распределённые расходы могут быть учтены.</p><p class="daily-note" id="dailyMissing" hidden></p><dl id="dailyDetails"></dl><div class="daily-detail-total"><span>Чистая прибыль</span><strong id="dailyDetailProfit">—</strong></div></div>
+          <div class="card daily-table-card"><h2 class="daily-table-title">Результаты по дням</h2><div class="daily-table-wrap"><table class="daily-table"><thead><tr><th scope="col">День</th><th scope="col">Продажи, ₽</th><th scope="col">Учтённые расходы, ₽</th><th scope="col">Чистая прибыль, ₽<span class="daily-column-note">к предыдущему дню</span></th></tr></thead><tbody id="dailyRows"></tbody></table></div></div>
+          <div class="card daily-breakdown"><h2 id="dailyDetailTitle">Расходы за день</h2><p class="daily-note" id="dailyNoOperations" hidden>В полученной выгрузке нет финансовых операций за этот день. Рекламные списания могут быть учтены.</p><p class="daily-note" id="dailyMissing" hidden></p><dl id="dailyDetails"></dl><div class="daily-detail-total"><span>Чистая прибыль</span><strong id="dailyDetailProfit">—</strong></div><p id="dailyDetailChange"></p></div>
         </div>
       </div>
       <details class="daily-method"><summary>Как считается ежедневная прибыль</summary><ul>
@@ -557,7 +560,8 @@
         <li>Продажи, возвраты и удержания относятся к дате финансовой операции WB (rrDate), а не к дате заказа. Время — московское. WB может добавлять и корректировать операции, особенно в текущем месяце.</li>
         <li>Из стоимости выкупов вычитаются комиссия и расчёты WB, логистика, хранение, приёмка, штрафы, прочие удержания, корректировки, отзывы и лояльность, себестоимость, налог и денежная реклама. Реклама из удержаний не вычитается повторно; промобонусы прибыль не уменьшают.</li>
         <li>Внутренняя реклама учитывается по дате списания. WB Медиа — по датам удержаний финансового отчёта; при отсутствии дневных дат полученная месячная сумма распределяется равномерно и помечается «распределено».</li>
-        <li>Операционные расходы и внешнее продвижение распределяются равномерно по дням выгруженного периода. Для текущего месяца — по прошедшим дням. При обновлении неполного месяца распределение пересчитывается.</li>
+        <li>Операционные расходы и внешнее продвижение не распределяются по дням и не вычитаются из ежедневной прибыли. В месячном обзоре они учитываются по-прежнему, поэтому итоги могут различаться на сумму этих расходов.</li>
+        <li>На графике показан тот же календарный день предыдущего месяца. Незакрытый месяц сравнивается с таким же числом прошедших дней, закрытый — с полным предыдущим месяцем. В таблице изменение прибыли считается к предыдущему календарному дню. Нет данных или нулевая база — нет выдуманного процента.</li>
         <li>Используются текущие себестоимость и ставка налога магазина, как в обзоре. Налог округляется до месячного итога; разница в копейках относится к последнему дню с продажами. Пропуски не заменяются нулём. Операции без подходящей даты показаны отдельно от графика.</li>
       </ul></details>
     </section>
@@ -600,7 +604,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261110-costs1"></script>
-<script src="/assets/daily-analytics.js?v=20261111-daily1"></script>
+<script src="/assets/daily-analytics.js?v=20261111-daily2"></script>
 <script src="/assets/trend-interaction.js?v=20261023-margin1"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
@@ -656,7 +660,7 @@
 
   const VIEW_META = {
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
-    daily: { title: "Углублённая аналитика", subtitle: "Ежедневная прибыль с учётом всех расходов" },
+    daily: { title: "Углублённая аналитика", subtitle: "Ежедневная прибыль и сравнение периодов" },
     reports: { title: "Отчёты", subtitle: "Загрузите новые данные и при необходимости отмените прошлую загрузку" },
     costs: { title: "Себестоимость", subtitle: "Укажите закупочную цену товаров для точного расчёта прибыли" },
     team: { title: "Команда", subtitle: "Управляйте доступом сотрудников к данным магазина" },

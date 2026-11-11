@@ -363,7 +363,11 @@ or table shows the complete expense ledger beside it. The line preserves null
 gaps and losses; animation is one bounded 550ms reveal, reduced motion is instant.
 At 390px, the month/action share a labelled row, the primary summary spans two
 columns, supporting stats share the next row, and daily table rows become labelled
-cards. No page overflow. Month-level allocations are marked in the ledger and
+cards. No page overflow. Monthly operating/external promotion costs are explicitly
+excluded from daily results, per the owner's follow-up. Current/prior-month lines
+share one chart; KPI deltas use equal elapsed days for a partial month, and table
+profit deltas use the previous calendar day. Missing prior data has a preparation
+action; current data stays visible. Month-only Media allocations are marked and
 explained in native details; undated financial adjustments remain separate.
 Loading clears figures and charts synchronously; preparing a historical month
 shows durable background status. The menu and finder hide the experiment for

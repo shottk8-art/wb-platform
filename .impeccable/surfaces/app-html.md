@@ -9,9 +9,12 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 11 November 2026, private TOPLASH daily analytics: extend the incumbent shell with
 an exact-user/shop gated `#daily` view. Show actual daily/cumulative net profit,
-the same monthly profit total, an accessible daily table and a linked full expense
+the total before manual operating/external-promotion costs, an accessible daily table and a linked expense
 ledger. Keep Corbel light/dark, a compact month/action toolbar and labelled mobile
-rows. Show equal calendar-day allocations explicitly, preserve unknowns/losses,
+rows. The owner explicitly excludes monthly manual expenses from daily results.
+Compare matching elapsed days/full closed months with the previous month, add
+previous-calendar-day table deltas, and keep current data usable while comparison
+is prepared. Show only month-only Media allocations explicitly; preserve unknowns/losses,
 and keep out-of-period/undated financial amounts outside the plotted dates. No
 raw-operation storage, Ozon daily invention, paid AI or wider feature access.
 

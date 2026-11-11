@@ -1,5 +1,5 @@
 import { ApiError, cents, rub } from './core.ts';
-import { aggregateFinanceRows, readCabinet } from './cabinet.ts';
+import { aggregateFinanceRows, readCabinet, cabinetPeriod } from './cabinet.ts';
 import { advertising, economy } from './economy.ts';
 import { articleKey } from './articles.ts';
 
@@ -68,11 +68,15 @@ function financeCogs(bucket:any,prices:Map<string,any>) {
   }
   return {amount:missing.length?null:rub(cost),missing};
 }
+function profitBeforeManual(cabinet:any) {
+  return cabinet.net_profit==null ? null : rub(cents(cabinet.net_profit)
+    +cents(cabinet.settings?.operational_expenses)+cents(cabinet.settings?.external_promotion_expenses));
+}
 export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
   const period=cabinet.period,dates=daysBetween(period.dateFrom,period.dateTo);
   const expected=Number(cabinet.job.row_count);
   if(daily?.version!==1 || daily.row_count!==expected || daily.date_from!==period.dateFrom || daily.date_to!==period.dateTo)
-    return {status:'needs_preparation',days:[],monthly_profit:cabinet.net_profit};
+    return {status:'needs_preparation',days:[],monthly_profit:profitBeforeManual(cabinet)};
   if(cabinet.sources.ads?.undated)throw new ApiError(409,'В рекламе есть списания без даты. Ежедневная прибыль пока неизвестна.');
   if(cabinet.sources.media.amount==null)throw new ApiError(409,'Расходы WB Медиа ещё не получены. Ежедневная прибыль пока неизвестна.');
   if(Object.values(daily.days||{}).reduce((sum:number,b:any)=>sum+b.rows,0)!==expected)
@@ -84,7 +88,7 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
       throw new ApiError(409,'Дневные и месячные данные различаются. Обновите месяц.');
   }
   // An empty received advertising response is a verified zero, not missing.
-  if(!adsDaily || typeof adsDaily!=='object')return {status:'needs_preparation',days:[],monthly_profit:cabinet.net_profit};
+  if(!adsDaily || typeof adsDaily!=='object')return {status:'needs_preparation',days:[],monthly_profit:profitBeforeManual(cabinet)};
   const paidByDay=new Map<string,string>(),bonusByDay=new Map<string,string>();
   let paid=0n,bonus=0n;
   for(const [date,totals] of Object.entries(adsDaily)) {
@@ -96,8 +100,6 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
   if(paid!==cents(cabinet.economy.internal_ads) || bonus!==cents(cabinet.economy.promo))
     throw new ApiError(409,'Не все рекламные расходы распределены по дням. Обновите месяц.');
   const prices=new Map<string,any>(cabinet.products.map((p:any)=>[articleKey(p.article),p.cost_price]));
-  const operating=allocateAmount(cabinet.settings.operational_expenses,dates);
-  const external=allocateAmount(cabinet.settings.external_promotion_expenses,dates);
   const financialMedia=cabinet.sources.media.source==='wb_financial_deductions';
   const mediaAllocation=financialMedia ? null : allocateAmount(cabinet.sources.media.amount,dates);
   const makeRow=(date:string)=>{
@@ -105,7 +107,9 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
     const cogs=financeCogs(bucket,prices),undated=date==='unallocated';
     const ads={paid:paidByDay.get(date)||'0.00',bonus:bonusByDay.get(date)||'0.00',unknown:[]};
     const media=financialMedia ? bucket.totals.wbMediaDeductions : rub(mediaAllocation?.get(date)||0n);
-    const settings={operational_expenses:rub(operating.get(date)||0n),external_promotion_expenses:rub(external.get(date)||0n)};
+    // Daily analytics deliberately excludes the user's monthly manual expenses.
+    // The monthly overview and saved expense settings retain their own policy.
+    const settings={operational_expenses:'0.00',external_promotion_expenses:'0.00'};
     const e=economy(bucket.totals,cogs.amount,settings,media,ads,cabinet.shop.tax_rate,0,true);
     const f=(key:string)=>cents(bucket.totals[key]);
     const expenses=[
@@ -117,14 +121,12 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
       ['loyalty','Отзывы и лояльность',rub(f('cashbackAmount')+f('cashbackCommissionChange')-f('cashbackDiscount'))],
       ['cogs','Себестоимость',cogs.amount],['tax','Налог',e!.tax],
       ['internal','Внутренняя реклама',ads.paid],['media','WB Медиа',media],
-      ['operating','Операционные расходы',settings.operational_expenses],['external','Внешнее продвижение',settings.external_promotion_expenses],
-    ].map(([key,label,amount])=>({key,label,amount,allocated:['operating','external'].includes(key!) || (key==='media' && !financialMedia)}));
+    ].map(([key,label,amount])=>({key,label,amount,allocated:key==='media' && !financialMedia}));
     return {date,rows:bucket.rows,sales:bucket.totals.salesAmount,quantity:bucket.quantity,payout:e!.payout,cogs:cogs.amount,
       tax:e!.tax,internal_ads:ads.paid,promo:ads.bonus,media_ads:media,
-      operational_expenses:settings.operational_expenses,external_promotion_expenses:settings.external_promotion_expenses,
       marketplace_expenses:bucket.totals.salesAmount==null?null:rub(cents(bucket.totals.salesAmount)-cents(e!.payout)),
       advertising_already_withheld:e!.advertising_already_withheld,net_profit:e!.net_profit,
-      missing_costs:cogs.missing,missing:e!.missing,expenses,allocated:!undated && (!!cents(settings.operational_expenses)||!!cents(settings.external_promotion_expenses)||(!financialMedia && !!cents(media)))};
+      missing_costs:cogs.missing,missing:e!.missing,expenses,allocated:!undated && !financialMedia && !!cents(media)};
   };
   const rows=dates.map(makeRow),unallocated=daily.days.unallocated ? makeRow('unallocated') : null;
   const all=unallocated?[...rows,unallocated]:rows;
@@ -140,19 +142,69 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
   let accumulated=0n,known=true;
   for(const row of rows){if(row.net_profit==null)known=false;else accumulated+=cents(row.net_profit);(row as any).cumulative_profit=known?rub(accumulated):null;}
   const total=all.some(r=>r.net_profit==null)?null:rub(all.reduce((sum,r)=>sum+cents(r.net_profit),0n));
-  if(cabinet.net_profit!=null && total!==cabinet.net_profit)throw new ApiError(409,'Сумма ежедневной прибыли не совпала с обзором. Проверьте себестоимость и обновите месяц.');
+  const expectedProfit=profitBeforeManual(cabinet);
+  if(expectedProfit!=null && total!==expectedProfit)throw new ApiError(409,'Дневная прибыль не совпала с итогом без ручных расходов. Проверьте себестоимость и обновите месяц.');
   return {status:'ready',days:rows,unallocated,monthly_profit:total,tax_rounding:taxRounding,
-    allocation:'equal_elapsed_days',media_allocation:!financialMedia,timezone:'Europe/Moscow',date_basis:'rrDate'};
+    excluded_expenses:['operational_expenses','external_promotion_expenses'],media_allocation:!financialMedia,timezone:'Europe/Moscow',date_basis:'rrDate'};
 }
 
-export async function readDaily(admin:any,shopId:string,period:any) {
+export function moneyChange(current:unknown,previous:unknown) {
+  if(current==null || previous==null)return null;
+  const now=cents(current),before=cents(previous),delta=now-before;
+  return {amount:rub(delta),percent:before===0n?null:Number(delta)/Number(before<0n?-before:before)*100};
+}
+function previousMonth(period:any) {
+  const [year,month]=period.dateFrom.split('-').map(Number);
+  return new Date(Date.UTC(year,month-2,1)).toISOString().slice(0,7);
+}
+export function compareDaily(current:any,previous:any) {
+  const previousMonthKey=previousMonth(current.period);
+  const comparison:any={month:previousMonthKey,status:previous.status,refreshing:!!previous.refreshing,error:previous.refresh_error||null};
+  const previousDays=new Map<string,any>((previous.days||[]).map((r:any)=>[r.date,r]));
+  // Closed months compare to the full prior month; a partial month compares
+  // only the same elapsed calendar days. Do not invent a 31st day in February.
+  const end=new Date(current.period.dateTo+'T00:00:00Z');
+  const closed=end.getUTCDate()===new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()+1,0)).getUTCDate();
+  const compareDays=(previous.days||[]).filter((d:any)=>closed || Number(d.date.slice(-2))<=end.getUTCDate());
+  const sum=(rows:any[])=>rows.length && rows.every((d:any)=>d.net_profit!=null)?rub(rows.reduce((n:bigint,d:any)=>n+cents(d.net_profit),0n)):null;
+  if(previous.status==='ready') {
+    const covered=compareDays.length===Math.min(closed?31:end.getUTCDate(),new Date(Date.UTC(Number(previousMonthKey.slice(0,4)),Number(previousMonthKey.slice(5)),0)).getUTCDate());
+    const incompletePrevious=previous.period?.dateTo?.slice(0,7)!==previousMonthKey || !covered;
+    comparison.status=incompletePrevious?'unavailable':'ready';
+    comparison.period=compareDays.length?{dateFrom:compareDays[0].date,dateTo:compareDays.at(-1).date}:null;
+    // Undated/out-of-period adjustments cannot be assigned to a partial range.
+    const undated=previous.unallocated;
+    const includeUndated=closed;
+    const unresolved=!closed && undated && (undated.net_profit==null || cents(undated.net_profit)!==0n);
+    const previousRows=includeUndated && undated?[...compareDays,undated]:compareDays;
+    comparison.profit=incompletePrevious || unresolved?null:sum(previousRows);
+    comparison.current_profit=current.monthly_profit;
+    comparison.change=moneyChange(current.monthly_profit,comparison.profit);
+    comparison.positive_days=compareDays.every((d:any)=>d.net_profit!=null)?compareDays.filter((d:any)=>cents(d.net_profit)>0n).length:null;
+    comparison.day_count=compareDays.length;
+    comparison.average=compareDays.length && compareDays.every((d:any)=>d.net_profit!=null)?Number(sum(compareDays))/compareDays.length:null;
+    comparison.undated_adjustments=!!unresolved;
+  }
+  const first=current.days?.[0]?.date;
+  for(const row of current.days || []) {
+    const previousDate=new Date(row.date+'T00:00:00Z');previousDate.setUTCDate(previousDate.getUTCDate()-1);
+    const previousKey=previousDate.toISOString().slice(0,10);
+    const previousDay=row.date===first?previousDays.get(previousKey):current.days.find((d:any)=>d.date===previousKey);
+    row.previous_day={date:previousKey,profit:previousDay?.net_profit??null,change:moneyChange(row.net_profit,previousDay?.net_profit)};
+    const sameDay=previousDays.get(previousMonthKey+row.date.slice(7));
+    row.previous_period={date:sameDay?.date??null,profit:sameDay?.net_profit??null,change:moneyChange(row.net_profit,sameDay?.net_profit)};
+  }
+  return {...current,comparison};
+}
+
+export async function readDaily(admin:any,shopId:string,period:any,withComparison=true) {
   const cabinet=await readCabinet(admin,shopId,period);
   const {data:months,error:monthsError}=await admin.from('wb_api_preview_jobs').select('date_from').eq('shop_id',shopId).eq('status','complete').order('date_from',{ascending:false});
   if(monthsError)throw new ApiError(500,'Не удалось прочитать периоды аналитики');
   const monthValues=[...new Set((months||[]).map((p:any)=>p.date_from.slice(0,7)))].slice(0,12);
   const common={period:cabinet.period || period,months:monthValues,updated_at:cabinet.job?.updated_at || null,
     refreshing:(cabinet.refresh_job || cabinet.job)?.status==='loading',refresh_error:(cabinet.refresh_job || cabinet.job)?.error_message || null,
-    monthly_profit:cabinet.net_profit??null};
+    monthly_profit:profitBeforeManual(cabinet)};
   if(!cabinet.complete || !cabinet.finance)return {...common,status:common.refreshing?'loading':'needs_preparation',days:[]};
   const {data:job,error}=await admin.from('wb_api_preview_jobs').select('cursor_id,daily:finance_model->daily,ads_daily:summary->api_sources->internal_ads->daily_totals')
     .eq('shop_id',shopId).eq('id',cabinet.job.id).single();
@@ -160,5 +212,15 @@ export async function readDaily(admin:any,shopId:string,period:any) {
   const daily=job.daily;
   if(daily?.cursor_id!==String(job.cursor_id))return {...common,status:common.refreshing?'loading':'needs_preparation',days:[]};
   const result=calculateDaily(cabinet,daily,job.ads_daily);
-  return {...common,...result,status:result.status==='needs_preparation' && common.refreshing?'loading':result.status};
+  const current={...common,...result,status:result.status==='needs_preparation' && common.refreshing?'loading':result.status};
+  if(!withComparison || current.status!=='ready')return current;
+  let previous;
+  try {
+    const before=cabinetPeriod(previousMonth(current.period));
+    previous=await readDaily(admin,shopId,before,false);
+  } catch(error) {
+    // Missing/failed comparison must never hide an otherwise valid current month.
+    previous={status:'unavailable',days:[],refresh_error:error instanceof ApiError?error.message:'Не удалось прочитать предыдущий период'};
+  }
+  return compareDaily(current,previous);
 }
