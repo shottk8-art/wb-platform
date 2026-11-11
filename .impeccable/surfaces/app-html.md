@@ -7,6 +7,14 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+11 November 2026, private TOPLASH daily analytics: extend the incumbent shell with
+an exact-user/shop gated `#daily` view. Show actual daily/cumulative net profit,
+the same monthly profit total, an accessible daily table and a linked full expense
+ledger. Keep Corbel light/dark, a compact month/action toolbar and labelled mobile
+rows. Show equal calendar-day allocations explicitly, preserve unknowns/losses,
+and keep out-of-period/undated financial amounts outside the plotted dates. No
+raw-operation storage, Ozon daily invention, paid AI or wider feature access.
+
 27 October 2026, sales-value correction: the owner explicitly keeps “Итого к перечислению” unchanged and wants seller-price buyouts in “Сумма продаж” for every shop. Preserve the four KPI layout and Corbel light/dark. An older API snapshot without price coverage shows a dash plus “Обновите месяц — нужны цены выкупов” in the existing comparison caption; do not invent a payout/realization fallback or silently sum API with files. This is a data-binding and recovery-copy correction, not a redesign. Publication and historical refresh remain separate actions.
 
 23 October 2026, latest owner instruction: onboarding, plans and simulated payments are temporarily disconnected. Remove their runtime imports, guide/menu action, welcome container, draft-resume hooks and account billing mount. Preserve existing shops/members, data, profile/theme, demo Settings link, routes and permissions. Empty accounts enter the normal cabinet with a compact explicit “Новый магазин” action, never automatic shop creation or a first-run/payment gate. Only the existing create dialog writes a shop. Keep disabled feature sources for later return; do not purge browser drafts/subscription history. This supersedes the client-start/plan requirements below; publication remains separately authorized.

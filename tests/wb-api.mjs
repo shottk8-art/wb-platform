@@ -7,6 +7,8 @@ import { PILOT_USER_ID, PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
 import { authorizeShop } from '../supabase/functions/wb-api/access.ts';
+import { authorizeDaily,DAILY_SHOP_ID,DAILY_USER_ID } from '../supabase/functions/wb-api/daily-access.ts';
+import { readDaily } from '../supabase/functions/wb-api/daily.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -59,7 +61,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, authorizeShop, cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, authorizeShop, authorizeDaily,readDaily,cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null, rpcCalls=[];
@@ -176,7 +178,7 @@ assert.equal(outbound.length, beforeCabinet); assertions++;
 assert.equal((await invoke({action:'cabinet_start',month:'2026-10',refresh:true})).status,200); assertions++;
 assert.equal(rpcCalls.findLast(item=>item.name==='wb_api_queue_month').args.p_month,'2026-10-01'); assertions++;
 assert.equal(rpcCalls.findLast(item=>item.name==='wb_api_queue_month').args.p_refresh,true); assertions++;
-assert.equal((await invoke({action:'cabinet_start',month:'2026-11',refresh:true})).status,400); assertions++;
+assert.equal((await invoke({action:'cabinet_start',month:'2099-11',refresh:true})).status,400); assertions++;
 assert.equal(outbound.length,beforeCabinet,'refresh only enqueues background work, never reads a WB key in the browser'); assertions++;
 const originalReadCabinet=sandbox.readCabinet;
 job.summary={pilot:{stage:'done'},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{status:'confirmed_by_user',amount:'0.00'}}};
@@ -227,4 +229,16 @@ assert.equal(ownConnect.status,200); assertions++;
 assert.equal(rpcCalls.at(-1).name,'wb_api_queue_shop_history'); assertions++;
 assert.equal(rpcCalls.at(-1).args.p_shop_id,job.shop_id); assertions++;
 assert.ok(!JSON.stringify(ownConnect.body).includes(storedKey)); assertions++;
+// The pilot is narrower than general shop membership, including direct URLs.
+const beforeDaily=outbound.length;
+assert.equal((await invoke({action:'daily',month:'2026-09'})).status,403);assertions++;
+authenticatedId=DAILY_USER_ID;
+assert.equal((await invoke({action:'daily_start',month:'2026-09'})).status,403);assertions++;
+job.shop_id=DAILY_SHOP_ID;
+authenticatedId='00000000-0000-4000-8000-000000000099';
+assert.equal((await invoke({action:'daily',month:'2026-09'})).status,403);assertions++;
+authenticatedId=DAILY_USER_ID;
+sandbox.readDaily=async()=>({status:'ready',days:[],monthly_profit:'10.00'});
+assert.equal((await invoke({action:'daily',month:'2026-09'})).status,200);assertions++;
+assert.equal(outbound.length,beforeDaily,'daily reads never contact WB or decrypt a key');assertions++;
 console.log(`WB API: ${assertions} assertions passed (validation, exact amounts, privacy, access control, pagination, caching, rate limits).`);

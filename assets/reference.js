@@ -20,7 +20,7 @@
     const close=()=>{finder.close();search.focus({preventScroll:true});};
     function draw() {
       results.replaceChildren();
-      links.filter(link=>link.textContent.toLocaleLowerCase().includes(input.value.trim().toLocaleLowerCase())).forEach(link=>{
+      links.filter(link=>!link.hidden && link.textContent.toLocaleLowerCase().includes(input.value.trim().toLocaleLowerCase())).forEach(link=>{
         const button=document.createElement('button');button.type='button';
         const svg=link.querySelector('svg');if(svg)button.append(svg.cloneNode(true));
         const label=document.createElement('span');label.textContent=link.textContent.trim();button.append(label);

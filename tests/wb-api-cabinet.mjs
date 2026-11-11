@@ -3,7 +3,7 @@ import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabine
 import { PILOT_SHOP_ID, PILOT_USER_ID } from './fixtures/wb-api-identities.mjs';
 const from = '2026-09-01', to = '2026-09-30';
 assert.deepEqual(cabinetPeriod('2026-09'), {dateFrom:from,dateTo:to});
-for (const value of ['2026-13','2026-00','bad','2026-11','2024-01']) assert.throws(()=>cabinetPeriod(value));
+for (const value of ['2026-13','2026-00','bad','2026-11','2024-01']) assert.throws(()=>cabinetPeriod(value,new Date('2026-10-10T12:00:00Z')));
 assert.deepEqual(cabinetPeriod('2026-10',new Date('2026-10-09T22:05:00Z')),{dateFrom:'2026-10-01',dateTo:'2026-10-10'},'current-month end follows Moscow, not UTC');
 assert.deepEqual(cabinetPeriod('2025-11',new Date('2026-10-10T12:00:00Z')),{dateFrom:'2025-11-01',dateTo:'2025-11-30'});
 assert.throws(()=>cabinetPeriod('2025-10',new Date('2026-10-10T12:00:00Z')));

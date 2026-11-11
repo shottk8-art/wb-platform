@@ -354,6 +354,21 @@ Dropzone — поверхность с обычной сплошной гран�
 
 prefers-reduced-motion: reduce отключает пространственные эффекты, CSS-переходы и анимации диаграмм, сразу выставляет числа. Смена настройки также останавливает активные анимации. Данные остаются видимыми без успешного запуска анимационного слоя; отсутствие View Transition и необязательного localStorage обработано. Этот слой оформления не меняет источник финансов, импорт и права доступа.
 
+## Private daily analytics extension (11 November 2026)
+
+The TOPLASH-only `#daily` experiment inherits the Corbel shell, fonts, native-
+backed month select, flat surfaces and both themes. A compact three-stat joined
+panel precedes the daily/cumulative profit line; selecting a day in the graph
+or table shows the complete expense ledger beside it. The line preserves null
+gaps and losses; animation is one bounded 550ms reveal, reduced motion is instant.
+At 390px, the month/action share a labelled row, the primary summary spans two
+columns, supporting stats share the next row, and daily table rows become labelled
+cards. No page overflow. Month-level allocations are marked in the ledger and
+explained in native details; undated financial adjustments remain separate.
+Loading clears figures and charts synchronously; preparing a historical month
+shows durable background status. The menu and finder hide the experiment for
+every other account/shop; authorization is also enforced on the server.
+
 ## Do's and Don'ts
 
 ### Do:

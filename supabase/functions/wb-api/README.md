@@ -47,6 +47,25 @@ monthly_reports/sku_sales/uploads or changes Ozon imports. API data is not publi
 Run `node tests/wb-api.mjs`, `node tests/wb-api-access.mjs` and the other `wb-api*`
 regressions for handler, isolation, calculation, queue, read-budget and UI tests.
 
+## Private daily analytics pilot
+
+The private TOPLASH daily pilot is authorized separately in `daily-access.ts`:
+only the verified platform owner's exact user ID and this exact shop ID can
+call `daily` / `daily_start`. Other API functionality stays available to all
+existing authorized owners/members. No public or member daily-data endpoint.
+
+Only this shop's future finance pages append bounded `finance_model.daily`
+day/SKU aggregates through the same atomic page commit; no raw operations are
+stored. Advertising stores day/payment-type totals. Preparing an older month
+explicitly uses the existing durable refresh queue and preserves the previous
+complete snapshot. Reads have no upstream WB calls. `daily.ts` verifies full
+row/cursor/period coverage, daily advertising totals, and day/month profit
+equality. Operation dates use `rrDate` (Moscow); out-of-period/undated amounts
+remain a separate visible bucket. Current cost catalogue and tax remain live.
+Monthly manual expenses are allocated equally across the snapshot's calendar
+days; tax rounding reconciles to the monthly amount. Ozon is excluded because
+its manual reports do not establish a complete daily ledger.
+
 ## Storage and query budgets
 
 Apply the three `2026101118*` migrations before deploying compact ingestion.

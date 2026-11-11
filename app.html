@@ -21,10 +21,11 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-daily1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
-<script src="/assets/reference.js?v=20261019-reference4" defer></script>
+<script src="/assets/reference.js?v=20261111-daily1" defer></script>
 </head>
 <body class="corbel">
 
@@ -69,6 +70,7 @@
       <nav class="side-menu" aria-label="Основная навигация">
         <p class="nav-group-label">Рабочее пространство</p>
         <a class="active" href="#overview" data-view="overview"><svg class="icon"><use href="#icon-dashboard"/></svg><span>Обзор</span></a>
+        <a href="#daily" data-view="daily" id="dailyAnalyticsLink" hidden><svg class="icon"><use href="#icon-trend-up"/></svg><span>Углублённая аналитика</span></a>
         <a href="#reports" data-view="reports"><svg class="icon"><use href="#icon-upload"/></svg><span>Отчёты</span></a>
         <a href="#costs" data-view="costs"><svg class="icon"><use href="#icon-store"/></svg><span>Себестоимость</span></a>
         <a href="#team" data-view="team"><svg class="icon"><use href="#icon-people"/></svg><span>Команда</span></a>
@@ -527,6 +529,39 @@
       </div>
     </section>
 
+    <section class="section app-view" id="secDailyAnalytics" data-view="daily" aria-busy="false">
+      <div class="daily-toolbar">
+        <div><h2>Чистая прибыль по дням</h2><span class="daily-pilot">Тест</span></div>
+        <div><label for="dailyMonth">Месяц</label><select id="dailyMonth" aria-label="Месяц ежедневной аналитики"></select><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
+      </div>
+      <p class="daily-status" id="dailyStatus" role="status" aria-live="polite"></p>
+      <div id="dailyResults" hidden>
+        <dl class="card daily-summary">
+          <div><dt>Чистая прибыль за период</dt><dd id="dailyProfit">—</dd></div>
+          <div><dt>В среднем за день</dt><dd id="dailyAverage">—</dd></div>
+          <div><dt>Дней с прибылью</dt><dd id="dailyPositive">—</dd></div>
+        </dl>
+        <div class="card daily-chart-card">
+          <div class="daily-chart-heading"><h2>Динамика чистой прибыли</h2><div class="segmented-control" id="dailyMode" role="group" aria-label="Режим ежедневного графика"><button type="button" data-daily-mode="daily" class="active" aria-pressed="true">По дням</button><button type="button" data-daily-mode="cumulative" aria-pressed="false">Накопительно</button></div></div>
+          <div class="daily-chart-wrap"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
+          <div class="sr-only" id="dailyChartValues"></div>
+        </div>
+        <div id="dailyUnallocated" class="daily-unallocated" hidden></div>
+        <div class="daily-lower">
+          <div class="card daily-table-card"><h2 class="daily-table-title">Результаты по дням</h2><div class="daily-table-wrap"><table class="daily-table"><thead><tr><th scope="col">День</th><th scope="col">Продажи, ₽</th><th scope="col">Все расходы, ₽</th><th scope="col">Чистая прибыль, ₽</th></tr></thead><tbody id="dailyRows"></tbody></table></div></div>
+          <div class="card daily-breakdown"><h2 id="dailyDetailTitle">Расходы за день</h2><p class="daily-note" id="dailyNoOperations" hidden>В полученной выгрузке нет финансовых операций за этот день. Распределённые расходы могут быть учтены.</p><p class="daily-note" id="dailyMissing" hidden></p><dl id="dailyDetails"></dl><div class="daily-detail-total"><span>Чистая прибыль</span><strong id="dailyDetailProfit">—</strong></div></div>
+        </div>
+      </div>
+      <details class="daily-method"><summary>Как считается ежедневная прибыль</summary><ul>
+        <li>Тестовый раздел показывает Wildberries. Файлы Ozon не содержат полной ежедневной экономики и сюда не включены.</li>
+        <li>Продажи, возвраты и удержания относятся к дате финансовой операции WB (rrDate), а не к дате заказа. Время — московское. WB может добавлять и корректировать операции, особенно в текущем месяце.</li>
+        <li>Из стоимости выкупов вычитаются комиссия и расчёты WB, логистика, хранение, приёмка, штрафы, прочие удержания, корректировки, отзывы и лояльность, себестоимость, налог и денежная реклама. Реклама из удержаний не вычитается повторно; промобонусы прибыль не уменьшают.</li>
+        <li>Внутренняя реклама учитывается по дате списания. WB Медиа — по датам удержаний финансового отчёта; при отсутствии дневных дат полученная месячная сумма распределяется равномерно и помечается «распределено».</li>
+        <li>Операционные расходы и внешнее продвижение распределяются равномерно по дням выгруженного периода. Для текущего месяца — по прошедшим дням. При обновлении неполного месяца распределение пересчитывается.</li>
+        <li>Используются текущие себестоимость и ставка налога магазина, как в обзоре. Налог округляется до месячного итога; разница в копейках относится к последнему дню с продажами. Пропуски не заменяются нулём. Операции без подходящей даты показаны отдельно от графика.</li>
+      </ul></details>
+    </section>
+
     <section class="section app-view" id="secCosts" data-view="costs">
       <div class="section-head">
         <h2>Себестоимость по артикулам</h2>
@@ -565,6 +600,7 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261110-costs1"></script>
+<script src="/assets/daily-analytics.js?v=20261111-daily1"></script>
 <script src="/assets/trend-interaction.js?v=20261023-margin1"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
@@ -620,6 +656,7 @@
 
   const VIEW_META = {
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
+    daily: { title: "Углублённая аналитика", subtitle: "Ежедневная прибыль с учётом всех расходов" },
     reports: { title: "Отчёты", subtitle: "Загрузите новые данные и при необходимости отмените прошлую загрузку" },
     costs: { title: "Себестоимость", subtitle: "Укажите закупочную цену товаров для точного расчёта прибыли" },
     team: { title: "Команда", subtitle: "Управляйте доступом сотрудников к данным магазина" },
@@ -644,6 +681,7 @@
 
   function setActiveView(view, updateHash = true) {
     if (view === 'api') view = 'overview'; // Existing bookmarks open the regular overview.
+    if (view === 'daily' && !window.WBDaily?.allowed(session?.user?.id,shop?.id)) view = 'overview';
     if (!VIEW_META[view]) view = "overview";
     if (updateHash && window.WBShell?.motion && view !== activeView) {
       window.WBShell.motion.navigate(() => {
@@ -653,6 +691,7 @@
       return;
     }
     activeView = view;
+    window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:view==='daily'});
     document.getElementById('emptyShopNotice').hidden = !!shop || view === 'account';
     const meta = VIEW_META[view];
     document.querySelectorAll(".app-view").forEach((section) => {
@@ -664,7 +703,7 @@
       link.setAttribute("aria-current", selected ? "page" : "false");
     });
     document.getElementById("pageTitle").textContent = meta.title;
-    const market = view === "overview"
+    const market = view === 'daily' ? 'Wildberries' : view === "overview"
       ? scopeLabel()
       : (view === "reports" || view === "costs")
         ? (reportMarketplace === "ozon" ? "Ozon" : "Wildberries")
@@ -814,6 +853,7 @@
   }
 
   function updateShareBox() {
+    window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='daily'});
     if (!shop) {
       document.getElementById('marketplaceBadge').textContent = 'WB · Ozon';
       window.WBShell?.setProfile(session.user, false);
@@ -1047,6 +1087,7 @@
   }
 
   function resetShopDisplay() {
+    window.WBDaily?.setContext({userId:session?.user?.id,shopId:null,active:false});
     profitNotice.reset();clearProfitCostFilter();
     window.WBShopName?.setContext(null);
     window.WBRange?.reset();

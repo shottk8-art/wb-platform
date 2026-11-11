@@ -3,6 +3,8 @@ import { ApiError, upstreamError, validateKey, validatePeriod, validateShopId } 
 import { authorizeShop } from './access.ts';
 import { processPage } from './process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, readCabinetStatus, monthSettings } from './cabinet.ts';
+import { authorizeDaily } from './daily-access.ts';
+import { readDaily } from './daily.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -94,6 +96,14 @@ Deno.serve(async (req) => {
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     await authorizeShop(admin,shopId,auth.user.id,body.action);
+    if(['daily','daily_start'].includes(body.action)) {
+      authorizeDaily(auth.user.id,shopId);
+      if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));
+      // Reuse the durable, rate-limited queue and its existing refresh snapshot.
+      // No credentials or raw rows are exposed to the experimental screen.
+      body.action='cabinet_start';
+      body.refresh=true;
+    }
 
     const readConnection = async () => {
       const { data, error } = await admin.from("wb_api_connections").select(CONNECTION_COLUMNS).eq("shop_id", shopId).maybeSingle();

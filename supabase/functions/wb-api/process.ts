@@ -1,5 +1,7 @@
 import { ApiError, FINANCE_FIELDS, mergeSummaries, pageCursor, sanitizeRows, summarize, validateKey } from './core.ts';
 import { aggregateFinanceRows, mergeFinanceModels } from './cabinet.ts';
+import { aggregateDailyFinance, mergeDailyFinance } from './daily.ts';
+import { DAILY_SHOP_ID } from './daily-access.ts';
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
 export async function processPage(admin: any, job: any, shopId: string, wbFetch: any) {
@@ -36,6 +38,10 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     previousModel = data;
   }
   const model = mergeFinanceModels(previousModel, aggregateFinanceRows(freshRows,cursor.toString()));
+  if(shopId===DAILY_SHOP_ID) {
+    model.daily=mergeDailyFinance(previousModel?.daily,
+      aggregateDailyFinance(freshRows,{dateFrom:job.date_from,dateTo:job.date_to},cursor.toString()));
+  }
   if (job.summary?.pilot) {
     const cards = new Map();
     for (const row of freshRows) if (String(row.vendorCode || '').trim()) cards.set(String(row.vendorCode), { article: String(row.vendorCode), name: String(row.title || '').slice(0, 300) });

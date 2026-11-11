@@ -1,6 +1,7 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
+import { DAILY_SHOP_ID } from './daily-access.ts';
 import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
@@ -41,9 +42,10 @@ export function orderPage(response: any, from: string, to: string) {
     return { nm_id: nm, vendor_code: text(p.product.vendorCode), title: text(p.product.title), orders_count: s.orderCount, orders_amount: rub(amount) };
   });
 }
-export function adsSnapshot(response: any, from: string, to: string) {
+export function adsSnapshot(response: any, from: string, to: string, collectDaily = false) {
   if (!Array.isArray(response)) throw new ApiError(400, 'Неожиданный формат рекламных расходов WB');
   const totals: Record<string, bigint> = {}, operations: Record<string, number> = {};
+  const days:Record<string,Record<string,bigint>>={};
   let undated = 0;
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit' });
   for (const row of response) {
@@ -56,10 +58,12 @@ export function adsSnapshot(response: any, from: string, to: string) {
     const type = text(row.paymentType);
     totals[type] = (totals[type] || 0n) + amount;
     operations[type] = (operations[type] || 0) + 1;
+    if(collectDaily){days[date] ||= {};days[date][type]=(days[date][type]||0n)+amount;}
   }
   return { status: 'downloaded', date_from: from, date_to: to, timezone: 'Europe/Moscow', fetched_at: new Date().toISOString(),
     period_totals: Object.fromEntries(Object.entries(totals).map(([key, v]) => [key, { amount: rub(v), operations: operations[key] }])),
-    undated_operations: undated, classification_pending: advertising(Object.fromEntries(Object.entries(totals).map(([k,v])=>[k,{amount:rub(v)}]))).unknown, applied_to_dashboard: false };
+    undated_operations: undated, classification_pending: advertising(Object.fromEntries(Object.entries(totals).map(([k,v])=>[k,{amount:rub(v)}]))).unknown, applied_to_dashboard: false,
+    ...(collectDaily ? {daily_totals:Object.fromEntries(Object.entries(days).map(([date,types])=>[date,Object.fromEntries(Object.entries(types).map(([type,amount])=>[type,{amount:rub(amount)}]))]))} : {}) };
 }
 
 async function commit(admin: any, job: any, summary: any, status = 'loading') {
@@ -112,7 +116,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     try { response = await wbFetch(token, `https://advert-api.wildberries.ru/adv/v1/upd?from=${job.date_from}&to=${job.date_to}`); }
     catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Для рекламных затрат включите категорию «Продвижение» в персональном ключе'); throw e; }
     summary.api_sources ||= {};
-    summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to);
+    summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to, job.shop_id===DAILY_SHOP_ID);
     summary.api_sources.media = financialMedia || { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
     pilot.stage = financialMedia ? 'done' : 'media_list';
     await commit(admin, job, summary, financialMedia ? 'complete' : 'loading');
