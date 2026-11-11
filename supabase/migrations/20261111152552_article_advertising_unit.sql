@@ -34,4 +34,3 @@ begin
 end; $$;
 revoke all on function public.wb_api_queue_recent_unit(uuid) from public,anon,authenticated;
 grant execute on function public.wb_api_queue_recent_unit(uuid) to service_role;
-
