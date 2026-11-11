@@ -409,9 +409,12 @@ common shop costs: article sales minus WB expenses explicitly linked to that
 article, its catalogue cost and tax at the current shop rate. Never allocate shared
 costs across articles or units. «Не включено в товары» lists common costs separately,
 including unassigned WB amounts, the signed advertising-source difference, manual
-operating costs and external promotion. Advertising is direct only when linked to
-the article in the financial report; shop-level advertising and monthly Media are
-not prorated into products, and promo bonuses do not reduce profit. Signed returns,
+operating costs and external promotion. Internal advertising now uses the campaign/SKU mapping from WB fullstats and
+actual cash debits from upd. A single-SKU campaign has an exact direct debit; a
+multi-SKU campaign requires matching all-money totals. Mixed or incomplete
+attribution stays unknown, never prorated. Financial advertising is replaced
+once; bonuses never reduce profit. Monthly Media remains unallocated unless
+linked directly in finance. Signed returns,
 compensations and corrections remain signed; unknown cost/profit stays unknown.
 
 Margin = direct-only profit / sales × 100%; return on costs = direct-only profit /
@@ -423,7 +426,7 @@ preserve every matching product. Selecting a product opens all direct expense ro
 buyouts net of returns only when that quantity is positive; otherwise the notice
 explicitly retains period amounts. Common costs remain a separate period ledger.
 
-The four-stat joined panel, table and ledger use existing Corbel typography,
+The four separate KPI cards (sales, direct profit, cash advertising, DRR), table and ledger use existing Corbel typography,
 surfaces, borders and semantic gain/loss colors in both themes. Desktop keeps a
 sticky table header and internal scrolling. At ≤600 px the table becomes labelled
 two-column rows with product identity across both columns; search/sort stack,
@@ -459,3 +462,25 @@ behavior. This documentation pass includes no commit or deployment.
 - **Don't** Добавлять неподдерживаемые настройки аккаунта, серверное сохранение темы или автоматический API Ozon.
 - **Don't** Складывать API и файлы WB для одной площадки, раскрывать API в публичной витрине или расширять доступ к ИИ-анализу.
 - **Don't** Считать эту фиксацию документов визуальным QA, подтверждением motion fidelity или разрешением публикации.
+
+### Article advertising refinement (11 November 2026)
+
+The private TOPLASH unit view shares Overview typography, semantic light/dark
+surfaces, rounded 16px panels, search and native-backed sort. Compact columns
+show product, sales, internal advertising, DRR, direct profit and margin; “Все
+показатели” reveals quantity, all direct costs and return on costs. Product
+selection opens the detailed ledger and percentages. Mobile reflows to labelled
+two-column rows. KPI money rounds to whole rubles, with exact cents in titles,
+table and ledger. One interruptible 450ms counter updates the four KPIs; hidden
+documents, context changes and reduced motion settle/cancel it. The DRR question
+control supports pointer hover, focus and native disclosure by click.
+
+API sources: [actual campaign costs](https://dev.wildberries.ru/docs/openapi/promotion#tag/finances/operation/getV1Upd)
+and [campaign SKU statistics](https://dev.wildberries.ru/docs/openapi/promotion#tag/statistics/operation/getV3Fullstats).
+Only compact campaign/SKU sums are retained. The existing leased worker fetches
+up to 50 campaigns per step, observes shared quotas and resumes atomically. Recent
+two-month backfill clones existing aggregates without downloading finance again.
+Overview/daily and unit advertising use the same debit response. Unknown
+attribution clears advertising/profit/ratios with a product explanation; no
+proportional allocation or silent zero. DRR = direct cash internal advertising /
+the same article's seller-price sales, recomputed from totals across ranges.

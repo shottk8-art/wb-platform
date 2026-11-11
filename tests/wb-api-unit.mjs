@@ -61,7 +61,7 @@ const admin={from(table){let columns='',limit;const filters={};
  const jobs=['2026-10','2026-11'].map(month=>({...f.job,id:'unit-'+month,date_from:month+'-01',date_to:month==='2026-10'?'2026-10-31':'2026-11-11',finance_model:{...f.job.finance_model,unit:f.unit}}));
  const tables={shops:[{id:DAILY_SHOP_ID,name:'Synthetic',tax_rate:6}],sku_costs:[{shop_id:DAILY_SHOP_ID,article:'a',cost_price:20},{shop_id:DAILY_SHOP_ID,article:'B',cost_price:40}],wb_api_month_settings:['2026-10','2026-11'].map(month=>({shop_id:DAILY_SHOP_ID,month:month+'-01',operational_expenses:'100',external_promotion_expenses:'50'})),wb_api_preview_jobs:jobs.map(j=>({...j,shop_id:DAILY_SHOP_ID}))};
  const run=single=>{reads.push({table,columns,filters:{...filters}});let data=tables[table].filter(p=>Object.entries(filters).every(([k,v])=>p[k]===v)).slice(0,limit);
-  if(columns.includes('unit:'))data=data.map(j=>({cursor_id:j.cursor_id,unit:j.finance_model.unit}));return {data:single?data[0]:data,error:null};};
+  if(columns.includes('unit:'))data=data.map(j=>({cursor_id:j.cursor_id,unit:j.finance_model.unit,article_ads:{version:1,status:'downloaded',campaigns:[{id:1,totals:{Баланс:{amount:'5'}},nms:[{nm_id:'2',amount:'5'}],stats_total:'5'}]},orders:[{nm_id:'2',vendor_code:'B'}]}));return {data:single?data[0]:data,error:null};};
  const q={select(c){columns=c;return q;},eq(k,v){filters[k]=v;return q;},order(){return q;},limit(n){limit=n;return q;},range(){return q;},single:async()=>run(true),then:(a,b)=>Promise.resolve(run(false)).then(a,b)};return q;}};
 const range=await readUnit(admin,DAILY_SHOP_ID,'2026-10','2026-11');
 assert.equal(range.status,'ready');assert.equal(range.products.length,2);assert.equal(cents(range.totals.net_profit),2n*cents(r.totals.net_profit));

@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin",
     "Cache-Control": "no-store", "Content-Type": "application/json",
   };
-  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: cors });
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body,(key,value)=>key==='article_ads'?undefined:value), { status, headers: cors });
   if (origin && !allowedOrigins.has(origin)) return json({ error: "Доступ запрещён" }, 403);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "Метод не поддерживается" }, 405);

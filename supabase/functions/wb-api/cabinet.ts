@@ -1,6 +1,7 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
+import { campaignDebits, campaignStats } from './article-ads.ts';
 import { DAILY_SHOP_ID } from './daily-access.ts';
 import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
 
@@ -67,6 +68,9 @@ export function adsSnapshot(response: any, from: string, to: string, collectDail
 }
 
 async function commit(admin: any, job: any, summary: any, status = 'loading') {
+  if(status==='complete' && job.shop_id===DAILY_SHOP_ID && summary.api_sources?.article_ads?.status!=='downloaded'){
+    summary.pilot.stage='article_ads_debits';status='loading';
+  }
   const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status, failure_count: 0, error_message: null, updated_at: new Date().toISOString() }).eq('id', job.id).eq('shop_id', job.shop_id);
   if (error) throw new ApiError(500, 'Не удалось сохранить загрузку источника');
 }
@@ -87,6 +91,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     await commit(admin, job, summary, 'complete');
     return { retry_after: 0 };
   }
+  if(String(job.summary?.pilot?.stage).startsWith('article_ads_') && job.shop_id!==DAILY_SHOP_ID)throw new ApiError(403,'Доступ запрещён');
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать загрузку');
   if (Number(wait) > 0) return { retry_after: Number(wait) };
@@ -94,7 +99,29 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   if (error || !key) throw new ApiError(400, 'Сначала подключите API');
   const { token } = validateKey(String(key));
   const summary = structuredClone(job.summary), pilot = summary.pilot;
-  if (pilot.stage === 'orders') {
+  if (pilot.stage === 'article_ads_debits' || pilot.stage === 'article_ads_stats') {
+    if(job.shop_id!==DAILY_SHOP_ID)throw new ApiError(403,'Доступ запрещён');
+    summary.api_sources ||= {};
+    if(pilot.stage==='article_ads_debits') {
+      const response=await wbFetch(token,`https://advert-api.wildberries.ru/adv/v1/upd?from=${job.date_from}&to=${job.date_to}`);
+      summary.api_sources.article_ads=campaignDebits(response,job.date_from,job.date_to);
+      // Both overview/daily and SKU advertising use the very same debit read.
+      // Especially today, two different fetch times can have different totals.
+      summary.api_sources.internal_ads=adsSnapshot(response,job.date_from,job.date_to,true);
+      pilot.stage='article_ads_stats';
+    } else {
+      const source=summary.api_sources.article_ads;
+      const ids=source.campaigns.slice(source.offset,source.offset+50).map((c:any)=>c.id);
+      if(ids.length) {
+        const rows=campaignStats(await wbFetch(token,`https://advert-api.wildberries.ru/adv/v3/fullstats?ids=${ids.join(',')}&beginDate=${job.date_from}&endDate=${job.date_to}`),ids,job.date_from,job.date_to);
+        for(const row of rows)Object.assign(source.campaigns.find((c:any)=>c.id===row.id),row);
+        source.offset+=ids.length;
+      }
+    }
+    const source=summary.api_sources.article_ads;
+    if(source.offset===source.campaigns.length){source.status='downloaded';source.fetched_at=new Date().toISOString();pilot.stage='done';}
+    await commit(admin,job,summary,pilot.stage==='done'?'complete':'loading');
+  } else if (pilot.stage === 'orders') {
     let response;
     try { response = await wbFetch(token, 'https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
       selectedPeriod: { start: job.date_from, end: job.date_to }, nmIds: [], brandNames: [], subjectIds: [], tagIds: [], skipDeletedNm: false, limit: 1000, offset: pilot.orders_offset || 0,

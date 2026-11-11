@@ -21,12 +21,12 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
-<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-unit1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-unitads1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
 <script src="/assets/reference.js?v=20261111-daily1" defer></script>
-<link rel="stylesheet" href="/assets/unit-economics.css?v=20261111-unit1">
+<link rel="stylesheet" href="/assets/unit-economics.css?v=20261111-unitads1">
 </head>
 <body class="corbel">
 
@@ -581,22 +581,22 @@
         <p class="unit-status" id="unitStatus" role="status" aria-live="polite"></p>
         <p class="unit-note">Только расходы, привязанные WB к артикулу, его себестоимость и налог. Общие расходы не распределяются. Прибыль по товарам может отличаться от чистой прибыли магазина.</p>
         <div id="unitResults" hidden>
-          <dl class="card unit-summary">
-            <div><dt>Продажи по артикулам</dt><dd id="unitSales">—</dd></div>
-            <div><dt>Чистая прибыль<br>по прямым расходам</dt><dd id="unitProfit">—</dd></div>
-            <div><dt>Маржинальность</dt><dd id="unitMargin">—</dd></div>
-            <div><dt>Рентабельность</dt><dd id="unitProfitability">—</dd></div>
+          <dl class="unit-summary kpi-row">
+            <div class="kpi"><dt class="kpi-label">Продажи по артикулам</dt><dd class="kpi-value" id="unitSales">—</dd><dd class="unit-stat-caption">Выкупы за вычетом возвратов</dd></div>
+            <div class="kpi"><dt class="kpi-label">Чистая прибыль</dt><dd class="kpi-value" id="unitProfit">—</dd><dd class="unit-stat-caption">По прямым расходам</dd></div>
+            <div class="kpi"><dt class="kpi-label">Внутренняя реклама</dt><dd class="kpi-value" id="unitAds">—</dd><dd class="unit-stat-caption">Денежные расходы по товарам</dd></div>
+            <div class="kpi"><dt class="kpi-label">ДРР от продаж <details class="unit-info"><summary aria-label="Формула ДРР"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover">Денежные расходы внутренней рекламы / продажи этих же товаров × 100%. Промобонусы не включены.</span></details></dt><dd class="kpi-value" id="unitDrr">—</dd><dd class="unit-stat-caption">Внутренняя реклама / продажи</dd></div>
           </dl>
           <div class="card unit-table-card">
-            <div class="unit-table-tools"><h2>Экономика товаров</h2><div class="unit-filters"><input type="search" id="unitSearch" aria-label="Поиск в юнит-экономике" placeholder="Название или артикул"><select id="unitSort" aria-label="Сортировка юнит-экономики"><option value="sales">По продажам</option><option value="net_profit">По чистой прибыли</option><option value="margin">По маржинальности</option><option value="profitability">По рентабельности</option></select></div></div>
-            <div class="unit-table-scroll"><table class="unit-table"><caption class="sr-only">Нажмите на товар, чтобы увидеть все прямые расходы ниже. Общие расходы не распределены.</caption><thead><tr><th scope="col">Товар</th><th scope="col">Выкупили</th><th scope="col">Продажи, ₽</th><th scope="col">Прямые расходы, ₽</th><th scope="col">Чистая прибыль, ₽</th><th scope="col" title="Чистая прибыль по прямым расходам / продажи × 100%">Маржинальность</th><th scope="col" title="Чистая прибыль по прямым расходам / прямые расходы × 100%">Рентабельность</th></tr></thead><tbody id="unitRows"></tbody></table></div>
+            <div class="unit-table-tools"><div><h2>Экономика товаров</h2><p class="unit-table-hint">Выберите товар — ниже откроются его расходы</p></div><div class="unit-filters"><input type="search" id="unitSearch" aria-label="Поиск в юнит-экономике" placeholder="Название или артикул"><select id="unitSort" aria-label="Сортировка юнит-экономики"><option value="sales">По продажам</option><option value="net_profit">По чистой прибыли</option><option value="internal_ads">По рекламе</option><option value="drr">По ДРР</option><option value="margin">По маржинальности</option><option value="profitability">По рентабельности</option></select><button type="button" id="unitShowAll" class="unit-text-action" aria-expanded="false" aria-controls="unitTable">Все показатели</button></div></div>
+            <div class="unit-table-scroll"><table class="unit-table" id="unitTable"><caption class="sr-only">Нажмите на товар, чтобы увидеть все прямые расходы ниже. Общие расходы не распределены.</caption><thead><tr><th scope="col">Товар</th><th scope="col" class="unit-extra-col">Выкупили</th><th scope="col">Продажи, ₽</th><th scope="col">Реклама, ₽</th><th scope="col" title="Денежные расходы внутренней рекламы / продажи артикула × 100%">ДРР</th><th scope="col" class="unit-extra-col">Прямые расходы, ₽</th><th scope="col">Чистая прибыль, ₽</th><th scope="col" title="Чистая прибыль по прямым расходам / продажи × 100%">Маржинальность</th><th scope="col" class="unit-extra-col" title="Чистая прибыль по прямым расходам / прямые расходы × 100%">Рентабельность</th></tr></thead><tbody id="unitRows"></tbody></table></div>
             <p class="unit-count" id="unitCount"></p>
           </div>
           <div class="unit-lower">
             <div class="card unit-detail" id="unitDetail">
               <div class="unit-detail-head"><div><h2 id="unitDetailTitle">Расходы по товару</h2><span class="hint" id="unitDetailArticle"></span></div><div class="segmented-control" id="unitBasis" role="group" aria-label="Суммы расходов по товару"><button type="button" data-unit-basis="period" class="active" aria-pressed="true">За период</button><button type="button" data-unit-basis="unit" aria-pressed="false">На единицу</button></div></div>
               <p class="unit-note" id="unitUnitNotice"></p><p class="unit-note" id="unitDetailMissing" hidden></p>
-              <dl class="unit-ledger"><div><dt>Продажи</dt><dd id="unitDetailSales">—</dd></div></dl><dl class="unit-ledger" id="unitExpenses"></dl>
+              <dl class="unit-detail-ratios"><div><dt>Маржинальность</dt><dd id="unitMargin">—</dd></div><div><dt>Рентабельность</dt><dd id="unitProfitability">—</dd></div><div><dt>ДРР</dt><dd id="unitDetailDrr">—</dd></div></dl><p class="unit-note" id="unitAdNotice" hidden></p><dl class="unit-ledger"><div><dt>Продажи</dt><dd id="unitDetailSales">—</dd></div></dl><dl class="unit-ledger" id="unitExpenses"></dl>
               <div class="unit-detail-total"><span>Чистая прибыль по прямым расходам</span><strong id="unitDetailProfit">—</strong></div>
             </div>
             <div class="card unit-detail"><h2>Не включено в товары</h2><p class="unit-note">Эти суммы относятся ко всему магазину. Они показаны для сведения и не уменьшают прибыль конкретного артикула.</p><dl class="unit-ledger" id="unitCommon"></dl></div>
@@ -605,7 +605,7 @@
         <details class="unit-help"><summary>Формулы и состав расходов</summary>
           <p>Чистая прибыль по прямым расходам = продажи − расходы, которые WB связал с артикулом, − себестоимость − налог. Удержания, возвраты, компенсации и корректировки сохраняют свой знак. Налог считается по текущей ставке магазина; себестоимость берётся из общего справочника.</p>
           <p>Маржинальность = эта прибыль / продажи × 100%. Рентабельность = эта прибыль / прямые расходы × 100%. При нулевой или отрицательной базе процент не рассчитывается. На единицу: сумма за период / выкупы за вычетом возвратов.</p>
-          <p>Реклама относится к товару только при наличии его артикула в финансовом отчёте WB. Общие рекламные списания из API не распределяются; разница рекламных источников показана отдельно со своим знаком и может быть отрицательной. Промобонусы прибыль не уменьшают.</p>
+          <p>Внутренняя реклама привязана к товару по статистике кампаний WB, денежные списания — по истории затрат. У кампании с одним товаром берём её денежные расходы целиком. У кампании с несколькими товарами используем точные расходы по товарам, только если они совпадают с денежными списаниями и не смешаны с бонусами. Если точной привязки нет, показываем прочерк с пояснением. Повторно удержанную рекламу не вычитаем. Промобонусы прибыль не уменьшают. ДРР = денежные расходы внутренней рекламы / продажи того же артикула × 100%.</p>
           <p>В отличие от обзора, расходы без артикула, операционные расходы и внешнее продвижение не вычитаются из прибыли товара. Для диапазона нужны готовые расходы каждого выбранного месяца; неполный период не показывается как полный.</p>
         </details>
       </div>
@@ -649,8 +649,8 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261110-costs1"></script>
-<script src="/assets/daily-analytics.js?v=20261111-unit1"></script>
-<script src="/assets/unit-economics.js?v=20261111-preload1"></script>
+<script src="/assets/daily-analytics.js?v=20261111-unitads1"></script>
+<script src="/assets/unit-economics.js?v=20261111-unitads1"></script>
 <script src="/assets/trend-interaction.js?v=20261111-daily3"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
