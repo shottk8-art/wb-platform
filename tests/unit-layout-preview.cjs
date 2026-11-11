@@ -8,8 +8,8 @@ http.createServer((req,res)=>{
  const url=new URL(req.url,'http://127.0.0.1');
  res.setHeader('Cache-Control','no-store');
  if(url.pathname==='/responsive.html'){
-  const width=Math.max(320,Math.min(2400,Number(url.searchParams.get('width'))||1440)),height=Math.max(600,Math.min(1400,Number(url.searchParams.get('height'))||1000));
-  const theme=url.searchParams.get('theme')==='dark'?'dark':'light',state=['empty','unknown','loading'].includes(url.searchParams.get('state'))?url.searchParams.get('state'):'ready';
+  const width=Math.max(320,Math.min(3440,Number(url.searchParams.get('width'))||1440)),height=Math.max(600,Math.min(1400,Number(url.searchParams.get('height'))||1000));
+  const theme=url.searchParams.get('theme')==='dark'?'dark':'light',state=['empty','unknown','loading','error','long'].includes(url.searchParams.get('state'))?url.searchParams.get('state'):'ready';
   const scale=Math.min(1,860/width);
   res.setHeader('Content-Type','text/html; charset=utf-8');
   return res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;background:#dfe4f4}iframe{display:block;border:0;width:${width}px;height:${height}px;transform:scale(${scale});transform-origin:top left}</style><iframe title="Проверка юнит-экономики на тестовых данных" src="/app.html?theme=${theme}&state=${state}#daily"></iframe>`);
@@ -23,8 +23,10 @@ http.createServer((req,res)=>{
    if(state==='empty'){data.products=[];data.totals={sales:0,net_profit:0,internal_ads:0,drr:null};}
    if(state==='unknown'){Object.assign(data.products[0],{advertising_unknown:true,missing_costs:true,net_profit:null,total_expenses:null,margin:null,profitability:null,drr:null,internal_ads:null});data.totals.net_profit=null;data.totals.internal_ads=null;data.totals.drr=null;}
    if(state==='loading')Object.assign(data,{status:'loading',pending:[{month:'2026-11',status:'loading'}]});
+   if(state==='long')Object.assign(data.products[0],{article:'long-article-1234567890123456789012345678901234567890',name:'Сыворотка для укрепления и роста ресниц и бровей с комплексом активных компонентов — набор из трёх средств, 2 мл'});
+   const response=state==='error'?"{throw new Error('Не удалось загрузить юнит-экономику. Повторите попытку.');}":`(${JSON.stringify(data)})`;
    const scripts=`<script src="/assets/corbel.js"></script><script src="/assets/corbel-components.js"></script><script src="/assets/reference.js"></script>
-<script>const e=id=>document.getElementById(id);document.documentElement.dataset.theme=${JSON.stringify(url.searchParams.get('theme')==='dark'?'dark':'light')};e('loadingScreen').hidden=true;e('appScreen').hidden=false;document.querySelectorAll('.app-view').forEach(x=>{const on=x.id==='secDailyAnalytics';x.hidden=!on;x.classList.toggle('is-active',on)});e('overviewControls').hidden=true;e('dailyPane').hidden=true;e('unitPane').hidden=false;e('unitTab').setAttribute('aria-selected','true');e('dailyTab').setAttribute('aria-selected','false');e('pageTitle').textContent='Юнит-экономика · тестовые данные';window.WBDaily={allowed:()=>true};window.WBApi={connected:false,cabinet:async()=>(${JSON.stringify(data)})};</script><script src="/assets/unit-economics.js"></script><script>WBUnit.setContext({userId:'local-fixture',shopId:'local-fixture',active:true});</script>`;
+<script>const e=id=>document.getElementById(id);document.documentElement.dataset.theme=${JSON.stringify(url.searchParams.get('theme')==='dark'?'dark':'light')};e('loadingScreen').hidden=true;e('appScreen').hidden=false;document.querySelectorAll('.app-view').forEach(x=>{const on=x.id==='secDailyAnalytics';x.hidden=!on;x.classList.toggle('is-active',on)});e('overviewControls').hidden=true;e('dailyPane').hidden=true;e('unitPane').hidden=false;e('unitTab').setAttribute('aria-selected','true');e('dailyTab').setAttribute('aria-selected','false');e('pageTitle').textContent='Юнит-экономика · тестовые данные';window.WBDaily={allowed:()=>true};window.WBApi={connected:false,cabinet:async()=>${response}};</script><script src="/assets/unit-economics.js"></script><script>WBUnit.setContext({userId:'local-fixture',shopId:'local-fixture',active:true});</script>`;
    content=content.toString().replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace('</body>',scripts+'</body>');
   }
   res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.css':'text/css','.js':'application/javascript','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'})[ext]||'application/octet-stream');res.end(content);

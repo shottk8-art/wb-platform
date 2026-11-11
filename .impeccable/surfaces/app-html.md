@@ -9,6 +9,8 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 11 November 2026, mandatory owner rule: consult the live Corbel reference before implementing every UI element, animation or structural change. Entry: https://demo.codeandchill.store/corbel/#/customers ; inspect the relevant linked screen and actual interaction, not remembered screenshots. This applies across the WB platform. The current unit redesign borrows Customers' compact statistic row, counted segment filters, search/sort header and sortable financial columns; wide layouts keep the selected SKU's economics next to the list, narrow layouts provide a focused detail/back path. Preserve financial values, null semantics, source caches and the exact private TOPLASH gate.
 
+Wide-screen refinement: the unit workspace fills the available cabinet width without a fixed 1440px cap. Above 1100px of content width, align the summary and table in the flexible left column and the selected SKU ledger in a 340–440px right column spanning both; common costs align with the table. Narrow screens retain the list/detail back path, with full-width period fields below 360px. Do not restore legacy KPI spans or shrink currency labels onto separate lines.
+
 11 November 2026, private TOPLASH advanced analytics: extend the incumbent shell
 with the same exact-user/shop gated `#daily` view (`#secDailyAnalytics`) and accessible
 «Ежедневная прибыль / Юнит-экономика» tabs. Show actual daily/cumulative profit with
