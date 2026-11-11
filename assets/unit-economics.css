@@ -117,3 +117,4 @@ body.corbel .unit-table button{background:transparent;box-shadow:none}
 .corbel .unit-summary>.kpi{overflow:visible}
 .corbel .unit-summary.kpi-row{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:1100px){.corbel .unit-summary.kpi-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.corbel .unit-summary.kpi-row>.kpi{grid-column:auto!important;grid-row:auto}
