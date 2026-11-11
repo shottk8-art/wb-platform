@@ -45,13 +45,18 @@ console.log('Unit UI PASS: private active context, stale shop/range responses, d
  const f=fixture(true);f.set(false,'other');f.set(false,'owner','other-shop');assert.equal(f.requests.length,0,'warm-up must respect the same private user/shop boundary');
  f.set(false);assert.deepEqual(f.requests.map(r=>r.month),['2026-11','2026-10']);assert.ok(f.requests.every(r=>r.action==='unit'),'prefetch only reads saved data, never queues WB requests');
  f.set();assert.equal(f.requests.length,2,'opening joins the warm-up promise');
- f.requests[0].resolve(result());f.requests[1].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,false);
+ const previous=result();previous.period={dateFrom:'2026-10-01',dateTo:'2026-10-31'};previous.totals.net_profit='10';
+ f.requests[0].resolve(result());f.requests[1].resolve(previous);await tick();assert.equal(f.el('unitResults').hidden,false);
  f.set(false);f.set();await tick();assert.equal(f.requests.length,2,'reopening uses ready data immediately');assert.equal(f.el('unitResults').hidden,false);
  f.el('unitFrom').value=f.el('unitTo').value='2026-10';f.el('unitFrom').events.change();
- f.set(false);f.set();await tick();assert.equal(f.requests.length,2,'previous month was also preloaded');
+ f.set(false);f.set();await tick();assert.equal(f.requests.length,2,'previous month was also preloaded');assert.match(f.el('unitProfit').textContent,/10,00/);
  f.set(false);f.advance(60001);f.set();await tick();assert.equal(f.requests.length,3,'only the current month expires after1minute; closed month remains warm');
  f.requests[2].resolve(result());await tick();f.invalidate();assert.equal(f.requests.length,5,'source/catalogue/tax changes invalidate both warm months');
- f.requests[3].resolve(result());f.requests[4].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,false);
+ const updated=result();updated.totals.net_profit='30';f.requests[3].resolve(result());f.requests[4].resolve(updated);await tick();assert.equal(f.el('unitResults').hidden,false);assert.match(f.el('unitProfit').textContent,/30,00/,'source changes repaint updated calculations, not old cached figures');
+}
+{
+ const f=fixture(true);f.advance(Date.parse('2027-01-01T12:00:00Z')-Date.parse('2026-11-11T12:00:00Z'));f.set(false);
+ assert.deepEqual(f.requests.map(r=>r.month),['2027-01','2026-12'],'the two-month window rolls across the year boundary');
 }
 {
  const f=fixture(true);f.set(false);f.set(false,'owner','other-shop');f.requests[0].resolve(result());f.requests[1].resolve(result());await tick();
