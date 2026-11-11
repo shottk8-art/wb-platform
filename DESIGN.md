@@ -359,7 +359,7 @@ prefers-reduced-motion: reduce отключает пространственны
 The exact-user/TOPLASH-only `#daily` surface (`#secDailyAnalytics`) inherits the
 Corbel shell, fonts, semantic light/dark tokens and flat panels. «Углублённая
 аналитика» contains keyboard-accessible «Ежедневная прибыль / Юнит-экономика» tabs;
-only the active private pane reads data. No new visual world, global tokens,
+only the active private pane polls; the exact allowed shop also prefetches the current/previous saved unit months into bounded session memory. No new visual world, global tokens,
 dependencies, fonts or assets are introduced.
 
 A joined three-stat summary precedes the same WBTrend graph used by Overview

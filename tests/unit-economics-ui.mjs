@@ -3,12 +3,13 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../assets/unit-economics.js',import.meta.url),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function fixture(){
- const nodes=new Map(),requests=[],timers=[];
+function fixture(warm=false){
+ const nodes=new Map(),requests=[],timers=[],listeners=[];let clock=Date.parse('2026-11-11T12:00:00Z');
+ class Clock extends Date{static now(){return clock;}}
  const el=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:'',dataset:{},attrs:{},events:{},hidden:false,disabled:false,setAttribute(k,v){this.attrs[k]=v;},replaceChildren(){this.innerHTML='';this.textContent='';},querySelectorAll:()=>[],addEventListener(event,cb){this.events[event]=cb;}});return nodes.get(id);};
- const window={WBDaily:{allowed:(u,s)=>u==='owner'&&s==='toplash'},WBApi:{cabinet(action,month,refresh,payload){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});requests.push({action,month,payload,resolve,reject});return promise;}}};
- vm.runInNewContext(source,{window,document:{getElementById:el,hidden:false,addEventListener(){}},Intl,Map,Date,Number,setTimeout:cb=>{timers.push(cb);return timers.length;},clearTimeout(){}});
- return {el,requests,timers,set:(active=true,userId='owner',shopId='toplash')=>window.WBUnit.setContext({active,userId,shopId})};
+ const window={WBDaily:{allowed:(u,s)=>u==='owner'&&s==='toplash'},WBApi:{connected:warm,subscribe:cb=>listeners.push(cb),cabinet(action,month,refresh,payload){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});requests.push({action,month,payload,resolve,reject});return promise;}}};
+ vm.runInNewContext(source,{window,document:{getElementById:el,hidden:false,addEventListener(){}},Intl,Map,Date:Clock,Number,setTimeout:cb=>{timers.push(cb);return timers.length;},clearTimeout(){}});
+ return {el,requests,timers,advance:ms=>clock+=ms,invalidate:()=>listeners.forEach(cb=>cb()),set:(active=true,userId='owner',shopId='toplash')=>window.WBUnit.setContext({active,userId,shopId})};
 }
 const result=()=>({status:'ready',period:{dateFrom:'2026-11-01',dateTo:'2026-11-11'},totals:{sales:'100',net_profit:'40',margin:40,profitability:66.67},products:[{article:'SKU',name:'Название <b>',quantity:2,sales:'100',total_expenses:'60',net_profit:'40',margin:40,profitability:66.67,expenses:[{label:'Себестоимость',amount:'60'}]}],common_expenses:[{key:'media',label:'WB Медиа',amount:'20'}]});
 {
@@ -40,3 +41,20 @@ const result=()=>({status:'ready',period:{dateFrom:'2026-11-01',dateTo:'2026-11-
  f.set(false);f.timers[0]();assert.equal(f.requests.length,3,'inactive views never poll');
 }
 console.log('Unit UI PASS: private active context, stale shop/range responses, direct/common separation, escaped product labels, explicit range reads, preparation deduplication, retry and bounded polling.');
+{
+ const f=fixture(true);f.set(false,'other');f.set(false,'owner','other-shop');assert.equal(f.requests.length,0,'warm-up must respect the same private user/shop boundary');
+ f.set(false);assert.deepEqual(f.requests.map(r=>r.month),['2026-11','2026-10']);assert.ok(f.requests.every(r=>r.action==='unit'),'prefetch only reads saved data, never queues WB requests');
+ f.set();assert.equal(f.requests.length,2,'opening joins the warm-up promise');
+ f.requests[0].resolve(result());f.requests[1].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,false);
+ f.set(false);f.set();await tick();assert.equal(f.requests.length,2,'reopening uses ready data immediately');assert.equal(f.el('unitResults').hidden,false);
+ f.el('unitFrom').value=f.el('unitTo').value='2026-10';f.el('unitFrom').events.change();
+ f.set(false);f.set();await tick();assert.equal(f.requests.length,2,'previous month was also preloaded');
+ f.set(false);f.advance(60001);f.set();await tick();assert.equal(f.requests.length,3,'only the current month expires after1minute; closed month remains warm');
+ f.requests[2].resolve(result());await tick();f.invalidate();assert.equal(f.requests.length,5,'source/catalogue/tax changes invalidate both warm months');
+ f.requests[3].resolve(result());f.requests[4].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,false);
+}
+{
+ const f=fixture(true);f.set(false);f.set(false,'owner','other-shop');f.requests[0].resolve(result());f.requests[1].resolve(result());await tick();
+ f.set();assert.equal(f.requests.length,4,'late warm-up responses cannot enter the next shop/user cache');
+}
+console.log('Unit preloading PASS: current+previous month, same-scope promise dedupe, instant reopen, expiry, source invalidation and no WB writes.');

@@ -7,6 +7,34 @@
   const rate=value=>value==null?'—':Number(value).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%';
   const tone=value=>value==null?'':Number(value)<0?'loss':'gain';
   let context=null,active=false,epoch=0,busy=false,data=null,selected=null,timer=null,perUnit=false;
+  let cache=new Map(),cacheGeneration=0,subscribed=false;
+  const enabled=()=>window.WBDaily?.allowed(context?.userId,context?.shopId)===true;
+  function read(from,to,force=false){
+    const key=from+':'+to,ownCache=cache,generation=cacheGeneration,entry=ownCache.get(key);
+    if(entry?.promise)return entry.promise;
+    if(!force && entry?.value && entry.expires>Date.now())return Promise.resolve(entry.value);
+    const promise=window.WBApi.cabinet('unit',from,false,{month_to:to}).then(result=>{
+      if(cache===ownCache && generation===cacheGeneration && enabled()){
+        if(result.status==='ready'){
+          const current=new Date(Date.now()+3*3600000).toISOString().slice(0,7);
+          ownCache.set(key,{value:result,expires:Date.now()+(to===current?60000:300000)});
+          while(ownCache.size>6)ownCache.delete(ownCache.keys().next().value);
+        }else ownCache.delete(key);
+      }
+      return result;
+    }).catch(error=>{if(ownCache.get(key)?.promise===promise)ownCache.delete(key);throw error;});
+    ownCache.set(key,{promise});return promise;
+  }
+  function prefetch(){
+    if(!enabled() || window.WBApi?.connected!==true)return;
+    const now=new Date(Date.now()+3*3600000);
+    for(let i=0;i<2;i++){
+      const month=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)).toISOString().slice(0,7);
+      read(month,month).catch(()=>{}); // A warm-up failure never blocks the cabinet.
+    }
+  }
+  function invalidate(){cache=new Map();cacheGeneration++;}
+  function sourceChanged(){if(!enabled())return;invalidate();cancelLoad();prefetch();if(active)load();}
   const status=(text,error=false)=>{el('unitStatus').textContent=text;el('unitStatus').dataset.error=String(error);};
   function reset(){clearTimeout(timer);data=null;selected=null;el('unitResults').hidden=true;el('unitRows').replaceChildren();el('unitExpenses').replaceChildren();el('unitCommon').replaceChildren();el('unitPrepare').hidden=true;for(const id of ['unitSales','unitProfit','unitMargin','unitProfitability'])el(id).textContent='—';}
   function cancelLoad(){epoch++;busy=false;reset();el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;}
@@ -51,30 +79,32 @@
     else {el('unitDetailTitle').textContent='Нет операций по артикулам';el('unitDetailArticle').textContent='';el('unitUnitNotice').textContent='';el('unitDetailMissing').textContent='';el('unitDetailMissing').hidden=true;el('unitExpenses').replaceChildren();el('unitDetailSales').textContent=el('unitDetailProfit').textContent='—';}
   }
   function schedule(){clearTimeout(timer);if(active&&!document.hidden&&data?.status==='loading')timer=setTimeout(()=>load(false,true),30000);}
-  async function load(prepare=false,background=false){
+  async function load(prepare=false,background=false,force=false){
     if(!active || busy)return;const ownEpoch=epoch,from=el('unitFrom').value,to=el('unitTo').value;
     if(from>to){reset();status('Начало периода должно быть раньше окончания.',true);return;}
     const pending=(data?.pending||[]).filter(p=>p.status!=='loading');
     busy=true;el('unitPane').setAttribute('aria-busy','true');el('unitLoad').disabled=el('unitPrepare').disabled=true;
     if(!background){reset();status(prepare?'Ставим подготовку выбранных месяцев в очередь…':'Загружаем расходы по артикулам…');}
     try{
-      if(prepare)for(const item of pending){if(ownEpoch!==epoch)return;await window.WBApi.cabinet('daily_start',item.month);}
+      if(prepare){invalidate();for(const item of pending){if(ownEpoch!==epoch)return;await window.WBApi.cabinet('daily_start',item.month);}}
       if(ownEpoch!==epoch)return;
-      const result=await window.WBApi.cabinet('unit',from,false,{month_to:to});
+      const result=await read(from,to,prepare||background||force);
       if(ownEpoch!==epoch)return;busy=false;render(result);
     }catch(error){if(ownEpoch!==epoch)return;reset();status(error.message||'Не удалось загрузить юнит-экономику. Повторите попытку.',true);}
     finally{if(ownEpoch===epoch){busy=false;el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;schedule();}}
   }
   function setContext(next){
+    if(!subscribed){window.WBApi?.subscribe?.(sourceChanged);window.WBApiCabinet?.subscribe?.(sourceChanged);subscribed=true;}
     const enabled=window.WBDaily?.allowed(next.userId,next.shopId)===true;
     const changed=context?.shopId!==next.shopId || context?.userId!==next.userId;
     const wasActive=active;context=next;active=enabled&&next.active===true;
-    if(changed){cancelLoad();fillMonths();el('unitSearch').value='';}
+    if(changed){invalidate();cancelLoad();fillMonths();el('unitSearch').value='';}
+    if(enabled)prefetch();
     if(!active){clearTimeout(timer);if(wasActive)cancelLoad();return;}
     if(changed||!wasActive)load();
   }
   for(const id of ['unitFrom','unitTo'])el(id).addEventListener('change',()=>{cancelLoad();status('Выберите период и нажмите «Показать».');});
-  el('unitLoad').addEventListener('click',()=>load());el('unitPrepare').addEventListener('click',()=>load(true));
+  el('unitLoad').addEventListener('click',()=>load(false,false,true));el('unitPrepare').addEventListener('click',()=>load(true));
   el('unitSearch').addEventListener('input',table);el('unitSort').addEventListener('change',table);
   el('unitRows').addEventListener('click',event=>{const button=event.target.closest('[data-unit-article]');if(button)details(button.dataset.unitArticle);});
   el('unitBasis').addEventListener('click',event=>{const button=event.target.closest('[data-unit-basis]');if(!button)return;perUnit=button.dataset.unitBasis==='unit';for(const node of el('unitBasis').querySelectorAll('button')){const on=node===button;node.classList.toggle('active',on);node.setAttribute('aria-pressed',String(on));}if(selected)details(selected);});

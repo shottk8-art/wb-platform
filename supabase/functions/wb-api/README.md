@@ -49,6 +49,15 @@ regressions for handler, isolation, calculation, queue, read-budget and UI tests
 
 ## Private daily analytics pilot
 
+`20261111115958_preload_recent_unit_economics.sql` hooks the existing hourly
+shop-history reconciliation to prepare the exact private pilot's current and
+previous unit months. It skips ready coverage and loading/failed jobs; the normal
+queue/limits/explicit-error-retry policy stay intact. The helper is service-only,
+uses the existing month advisory lock/index, and creates no raw data or new cron.
+Browser prefetch reads only these two saved months and coalesces requests in a
+bounded context-local memory cache; source updates invalidate it. Opening a tab
+does not restart ingestion. Explicit Show rereads live cost/tax calculations.
+
 The same exact user/shop gate also protects `unit`. The pilot ingestion stores
 `finance_model.unit` (per-normalized-article financial totals, counts, shared
 bucket), not raw operations. A requested month range reads the same completed
