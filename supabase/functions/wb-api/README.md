@@ -49,6 +49,23 @@ regressions for handler, isolation, calculation, queue, read-budget and UI tests
 
 ## Private daily analytics pilot
 
+The same exact user/shop gate also protects `unit`. The pilot ingestion stores
+`finance_model.unit` (per-normalized-article financial totals, counts, shared
+bucket), not raw operations. A requested month range reads the same completed
+snapshots as the overview and validates cursor/count and every finance total.
+The shared live catalogue is paginated once for the whole range. Missing
+coverage queues preparation only on explicit action, using `daily_start` and the
+existing durable queue; reads/hover never invoke WB.
+
+Unit economics is **direct-only**, per the owner: article financial charges,
+live COGS and tax. Direct financial ad deductions stay charged once. Actual
+account advertising minus already-withheld finance advertising is a signed
+common-source adjustment, never allocated to products. All shared finance and
+manual costs are shown separately, so article net results are explicitly labelled
+before common costs. Margin uses profit/sales; return on costs uses profit/direct
+expenses, recomputed from range totals, never averaged. Nonpositive denominators
+and unknown costs stay null. Monthly tax-rounding is reconciled in kopecks.
+
 The private TOPLASH daily pilot is authorized separately in `daily-access.ts`:
 only the verified platform owner's exact user ID and this exact shop ID can
 call `daily` / `daily_start`. Other API functionality stays available to all

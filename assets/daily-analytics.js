@@ -7,7 +7,8 @@
   const dateLabel=date=>date==='unallocated'?'Без даты операции':new Date(date+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'});
   const safe=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const currentMonth=()=>new Date(Date.now()+3*3600000).toISOString().slice(0,7);
-  let context=null,active=false,epoch=0,ticket=0,timer=null,busy=false,data=null,chart=null,selected=null,mode='daily';
+  let viewActive=false,subview='daily';
+  let context=null,active=false,epoch=0,ticket=0,timer=null,busy=false,data=null,chart=null,selected=null,mode='daily',style='bar';
   const tone=value=>value==null?'':Number(value)<0?'loss':'gain';
   const changeMarkup=change=>{
     if(!change)return '<span class="daily-change">—</span>';
@@ -48,43 +49,52 @@
     el('dailyMissing').textContent=(row.missing||[]).join('. ')+(row.missing_costs?.length?' · '+row.missing_costs.join(', '):'');
     el('dailyNoOperations').hidden=!!row.rows;
     for(const button of el('dailyRows').querySelectorAll('button'))button.setAttribute('aria-pressed',String(button.dataset.dailyDate===date));
-    if(focusChart && chart && date!=='unallocated') {
-      const index=data.days.findIndex(d=>d.date===date),point=chart.getDatasetMeta(0).data[index];
-      if(point){chart.setActiveElements([{datasetIndex:0,index}]);chart.tooltip.setActiveElements([{datasetIndex:0,index}],{x:point.x,y:point.y});chart.update('none');}
-    }
+    if(focusChart && chart && date!=='unallocated')window.WBTrend?.inspect(chart,data.days.findIndex(d=>d.date===date));
   }
   function drawChart() {
     if(!data?.days?.length || !window.Chart)return;
     chart?.destroy();
     const css=getComputedStyle(document.body),color=name=>css.getPropertyValue(name).trim();
-    const cumulative=mode==='cumulative',values=data.days.map(d=>d[cumulative?'cumulative_profit':'net_profit']==null?null:Number(d[cumulative?'cumulative_profit':'net_profit']));
+    const cumulative=mode==='cumulative',bar=style==='bar',rows=data.days;
+    const values=rows.map(d=>d[cumulative?'cumulative_profit':'net_profit']==null?null:Number(d[cumulative?'cumulative_profit':'net_profit']));
     let previousSum=0,previousKnown=true;
-    const previousValues=data.days.map(d=>{
+    const previousValues=rows.map(d=>{
       const value=d.previous_period?.profit;
       if(value==null){previousKnown=false;return null;}
       if(!cumulative)return Number(value);
       previousSum+=Number(value);return previousKnown?previousSum:null;
     });
-    const datasets=[{
-      label:cumulative?'Накопленная прибыль':'Чистая прибыль',data:values,borderColor:color('--accent'),backgroundColor:color('--accent-soft'),
-      borderWidth:2.5,tension:.25,fill:'origin',spanGaps:false,pointRadius:2,pointHoverRadius:5,pointBackgroundColor:color('--surface'),pointBorderWidth:2,
-    }];
-    if(previousValues.some(v=>v!=null))datasets.push({label:'Предыдущий месяц',data:previousValues,borderColor:color('--violet'),backgroundColor:'transparent',borderWidth:2,borderDash:[5,5],tension:.25,fill:false,spanGaps:false,pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1});
+    const metric={label:cumulative?'Накопленная прибыль':'Чистая прибыль',unit:'₽',color:color('--accent')};
+    const known=values.filter(v=>v!=null);
+    const interaction={rows,values,initial:Math.max(0,rows.findIndex(d=>d.date===selected)),selected,metric,
+      axisLabel:'Дни графика: используйте стрелки',shortLabels:rows.map(d=>String(Number(d.date.slice(-2)))),
+      labels:rows.map((d,i)=>i===0 || (i+1)%5===0 || i===rows.length-1?String(Number(d.date.slice(-2))):''),
+      average:known.length?known.reduce((a,b)=>a+b,0)/known.length:null,
+      summaryText:rows.length+' дн.',summaryTitle:dateLabel(rows[0].date)+' — '+dateLabel(rows.at(-1).date),
+      detail(index){const row=rows[index];if(!row)return null;const now=values[index],before=previousValues[index];
+        const delta=now==null || before==null || before===0?null:(now-before)/Math.abs(before)*100;
+        return {month:dateLabel(row.date),value:now,secondary:before,secondaryLabel:'Предыдущий месяц',secondaryUnit:'₽',
+          comparisonLabel:row.previous_period?.date?'К '+dateLabel(row.previous_period.date):'К прошлому месяцу',delta,
+          sentiment:delta==null || delta===0?'neutral':delta>0?'up':'down',deltaText:delta==null?'—':(delta>0?'+':'')+delta.toFixed(1)+'%'};},
+      onChoose:index=>selectDay(rows[index].date),
+    };
+    const datasets=[{label:metric.label,data:values,sellerInteraction:interaction,
+      borderColor:metric.color,backgroundColor:bar?window.WBDashboard?.trendBarColors(el('dailyChart'),rows,metric.color)||color('--accent-soft'):color('--accent-soft'),
+      borderWidth:bar?0:2.5,tension:.38,fill:!bar,spanGaps:false,pointRadius:values.map((v,i)=>v!=null && values[i-1]==null && values[i+1]==null?4:0),pointHoverRadius:5,
+      borderRadius:99,borderSkipped:false,maxBarThickness:30,barPercentage:.66,categoryPercentage:1}];
+    if(previousValues.some(v=>v!=null))datasets.push({type:'line',label:'Предыдущий месяц',data:previousValues,borderColor:color('--violet'),backgroundColor:'transparent',borderWidth:2,borderDash:[5,5],tension:.38,fill:false,spanGaps:false,pointRadius:0});
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     chart=new window.Chart(el('dailyChart'),{
-      type:'line',data:{labels:data.days.map(d=>Number(d.date.slice(-2))),datasets},
-      options:{responsive:true,maintainAspectRatio:false,animation:matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:550},
-        interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{
-          backgroundColor:color('--ink'),titleColor:color('--surface'),bodyColor:color('--surface'),padding:12,cornerRadius:12,displayColors:false,
-          callbacks:{title:items=>dateLabel(data.days[items[0].dataIndex].date),label:item=>`${item.datasetIndex===1?'Предыдущий месяц':cumulative?'Накоплено':'Чистая прибыль'}: ${money(item.raw)}`,
-            afterBody:items=>{const row=data.days[items[0].dataIndex];return ['Продажи: '+money(row.sales),'Учтённые расходы: '+money(row.net_profit==null||row.sales==null?null:Number(row.sales)-Number(row.net_profit)),...(row.previous_period?.date?['Сравнение: '+dateLabel(row.previous_period.date)]:[])];}},
-        }},scales:{x:{grid:{display:false},border:{display:false},ticks:{maxTicksLimit:12,color:color('--ink-mute')}},
-          y:{border:{display:false},grid:{color:color('--line')},ticks:{color:color('--ink-mute'),maxTicksLimit:6,callback:v=>Number(v).toLocaleString('ru-RU',{notation:'compact',maximumFractionDigits:1})+' ₽'}}},
-        onHover:(_event,items)=>{if(items.length)selectDay(data.days[items[0].index].date);},
-      },
+      type:style,plugins:window.WBTrend?[window.WBTrend.plugin]:[],data:{labels:rows.map(d=>Number(d.date.slice(-2))),datasets},
+      options:{responsive:true,maintainAspectRatio:false,events:[],animation:reduced?false:{duration:1200,easing:'easeOutCubic',delay:ctx=>ctx.type==='data' && ctx.mode==='default'?Math.min(ctx.dataIndex*20,300):0},
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{offset:bar,grid:{display:false},border:{display:false},ticks:{color:'transparent',maxRotation:0}},
+          y:{beginAtZero:bar,border:{display:false,dash:[3,3]},grid:{color:color('--line'),tickLength:0},ticks:{color:color('--ink-mute'),maxTicksLimit:6,callback:v=>Number(v).toLocaleString('ru-RU',{notation:'compact',maximumFractionDigits:1})+' ₽'}}}},
     });
     el('dailyChart').setAttribute('aria-label',cumulative?'Накопленная чистая прибыль по дням':'Ежедневная чистая прибыль');
-    el('dailyChartValues').textContent=data.days.map((d,i)=>`${dateLabel(d.date)}: ${money(values[i])}; предыдущий месяц: ${money(previousValues[i])}`).join('; ');
+    el('dailyChartValues').textContent=rows.map((d,i)=>`${dateLabel(d.date)}: ${money(values[i])}; предыдущий месяц: ${money(previousValues[i])}`).join('; ');
   }
+
   function render(result) {
     data=result;
     el('dailyPreviousLegend').hidden=!(result.days||[]).some(day=>day.previous_period?.profit!=null);
@@ -126,8 +136,8 @@
       el('dailyUnallocated').hidden=false;
       el('dailyUnallocated').innerHTML=`<p>В месячном итоге есть операции без даты внутри периода: ${safe(money(result.unallocated.net_profit))} чистой прибыли. Они не нанесены на график.</p><button type="button" class="ghost small" data-unallocated>Посмотреть расходы</button>`;
     }
-    drawChart();
-    selectDay(result.days.some(d=>d.date===selected)?selected:[...result.days].reverse().find(d=>d.rows)?.date || result.days[result.days.length-1].date);
+    selected=result.days.some(d=>d.date===selected)?selected:[...result.days].reverse().find(d=>d.rows)?.date || result.days[result.days.length-1].date;
+    drawChart();selectDay(selected);
   }
   function schedule() {
     clearTimeout(timer);
@@ -158,7 +168,9 @@
     context={...next,allowed:enabled};el('dailyAnalyticsLink').hidden=!enabled;
     if(changed){epoch++;ticket++;busy=false;reset();fillMonths();}
     const wasActive=active;
-    active=enabled && next.active===true;
+    viewActive=next.active===true;
+    window.WBUnit?.setContext({...next,active:viewActive && subview==='unit'});
+    active=enabled && viewActive && subview==='daily';
     if(!active){clearTimeout(timer);if(wasActive){epoch++;busy=false;reset();}return;}
     if(changed || !wasActive)load();
   }
@@ -173,8 +185,16 @@
   });
   el('dailyRows').addEventListener('click',event=>{const button=event.target.closest('[data-daily-date]');if(button)selectDay(button.dataset.dailyDate,true);});
   el('dailyUnallocated').addEventListener('click',event=>{if(event.target.closest('[data-unallocated]'))selectDay('unallocated');});
-  el('dailyChart').addEventListener('pointerleave',()=>{if(chart){chart.setActiveElements([]);chart.tooltip.setActiveElements([],{x:0,y:0});chart.update('none');}});
+  el('dailyChartStyle').addEventListener('click',event=>{const button=event.target.closest('[data-daily-style]');if(!button)return;style=button.dataset.dailyStyle;for(const node of el('dailyChartStyle').querySelectorAll('button')){const on=node===button;node.classList.toggle('active',on);node.setAttribute('aria-pressed',String(on));}drawChart();});
   window.addEventListener('seller:themechange',drawChart);
   document.addEventListener('visibilitychange',()=>{clearTimeout(timer);if(!document.hidden && active && (data?.refreshing || data?.status==='loading' || data?.comparison?.refreshing || data?.comparison?.status==='loading'))load(false,true);});
+  function selectSection(value){
+    subview=value;
+    for(const button of el('advancedTabs').querySelectorAll('[role=tab]')){const on=button.dataset.advancedTab===value;button.setAttribute('aria-selected',String(on));button.tabIndex=on?0:-1;}
+    el('dailyPane').hidden=value!=='daily';el('unitPane').hidden=value!=='unit';
+    if(context)setContext({...context,active:viewActive});
+  }
+  el('advancedTabs').addEventListener('click',event=>{const button=event.target.closest('[data-advanced-tab]');if(button)selectSection(button.dataset.advancedTab);});
+  el('advancedTabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const value=event.key==='Home'?'daily':event.key==='End'?'unit':subview==='daily'?'unit':'daily';selectSection(value);el(value==='daily'?'dailyTab':'unitTab').focus();});
   window.WBDaily={allowed,setContext,reload:()=>{if(active){epoch++;busy=false;reset();load();}},get active(){return active;}};
 })();

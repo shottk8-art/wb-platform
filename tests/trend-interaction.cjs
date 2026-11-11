@@ -102,10 +102,11 @@ assert.equal(clean(value()),'350₽','new render refreshes even when the source 
 metrics.sales.color='#7088f0';plugin.afterUpdate(chart);assert.equal(root.style['--trend-color'],'#7088f0');
 assert.equal(plot.children[1].attrs['aria-pressed'],'true','theme refresh preserves selected month');
 chart.data.datasets[0].sellerRows=[];plugin.afterUpdate(chart);assert.equal(root.hidden,true);assert.equal(heading.children[0].textContent,'');
-plugin.afterDestroy(chart);assert.ok(root.removed);assert.ok(heading.children[0].removed);assert.equal(frames.size,0);
+chart.canvas=null; // Chart.js clears the canvas before its afterDestroy hook.
+assert.doesNotThrow(()=>plugin.afterDestroy(chart));assert.ok(root.removed);assert.ok(heading.children[0].removed);assert.equal(frames.size,0);
 assert.equal(parent.events.pointerleave,undefined,'chart disposal removes its parent listener');
 assert.equal(parent.classList.contains('has-trend-interaction'),false);
-const emptyChart={...chart,data:{datasets:[{sellerRows:[],sellerMetric:'sales'}]}};
+const emptyChart={...chart,canvas,data:{datasets:[{sellerRows:[],sellerMetric:'sales'}]}};
 plugin.afterUpdate(emptyChart);document.hidden=true;
 assert.doesNotThrow(()=>document.events.visibilitychange(),'an initially empty dashboard is safe when the tab is hidden');
 plugin.afterDestroy(emptyChart);document.hidden=false;

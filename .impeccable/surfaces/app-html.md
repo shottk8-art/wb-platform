@@ -7,16 +7,26 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
-11 November 2026, private TOPLASH daily analytics: extend the incumbent shell with
-an exact-user/shop gated `#daily` view. Show actual daily/cumulative net profit,
-the total before manual operating/external-promotion costs, an accessible daily table and a linked expense
-ledger. Keep Corbel light/dark, a compact month/action toolbar and labelled mobile
-rows. The owner explicitly excludes monthly manual expenses from daily results.
+11 November 2026, private TOPLASH advanced analytics: extend the incumbent shell
+with the same exact-user/shop gated `#daily` view (`#secDailyAnalytics`) and accessible
+«Ежедневная прибыль / Юнит-экономика» tabs. Show actual daily/cumulative profit with
+the shared Overview Dynamics graph, an accessible daily table and linked expense
+ledger. Keep Corbel light/dark, a compact native-backed month/action toolbar and
+labelled mobile rows. Monthly manual operating/external-promotion costs remain
+excluded from daily results by the owner's explicit decision.
 Compare matching elapsed days/full closed months with the previous month, add
 previous-calendar-day table deltas, and keep current data usable while comparison
 is prepared. Show only month-only Media allocations explicitly; preserve unknowns/losses,
 and keep out-of-period/undated financial amounts outside the plotted dates. No
 raw-operation storage, Ozon daily invention, paid AI or wider feature access.
+
+The local unit extension covers articles over one month or an inclusive month
+range. The owner explicitly chose direct expenses only: never allocate shared
+costs to articles or units. «Чистая прибыль по прямым расходам» denotes profit
+before common costs; list common sums separately under «Не включено в товары».
+The new `unit` endpoint keeps the daily experiment's exact user/TOPLASH gate after
+ordinary shop authorization. This is an ordinary scoped extension of the incumbent
+Corbel world; no global token, sidecar, dependency, font or asset change is needed.
 
 27 October 2026, sales-value correction: the owner explicitly keeps “Итого к перечислению” unchanged and wants seller-price buyouts in “Сумма продаж” for every shop. Preserve the four KPI layout and Corbel light/dark. An older API snapshot without price coverage shows a dash plus “Обновите месяц — нужны цены выкупов” in the existing comparison caption; do not invent a payout/realization fallback or silently sum API with files. This is a data-binding and recovery-copy correction, not a redesign. Publication and historical refresh remain separate actions.
 
@@ -91,6 +101,80 @@ Profitability extension (23 October 2026): the existing profitability gauge has 
 Reproduce the inspected Revenue interaction inside the existing Chart.js trend: one travelling rounded highlight and white cap, a three-row tooltip at the plot top, animated values and a bold active month. User amendment: the tooltip is hidden at rest and disappears when the pointer leaves the chart, focus leaves its months, or Escape is pressed; hovering, focusing or tapping a month reveals it again. Pointer leave restores the selected period without showing the tooltip or running hidden counters; touch and arrow/Home/End keys inspect actual months. Add the reference-style average guide and compact period summary without changing the selected data, KPI-to-chart link, range, source or formulas. Tooltip uses the selected metric, actual bought quantity (sales for the quantity metric), and previous-calendar-month comparison, never fictional orders, forecasts or missing-year comparisons. Unknowns stay unknown; current partial months do not compare to a full month; DRR period guides use summed advertising/base, not averaged percentages. Both themes, negative/zero/sparse series and reduced-motion must work. Motion is bounded, interruptible and local; no reads, sync or paid analysis on hover. Keep native line mode and all existing financial access rules.
 
 Motion thesis: the travelling highlight is the focal moment. Its horizontal position and height preserve continuity between months; bold labels and aligned changing values provide feedback. Use one isolated CSS transform/height transition plus one interruptible 450ms number loop, never per-frame canvas updates or network calls. Initial, hidden-document and reduced-motion states settle immediately.
+
+## Private daily graph and unit economics extension
+
+Use [daily-analytics.js](../../assets/daily-analytics.js) with the existing WBTrend
+plugin from [trend-interaction.js](../../assets/trend-interaction.js). Daily bars
+reuse the dashboard's diagonal pattern, round ends and zero baseline; line mode
+retains gaps and signed values. Keep «По дням / Накопительно», the previous-month
+dashed violet overlay and the existing comparison/preparation behavior. Tooltip
+rows are current daily/cumulative profit, matching prior-month profit and their
+comparison, not the overview's bought-quantity row. Null has no highlight; zero and
+losses retain their truthful shared treatment. Tiny dashboard changes expose the
+existing bar-pattern helper and keep native x labels transparent for this shared
+interaction; they do not change overview formulas or financial access.
+
+Reuse the travelling highlight/white cap (point ring for a line), bounded tooltip,
+bold active day, average guide and day count. Pointer/touch/focus and arrows/Home/End
+inspect days; leave/focus exit, pointer cancellation and Escape dismiss and restore
+the initial selection. Keep a text alternative and accessible day buttons. The
+bounded 1200 ms reveal has capped stagger. Shared travel transitions and a single
+interruptible 450 ms value loop update only the isolated overlay/text, with no
+hover requests or per-frame canvas redraws. Reduced motion settles immediately
+and hidden documents stop counters. Generic
+`afterDestroy` uses the parent saved in WBTrend state because Chart.js nulls its
+canvas, then cancels the loop and removes listeners/overlay/summary before remount.
+
+Unit economics uses [unit-economics.js](../../assets/unit-economics.js) and its local
+[CSS](../../assets/unit-economics.css): four joined stats, searchable/sortable article
+table, selected-product expense ledger and a separate common-cost ledger. Direct
+profit = article sales − article-linked WB expenses − catalogue cost − current-rate
+tax. Margin = that profit / sales × 100%; return on costs = that profit / direct
+expenses × 100%. Compute range/summary ratios from totals; unknown or nonpositive
+bases have no percentage. Preserve signed corrections, losses, zero and nulls.
+Only advertising linked to the article in the financial report is direct; shared
+advertising/Media, unassigned amounts, operating costs and external promotion stay
+separate. The advertising-source difference retains its sign; promo bonuses do not
+reduce profit. Do not transfer daily month-only Media allocations into articles.
+
+Label both native-backed month bounds; «Показать» loads the range explicitly and
+preparation covers only missing months. Incomplete coverage is not a full result.
+Search by article/name, sort by sales/profit/margin/return, and select a product by
+its real button. «За период / На единицу» changes its ledger amounts only, dividing
+by buyouts net of returns when positive; otherwise show period amounts with a clear
+notice. Cancelling a period/context read restores Show/preparation controls and
+aria-busy, clears old results and rejects stale responses. Empty products clear
+both the per-unit notice and missing-cost note. No extra financial source or wider
+access is authorized.
+
+At ≤600 px the unit table becomes labelled two-column rows, product identity spans
+both columns, search/sort stack and month controls remain two labelled columns.
+Summary is 2×2; product and common ledgers stack below the table, with a full-width
+period/unit switch and wrapping labels. Preserve readable amounts, all expense
+rows and both themes without page overflow. Surface-2 row hover/focus uses the
+existing 150 ms tint without lift; reduced motion removes it. No new visual world.
+
+## Private extension evidence
+
+Inspected local synthetic captures under `.impeccable/review/`: daily graph
+`advanced-daily-desktop.jpg` and `advanced-daily-mobile-light.jpg`; unit desktop
+light/dark `unit-desktop.jpg` and `unit-desktop-dark.jpg`; mobile dark summary
+`unit-mobile-dark.jpg`; labelled table `unit-mobile-table.jpg`; per-unit ledger and
+separate common costs `unit-mobile-ledger-top.jpg` and `unit-mobile-ledger-bottom.jpg`.
+These are 1440×1000 desktop and 390×844 mobile viewport examples, not live-account
+or physical-device evidence. Native `fullPage` capture is unsupported in this
+setup; `unit-mobile-full.jpg` is not full-page evidence.
+
+The handoff reports 32 passing regression checks and three affected checks rerun
+after the Chart.js lifecycle fix; the later unit cancellation/empty-state fixes
+also have reproducible passing UI regressions. Relevant UI regression source was
+inspected; suites were not rerun in this documentation pass. The finish reviewer's
+handed-off final verdict is SHIP after both material unit state findings were
+resolved, with no further implementation changes requested. This records that
+scoped verdict, not a financial, live-account or physical-device review by the
+documenter; static captures do not prove complete motion fidelity. This
+documentation update includes no commit or deployment.
 
 ## QUALITY BAR
 

@@ -923,7 +923,7 @@
     Chart.defaults.color=muted;Chart.defaults.font.family=css.fontFamily;
     for(const chart of Object.values(Chart.instances || {})){
       for(const [name,axis] of Object.entries(chart.options.scales || {})){
-        if(axis.ticks)axis.ticks.color=window.WBTrend && chart.data.datasets.some(ds=>ds.sellerMetric) && name==='x'?'transparent':muted;
+        if(axis.ticks)axis.ticks.color=window.WBTrend && chart.data.datasets.some(ds=>ds.sellerMetric || ds.sellerInteraction) && name==='x'?'transparent':muted;
         if(axis.grid && grid)axis.grid.color=grid;
       }
       if(chart.config.type==='doughnut'){
@@ -953,5 +953,5 @@
     return `${MONTH_NAMES[month]} ${year}`;
   }
 
-  window.WBDashboard = { articleKey, costCatalogue, loadPeriods, loadPeriodData, loadPeriodRange, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, trendMetricValue, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability, expenseItems };
+  window.WBDashboard = { trendBarColors, articleKey, costCatalogue, loadPeriods, loadPeriodData, loadPeriodRange, loadTrendData, computeDerived, fromApiCabinet, combineDerived, combineTrend, getTrendMetric, trendMetricValue, renderKPI, renderTrend, renderExpenses, renderSkuTable, formatPeriod, lastClosedPeriod, defaultPeriodValue, kpiSparkline, profitMargin, renderProfitability, expenseItems };
 })();

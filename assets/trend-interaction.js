@@ -61,9 +61,9 @@
   function dispose(chart) {
     const state=states.get(chart); if(!state)return;
     if(state.frame) cancelAnimationFrame(state.frame);
-    state.chart.canvas.parentElement?.removeEventListener('pointerleave',state.dismiss);
+    state.parent.removeEventListener('pointerleave',state.dismiss);
     state.root.remove();state.summary.remove();live.delete(state);states.delete(chart);
-    state.chart.canvas.parentElement?.classList.remove('has-trend-interaction');
+    state.parent.classList.remove('has-trend-interaction');
   }
 
   function mount(chart) {
@@ -72,10 +72,10 @@
     const root=document.createElement('div');root.className='trend-interaction';
     root.innerHTML='<div class="trend-average" hidden><span></span></div><div class="trend-highlight" hidden><i class="trend-highlight-cap"></i></div><div class="trend-months" role="group" aria-label="Месяцы графика: используйте стрелки"></div><div class="trend-tooltip" aria-hidden="true" hidden><p class="trend-tooltip-month"></p><dl><div><dt class="trend-tooltip-metric"></dt><dd data-tip-value></dd></div><div><dt class="trend-tooltip-secondary"></dt><dd data-tip-secondary></dd></div><div><dt class="trend-tooltip-comparison"></dt><dd data-tip-delta></dd></div></dl></div>';
     const summary=document.createElement('span');summary.className='trend-period-summary';
-    const heading=canvas.closest('#secTrend')?.querySelector('.section-head');
+    const heading=canvas.closest('#secTrend, .daily-chart-card')?.querySelector('.section-head, .daily-chart-heading');
     heading?.append(summary);
     parent.append(root);parent.classList.add('has-trend-interaction');
-    const state={chart,root,summary,plot:root.querySelector('.trend-months'),mark:root.querySelector('.trend-highlight'),cap:root.querySelector('.trend-highlight-cap'),tip:root.querySelector('.trend-tooltip'),guide:root.querySelector('.trend-average'),buttons:[],active:-1,frame:0,visual:[null,null,null],geometry:'',source:null};
+    const state={chart,parent,root,summary,plot:root.querySelector('.trend-months'),mark:root.querySelector('.trend-highlight'),cap:root.querySelector('.trend-highlight-cap'),tip:root.querySelector('.trend-tooltip'),guide:root.querySelector('.trend-average'),buttons:[],active:-1,frame:0,visual:[null,null,null],geometry:'',source:null};
     state.values=[root.querySelector('[data-tip-value]'),root.querySelector('[data-tip-secondary]'),root.querySelector('[data-tip-delta]')];
     const readIndex=event=>{const button=event.target.closest?.('[data-trend-index]');return button && state.plot.contains(button)?Number(button.dataset.trendIndex):null;};
     state.plot.addEventListener('pointermove',event=>{const index=readIndex(event);if(index!=null)inspect(state,index);});
@@ -141,6 +141,11 @@
     if(state.active===index && !snap)return;
     const first=state.active<0;state.active=index;
     state.buttons.forEach((button,i)=>{button.classList.toggle('is-active',i===index);button.tabIndex=i===index?0:-1;button.setAttribute('aria-pressed',String(i===index));});
+    if(state.model.shortLabels)state.buttons.forEach((button,i)=>{
+      const label=button.querySelector('span');if(!label)return;
+      label.textContent=i===index?state.model.shortLabels[i]:state.model.labels[i];
+      label.dataset.month=label.textContent;
+    });
     state.tip.querySelector('.trend-tooltip-month').textContent=detail.month;
     state.tip.querySelector('.trend-tooltip-metric').textContent=state.model.metric.label;
     state.tip.querySelector('.trend-tooltip-secondary').textContent=detail.secondaryLabel;
@@ -149,6 +154,7 @@
     numbers(state,detail,!snap&&!first);
     state.root.classList.toggle('is-instant',snap||first||reduced());
     position(state);
+    state.model.onChoose?.(index);
   }
 
   function inspect(state,index) {
@@ -169,12 +175,12 @@
   }
 
   function sync(chart,force=false) {
-    const ds=chart.data.datasets[0],rows=ds?.sellerRows;
+    const ds=chart.data.datasets[0],custom=ds?.sellerInteraction,rows=custom?.rows || ds?.sellerRows;
     if(!rows || !chart.chartArea || !chart.scales.x || !chart.scales.y)return;
     let state=states.get(chart);if(!state)state=mount(chart);if(!state)return;
     const area=chart.chartArea;
     if(!rows.length || area.right<=area.left || area.bottom<=area.top){state.root.hidden=true;state.summary.textContent='';state.active=-1;if(state.frame)cancelAnimationFrame(state.frame);state.frame=0;return;}
-    const selected=document.getElementById('periodSelect')?.value || '';
+    const selected=custom?.selected ?? document.getElementById('periodSelect')?.value ?? '';
     const changed=state.active<0 || state.dataset!==ds || state.source!==rows || state.metricKey!==ds.sellerMetric || state.selected!==selected || state.type!==chart.config.type;
     const geometry=[chart.width,chart.height,area.left,area.right,area.top,area.bottom,chart.scales.y.min,chart.scales.y.max].join(':');
     // Canvas entrance frames must not trigger DOM writes or number animations.
@@ -183,19 +189,20 @@
     if(changed){
       state.tip.hidden=true;
       state.dataset=ds;state.source=rows;state.metricKey=ds.sellerMetric;state.selected=selected;state.type=chart.config.type;
-      state.model=model(rows,ds.sellerMetric,window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace),selected);
+      state.model=custom || model(rows,ds.sellerMetric,window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace),selected);
       if(state.frame)cancelAnimationFrame(state.frame);state.frame=0;state.visual=[null,null,null];state.active=-1;
       state.plot.replaceChildren();state.buttons=rows.map((row,i)=>{
         const button=document.createElement('button');button.type='button';button.className='trend-month';button.dataset.trendIndex=String(i);
         const detail=state.model.detail(i);button.setAttribute('aria-label',`${detail.month}: ${state.model.metric.label} ${format(detail.value,state.model.metric.unit)}; ${detail.secondaryLabel} ${format(detail.secondary,detail.secondaryUnit)}; ${detail.comparisonLabel} ${detail.deltaText}`);
-        const label=document.createElement('span');label.dataset.month=months[Number(row.month)].slice(0,3);label.textContent=`${label.dataset.month} ${String(row.year).slice(-2)}`;button.append(label);state.plot.append(button);return button;
+        const label=document.createElement('span');label.dataset.month=custom?String(custom.labels[i]):months[Number(row.month)].slice(0,3);label.textContent=custom?String(custom.labels[i]):`${label.dataset.month} ${String(row.year).slice(-2)}`;button.append(label);state.plot.append(button);return button;
       });
+      state.plot.setAttribute('aria-label',custom?.axisLabel || 'Месяцы графика: используйте стрелки');
       state.geometry='';
     }
-    state.model.metric.color=window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace).color;
+    if(!custom)state.model.metric.color=window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace).color;
     state.root.style.setProperty('--trend-color',state.model.metric.color);
-    state.summary.textContent=`${format(state.model.summary,state.model.metric.unit,true)} ${state.model.metric.unit==='%'?'за период':`за ${rows.length} мес.`}`;
-    state.summary.title=`${state.model.metric.label}: ${format(state.model.summary,state.model.metric.unit)}. ${state.model.detail(0).month} — ${state.model.detail(rows.length-1).month}. Неизвестные месячные суммы не подменяются нулём.`;
+    state.summary.textContent=custom?.summaryText ?? `${format(state.model.summary,state.model.metric.unit,true)} ${state.model.metric.unit==='%'?'за период':`за ${rows.length} мес.`}`;
+    state.summary.title=custom?.summaryTitle ?? `${state.model.metric.label}: ${format(state.model.summary,state.model.metric.unit)}. ${state.model.detail(0).month} — ${state.model.detail(rows.length-1).month}. Неизвестные месячные суммы не подменяются нулём.`;
     if(changed || force || geometry!==state.geometry){
       state.geometry=geometry;
       Object.assign(state.plot.style,{left:`${area.left}px`,top:`${area.top}px`,width:`${area.right-area.left}px`,height:`${area.bottom-area.top}px`,gridTemplateColumns:`repeat(${rows.length},minmax(0,1fr))`});
@@ -219,7 +226,7 @@
   }
 
   const plugin={id:'seller-trend-interaction',afterUpdate:chart=>sync(chart,true),afterDraw:chart=>sync(chart),afterDestroy:dispose};
-  window.WBTrend={plugin,model,format,numeric};
+  window.WBTrend={plugin,model,format,numeric,inspect:(chart,index)=>{const state=states.get(chart);if(state)inspect(state,index);},dismiss:chart=>{const state=states.get(chart);if(state)dismiss(state);}};
   document.addEventListener?.('visibilitychange',()=>{if(document.hidden)for(const state of live)dismiss(state);});
   const preference=window.matchMedia('(prefers-reduced-motion: reduce)');
   preference.addEventListener?.('change',()=>{for(const state of live)choose(state,state.active,true);});

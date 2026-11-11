@@ -21,11 +21,12 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
-<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-daily2">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-unit1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
 <script src="/assets/reference.js?v=20261111-daily1" defer></script>
+<link rel="stylesheet" href="/assets/unit-economics.css?v=20261111-unit1">
 </head>
 <body class="corbel">
 
@@ -530,6 +531,11 @@
     </section>
 
     <section class="section app-view" id="secDailyAnalytics" data-view="daily" aria-busy="false">
+      <div class="advanced-tabs" id="advancedTabs" role="tablist" aria-label="Углублённая аналитика">
+        <button type="button" id="dailyTab" role="tab" data-advanced-tab="daily" aria-selected="true" aria-controls="dailyPane">Ежедневная прибыль</button>
+        <button type="button" id="unitTab" role="tab" data-advanced-tab="unit" aria-selected="false" aria-controls="unitPane" tabindex="-1">Юнит-экономика</button>
+      </div>
+      <div id="dailyPane" role="tabpanel" aria-labelledby="dailyTab">
       <div class="daily-toolbar">
         <div><h2>Чистая прибыль по дням</h2><span class="daily-pilot">Тест</span></div>
         <div><label for="dailyMonth">Месяц</label><select id="dailyMonth" aria-label="Месяц ежедневной аналитики"></select><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
@@ -545,8 +551,8 @@
         <div class="daily-compare-info"><p class="daily-note" id="dailyComparisonInfo" role="status"></p><button type="button" class="ghost small" id="dailyPrepareComparison" hidden>Подготовить сравнение</button></div>
         <div class="card daily-chart-card">
           <div class="daily-chart-heading"><h2>Динамика чистой прибыли</h2><div class="segmented-control" id="dailyMode" role="group" aria-label="Режим ежедневного графика"><button type="button" data-daily-mode="daily" class="active" aria-pressed="true">По дням</button><button type="button" data-daily-mode="cumulative" aria-pressed="false">Накопительно</button></div></div>
-          <div class="daily-chart-legend"><span><i></i>Выбранный месяц</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий месяц</span></div>
-          <div class="daily-chart-wrap"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
+          <div class="daily-chart-tools"><div class="daily-chart-legend"><span><i></i>Выбранный месяц</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий месяц</span></div><div class="segmented-control chart-style" id="dailyChartStyle" role="group" aria-label="Вид ежедневного графика"><button type="button" data-daily-style="line" aria-pressed="false">Линия</button><button type="button" data-daily-style="bar" class="active" aria-pressed="true">Столбцы</button></div></div>
+          <div class="daily-chart-wrap trend-chart"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
           <div class="sr-only" id="dailyChartValues"></div>
         </div>
         <div id="dailyUnallocated" class="daily-unallocated" hidden></div>
@@ -564,6 +570,45 @@
         <li>На графике показан тот же календарный день предыдущего месяца. Незакрытый месяц сравнивается с таким же числом прошедших дней, закрытый — с полным предыдущим месяцем. В таблице изменение прибыли считается к предыдущему календарному дню. Нет данных или нулевая база — нет выдуманного процента.</li>
         <li>Используются текущие себестоимость и ставка налога магазина, как в обзоре. Налог округляется до месячного итога; разница в копейках относится к последнему дню с продажами. Пропуски не заменяются нулём. Операции без подходящей даты показаны отдельно от графика.</li>
       </ul></details>
+      </div>
+      <div id="unitPane" role="tabpanel" aria-labelledby="unitTab" aria-busy="false" hidden>
+        <div class="unit-toolbar">
+          <div><label for="unitFrom">Начало периода</label><select id="unitFrom" aria-label="Начало периода юнит-экономики"></select></div>
+          <div><label for="unitTo">Конец периода</label><select id="unitTo" aria-label="Конец периода юнит-экономики"></select></div>
+          <button type="button" class="ghost small" id="unitLoad">Показать</button>
+          <button type="button" class="primary small" id="unitPrepare" hidden>Подготовить расходы по артикулам</button>
+        </div>
+        <p class="unit-status" id="unitStatus" role="status" aria-live="polite"></p>
+        <p class="unit-note">Только расходы, привязанные WB к артикулу, его себестоимость и налог. Общие расходы не распределяются. Прибыль по товарам может отличаться от чистой прибыли магазина.</p>
+        <div id="unitResults" hidden>
+          <dl class="card unit-summary">
+            <div><dt>Продажи по артикулам</dt><dd id="unitSales">—</dd></div>
+            <div><dt>Чистая прибыль<br>по прямым расходам</dt><dd id="unitProfit">—</dd></div>
+            <div><dt>Маржинальность</dt><dd id="unitMargin">—</dd></div>
+            <div><dt>Рентабельность</dt><dd id="unitProfitability">—</dd></div>
+          </dl>
+          <div class="card unit-table-card">
+            <div class="unit-table-tools"><h2>Экономика товаров</h2><div class="unit-filters"><input type="search" id="unitSearch" aria-label="Поиск в юнит-экономике" placeholder="Название или артикул"><select id="unitSort" aria-label="Сортировка юнит-экономики"><option value="sales">По продажам</option><option value="net_profit">По чистой прибыли</option><option value="margin">По маржинальности</option><option value="profitability">По рентабельности</option></select></div></div>
+            <div class="unit-table-scroll"><table class="unit-table"><caption class="sr-only">Нажмите на товар, чтобы увидеть все прямые расходы ниже. Общие расходы не распределены.</caption><thead><tr><th scope="col">Товар</th><th scope="col">Выкупили</th><th scope="col">Продажи, ₽</th><th scope="col">Прямые расходы, ₽</th><th scope="col">Чистая прибыль, ₽</th><th scope="col" title="Чистая прибыль по прямым расходам / продажи × 100%">Маржинальность</th><th scope="col" title="Чистая прибыль по прямым расходам / прямые расходы × 100%">Рентабельность</th></tr></thead><tbody id="unitRows"></tbody></table></div>
+            <p class="unit-count" id="unitCount"></p>
+          </div>
+          <div class="unit-lower">
+            <div class="card unit-detail" id="unitDetail">
+              <div class="unit-detail-head"><div><h2 id="unitDetailTitle">Расходы по товару</h2><span class="hint" id="unitDetailArticle"></span></div><div class="segmented-control" id="unitBasis" role="group" aria-label="Суммы расходов по товару"><button type="button" data-unit-basis="period" class="active" aria-pressed="true">За период</button><button type="button" data-unit-basis="unit" aria-pressed="false">На единицу</button></div></div>
+              <p class="unit-note" id="unitUnitNotice"></p><p class="unit-note" id="unitDetailMissing" hidden></p>
+              <dl class="unit-ledger"><div><dt>Продажи</dt><dd id="unitDetailSales">—</dd></div></dl><dl class="unit-ledger" id="unitExpenses"></dl>
+              <div class="unit-detail-total"><span>Чистая прибыль по прямым расходам</span><strong id="unitDetailProfit">—</strong></div>
+            </div>
+            <div class="card unit-detail"><h2>Не включено в товары</h2><p class="unit-note">Эти суммы относятся ко всему магазину. Они показаны для сведения и не уменьшают прибыль конкретного артикула.</p><dl class="unit-ledger" id="unitCommon"></dl></div>
+          </div>
+        </div>
+        <details class="unit-help"><summary>Формулы и состав расходов</summary>
+          <p>Чистая прибыль по прямым расходам = продажи − расходы, которые WB связал с артикулом, − себестоимость − налог. Удержания, возвраты, компенсации и корректировки сохраняют свой знак. Налог считается по текущей ставке магазина; себестоимость берётся из общего справочника.</p>
+          <p>Маржинальность = эта прибыль / продажи × 100%. Рентабельность = эта прибыль / прямые расходы × 100%. При нулевой или отрицательной базе процент не рассчитывается. На единицу: сумма за период / выкупы за вычетом возвратов.</p>
+          <p>Реклама относится к товару только при наличии его артикула в финансовом отчёте WB. Общие рекламные списания из API не распределяются; разница рекламных источников показана отдельно со своим знаком и может быть отрицательной. Промобонусы прибыль не уменьшают.</p>
+          <p>В отличие от обзора, расходы без артикула, операционные расходы и внешнее продвижение не вычитаются из прибыли товара. Для диапазона нужны готовые расходы каждого выбранного месяца; неполный период не показывается как полный.</p>
+        </details>
+      </div>
     </section>
 
     <section class="section app-view" id="secCosts" data-view="costs">
@@ -604,12 +649,13 @@
 <script src="/assets/support.js"></script>
 <script src="/assets/parse.js?v=20261012-orders1"></script>
 <script src="/assets/upload.js?v=20261110-costs1"></script>
-<script src="/assets/daily-analytics.js?v=20261111-daily2"></script>
-<script src="/assets/trend-interaction.js?v=20261023-margin1"></script>
+<script src="/assets/daily-analytics.js?v=20261111-unit1"></script>
+<script src="/assets/unit-economics.js?v=20261111-unit1"></script>
+<script src="/assets/trend-interaction.js?v=20261111-daily3"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
 <script src="/assets/profit-notice.js?v=20261027-sales1"></script>
-<script src="/assets/dashboard.js?v=20261027-sales1"></script>
+<script src="/assets/dashboard.js?v=20261111-daily3"></script>
 <script src="/assets/period-range.js?v=20261027-sales1"></script>
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261022-rename1"></script>

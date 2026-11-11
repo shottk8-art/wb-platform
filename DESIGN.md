@@ -354,24 +354,91 @@ Dropzone — поверхность с обычной сплошной гран�
 
 prefers-reduced-motion: reduce отключает пространственные эффекты, CSS-переходы и анимации диаграмм, сразу выставляет числа. Смена настройки также останавливает активные анимации. Данные остаются видимыми без успешного запуска анимационного слоя; отсутствие View Transition и необязательного localStorage обработано. Этот слой оформления не меняет источник финансов, импорт и права доступа.
 
-## Private daily analytics extension (11 November 2026)
+### Private daily analytics extension (11 November 2026)
 
-The TOPLASH-only `#daily` experiment inherits the Corbel shell, fonts, native-
-backed month select, flat surfaces and both themes. A compact three-stat joined
-panel precedes the daily/cumulative profit line; selecting a day in the graph
-or table shows the complete expense ledger beside it. The line preserves null
-gaps and losses; animation is one bounded 550ms reveal, reduced motion is instant.
-At 390px, the month/action share a labelled row, the primary summary spans two
-columns, supporting stats share the next row, and daily table rows become labelled
-cards. No page overflow. Monthly operating/external promotion costs are explicitly
-excluded from daily results, per the owner's follow-up. Current/prior-month lines
-share one chart; KPI deltas use equal elapsed days for a partial month, and table
-profit deltas use the previous calendar day. Missing prior data has a preparation
-action; current data stays visible. Month-only Media allocations are marked and
-explained in native details; undated financial adjustments remain separate.
-Loading clears figures and charts synchronously; preparing a historical month
-shows durable background status. The menu and finder hide the experiment for
-every other account/shop; authorization is also enforced on the server.
+The exact-user/TOPLASH-only `#daily` surface (`#secDailyAnalytics`) inherits the
+Corbel shell, fonts, semantic light/dark tokens and flat panels. «Углублённая
+аналитика» contains keyboard-accessible «Ежедневная прибыль / Юнит-экономика» tabs;
+only the active private pane reads data. No new visual world, global tokens,
+dependencies, fonts or assets are introduced.
+
+A joined three-stat summary precedes the same WBTrend graph used by Overview
+Dynamics: patterned round bars by default, with a line alternative. Both «По дням»
+and «Накопительно» retain the dashed violet previous-month series. Bars use a zero
+baseline; losses keep their sign, zero retains the minimal highlight and nulls
+remain gaps without a highlight. Choosing a day in the graph or table opens its
+expense ledger. The tooltip shows the selected daily/cumulative profit, matching
+previous-month value and comparison; a zero or unknown comparison base yields «—».
+
+Reuse [trend-interaction.js](assets/trend-interaction.js), the shared bar pattern
+from [dashboard.js](assets/dashboard.js) and existing motion: one travelling round
+highlight/white cap (a point ring in line mode), bounded tooltip, bold active day,
+average guide and compact day count. Pointer, tap, focus, arrows and Home/End inspect
+days; pointer leave, focus exit, touch cancellation and Escape dismiss the tooltip
+and restore the initial selection. Accessible day buttons and the canvas text
+alternative remain. The reveal is bounded (1200 ms with capped stagger); travelling
+transitions and the interruptible 450 ms number loop reuse the overview behavior.
+Reduced motion settles immediately; hiding the document cancels hidden counters.
+Generic `afterDestroy` cleanup keeps the mounted parent in state because Chart.js
+has already nulled `chart.canvas`; it removes the overlay, summary and listener and
+cancels animation before remounting, including on style/mode/theme changes.
+
+Monthly manual operating/external-promotion costs remain excluded from daily
+results. KPI comparisons use equal elapsed days for a partial month or the full
+previous closed month; table deltas use the previous calendar day. Missing prior
+data has an explicit preparation action while current results stay usable.
+Month-only Media allocations remain marked and explained in native details;
+undated/out-of-period financial adjustments stay outside the graph. Loading clears
+figures and charts synchronously; historical preparation retains background status.
+At 390px the labelled native-backed month/action row wraps, the primary stat spans
+both columns, supporting stats share the next row, and daily rows become labelled
+cards. The menu/finder and server retain the exact user/shop gate.
+
+### Private unit economics extension (11 November 2026)
+
+[unit-economics.js](assets/unit-economics.js) and its local
+[stylesheet](assets/unit-economics.css) extend only this private surface. Labelled,
+native-backed start/end month controls and «Показать» select one month or an
+inclusive month range. Every selected month must be ready; incomplete coverage
+shows preparation/loading status instead of a complete-looking result. The new
+`unit` endpoint retains the same exact user/TOPLASH server gate after ordinary shop
+authorization; membership alone does not enable the feature or its reads.
+
+**Direct expenses only.** «Чистая прибыль по прямым расходам» means profit before
+common shop costs: article sales minus WB expenses explicitly linked to that
+article, its catalogue cost and tax at the current shop rate. Never allocate shared
+costs across articles or units. «Не включено в товары» lists common costs separately,
+including unassigned WB amounts, the signed advertising-source difference, manual
+operating costs and external promotion. Advertising is direct only when linked to
+the article in the financial report; shop-level advertising and monthly Media are
+not prorated into products, and promo bonuses do not reduce profit. Signed returns,
+compensations and corrections remain signed; unknown cost/profit stays unknown.
+
+Margin = direct-only profit / sales × 100%; return on costs = direct-only profit /
+direct expenses × 100%. Unknown or nonpositive denominators show «—». Range and
+summary percentages are recomputed from totals, never averaged across products or
+months. Search by name/article and descending sales/profit/margin/return sorting
+preserve every matching product. Selecting a product opens all direct expense rows;
+«За период / На единицу» switches the ledger basis. Per-unit amounts divide by
+buyouts net of returns only when that quantity is positive; otherwise the notice
+explicitly retains period amounts. Common costs remain a separate period ledger.
+
+The four-stat joined panel, table and ledger use existing Corbel typography,
+surfaces, borders and semantic gain/loss colors in both themes. Desktop keeps a
+sticky table header and internal scrolling. At ≤600 px the table becomes labelled
+two-column rows with product identity across both columns; search/sort stack,
+month bounds share a two-column toolbar, and the ledger stacks below the table.
+Long labels wrap while amounts stay readable. Row hover/focus uses surface-2 with
+a 150 ms tint and no lift; reduced motion removes that transition. Cancelling on
+period/context change clears stale results, restores Show/preparation controls and
+resets aria-busy; late responses cannot paint the new selection. An empty product
+result also clears the per-unit notice and missing-cost note.
+
+Local synthetic screenshot evidence and handed-off regression results are scoped
+in the [surface brief](.impeccable/surfaces/app-html.md#private-extension-evidence).
+The finish reviewer's handed-off SHIP verdict is recorded there with its scope;
+these artifacts do not establish live financial correctness or physical-device
+behavior. This documentation pass includes no commit or deployment.
 
 ## Do's and Don'ts
 

@@ -5,6 +5,7 @@ import { processPage } from './process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, readCabinetStatus, monthSettings } from './cabinet.ts';
 import { authorizeDaily } from './daily-access.ts';
 import { readDaily } from './daily.ts';
+import { readUnit } from './unit.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -96,9 +97,10 @@ Deno.serve(async (req) => {
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     await authorizeShop(admin,shopId,auth.user.id,body.action);
-    if(['daily','daily_start'].includes(body.action)) {
+    if(['daily','daily_start','unit'].includes(body.action)) {
       authorizeDaily(auth.user.id,shopId);
       if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));
+      if(body.action==='unit')return json(await readUnit(admin,shopId,body.month,body.month_to || body.month));
       // Reuse the durable, rate-limited queue and its existing refresh snapshot.
       // No credentials or raw rows are exposed to the experimental screen.
       body.action='cabinet_start';

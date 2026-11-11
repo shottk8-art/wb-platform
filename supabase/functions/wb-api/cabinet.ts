@@ -21,7 +21,7 @@ const oldestMonth = () => {
   const now=new Date(Date.now()+3*3600000);
   return new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-11,1)).toISOString().slice(0,10);
 };
-async function readCostPrices(admin:any,shopId:string) {
+export async function readCostPrices(admin:any,shopId:string) {
   const rows:any[]=[];
   for(let offset=0;;offset+=1000) {
     const {data,error}=await admin.from('sku_costs').select('article,cost_price,updated_at').eq('shop_id',shopId).order('article').range(offset,offset+999);
@@ -279,9 +279,9 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const { data: settingsRows, error: settingsError } = catalog ? {data:catalog.settings.filter((s:any)=>s.month===period.dateFrom),error:null} : await admin.from('wb_api_month_settings').select('operational_expenses,external_promotion_expenses').eq('shop_id', shopId).eq('month', period.dateFrom).limit(1);
   if (settingsError) throw new ApiError(500, 'Не удалось прочитать расходы месяца');
   const settings = { operational_expenses: settingsRows?.[0]?.operational_expenses ?? '0.00', external_promotion_expenses: settingsRows?.[0]?.external_promotion_expenses ?? '0.00' };
-  let jobQuery = catalog ? null : admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,cursor_id,finance_model,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom);
+  let jobQuery = catalog?.job ? null : admin.from('wb_api_preview_jobs').select('id,status,summary,row_count,cursor_id,finance_model,error_message,updated_at,date_from,date_to').eq('shop_id', shopId).eq('date_from', period.dateFrom);
   if (completedJobId && jobQuery) jobQuery = jobQuery.eq('id',completedJobId).eq('status','complete');
-  const { data: jobs, error } = catalog ? {data:[catalog.job],error:null} : await jobQuery.order('created_at', { ascending: false }).limit(1);
+  const { data: jobs, error } = catalog?.job ? {data:[catalog.job],error:null} : await jobQuery.order('created_at', { ascending: false }).limit(1);
   if (error) throw new ApiError(500, 'Не удалось прочитать выгрузку');
   const job = jobs?.[0];
   if (!job) return { job: null, shop, settings, products: [], finance: null, sources: {} };
@@ -291,7 +291,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
     const {data: saved, error: savedError} = await admin.from('wb_api_preview_jobs').select('id,date_from,date_to').eq('shop_id',shopId).eq('date_from',period.dateFrom).eq('status','complete').order('created_at',{ascending:false}).limit(1);
     if (savedError) throw new ApiError(500, 'Не удалось прочитать сохранённый месяц');
     if (saved?.[0]) {
-      const snapshot = await readCabinet(admin,shopId,{dateFrom:saved[0].date_from,dateTo:saved[0].date_to},saved[0].id);
+      const snapshot = await readCabinet(admin,shopId,{dateFrom:saved[0].date_from,dateTo:saved[0].date_to},saved[0].id,catalog?{...catalog,job:undefined}:undefined);
       if (snapshot.complete) return {...snapshot, refresh_job:{id:job.id,status:job.status,stage:job.summary?.pilot?.stage || 'finance',row_count:job.row_count,error_message:job.error_message,updated_at:job.updated_at}};
     }
   }
