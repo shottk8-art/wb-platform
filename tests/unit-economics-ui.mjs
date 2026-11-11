@@ -6,7 +6,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function fixture(warm=false){
  const nodes=new Map(),requests=[],timers=[],listeners=[];let clock=Date.parse('2026-11-11T12:00:00Z');
  class Clock extends Date{static now(){return clock;}}
- const el=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:'',dataset:{},attrs:{},events:{},hidden:false,disabled:false,classList:{toggle(){}},getAttribute(k){return this.attrs[k];},setAttribute(k,v){this.attrs[k]=v;},replaceChildren(){this.innerHTML='';this.textContent='';},querySelectorAll:()=>[],addEventListener(event,cb){this.events[event]=cb;}});return nodes.get(id);};
+ const el=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:'',dataset:{},attrs:{},events:{},hidden:false,disabled:false,classList:{toggle(){}},getAttribute(k){return this.attrs[k];},removeAttribute(k){delete this.attrs[k];},setAttribute(k,v){this.attrs[k]=v;},replaceChildren(){this.innerHTML='';this.textContent='';},querySelectorAll:()=>[],addEventListener(event,cb){this.events[event]=cb;}});return nodes.get(id);};
  const window={WBDaily:{allowed:(u,s)=>u==='owner'&&s==='toplash'},WBApi:{connected:warm,subscribe:cb=>listeners.push(cb),cabinet(action,month,refresh,payload){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});requests.push({action,month,payload,resolve,reject});return promise;}}};
  vm.runInNewContext(source,{window,document:{getElementById:el,hidden:false,addEventListener(){}},Intl,Map,Date:Clock,Number,setTimeout:cb=>{timers.push(cb);return timers.length;},clearTimeout(){}});
  return {el,requests,timers,advance:ms=>clock+=ms,invalidate:()=>listeners.forEach(cb=>cb()),set:(active=true,userId='owner',shopId='toplash')=>window.WBUnit.setContext({active,userId,shopId})};
@@ -72,3 +72,27 @@ console.log('Unit preloading PASS: current+previous month, same-scope promise de
  f.el('unitLoad').events.click();u.products=[];f.requests[2].resolve(u);await tick();assert.equal(f.el('unitAdNotice').hidden,true);assert.equal(f.el('unitDetailDrr').textContent,'—');
 }
 console.log('Article ads UI PASS: cash advertising and DRR, expandable columns, explicit uncertain attribution and cleared empty state.');
+
+{
+ const f=fixture();f.el('unitSort').value='sales';f.set();const r=result();
+ r.products=[{...r.products[0],article:'A',name:'Alpha',sales:'100',net_profit:'40',internal_ads:'10',expenses:[{label:'Логистика',amount:'10'},{label:'Хранение',amount:'0'},{label:'Неизвестный расход',amount:null}]},{...r.products[0],article:'B',name:'Beta',sales:'50',net_profit:'-5',internal_ads:'0',expenses:[]}];
+ f.requests[0].resolve(r);await tick();
+ assert.equal(f.el('unitSegmentCountAll').textContent,2);assert.equal(f.el('unitSegmentCountGain').textContent,1);assert.equal(f.el('unitSegmentCountLoss').textContent,1);assert.equal(f.el('unitSegmentCountAds').textContent,1);
+ assert.match(f.el('unitExpenses').innerHTML,/data-zero="true"/);assert.match(f.el('unitExpenses').innerHTML,/Неизвестный расход/);assert.equal(f.el('unitZeroCosts').hidden,false);
+ f.el('unitZeroCosts').events.click();assert.equal(f.el('unitZeroCosts').attrs['aria-expanded'],'true');assert.match(f.el('unitZeroCosts').textContent,/Скрыть/);
+ f.el('unitSegments').events.click({target:{closest:()=>({dataset:{unitSegment:'loss'}})}});
+ assert.match(f.el('unitRows').innerHTML,/Beta/);assert.doesNotMatch(f.el('unitRows').innerHTML,/Alpha/);assert.equal(f.el('unitDetailArticle').textContent,'B','the detail follows the visible filtered selection');assert.equal(f.el('unitSegmentTitle').textContent,'Убыточные товары');assert.equal(f.el('unitZeroCosts').hidden,true);
+ f.el('unitSegments').events.click({target:{closest:()=>({dataset:{unitSegment:'all'}})}});
+ f.el('unitTable').events.click({target:{closest:()=>({dataset:{unitSort:'sales'}})}});
+ assert.ok(f.el('unitRows').innerHTML.indexOf('Beta')<f.el('unitRows').innerHTML.indexOf('Alpha'),'header toggles to ascending');
+ f.el('unitTable').events.click({target:{closest:()=>({dataset:{unitSort:'sales'}})}});
+ assert.ok(f.el('unitRows').innerHTML.indexOf('Alpha')<f.el('unitRows').innerHTML.indexOf('Beta'),'second click toggles back');
+ f.el('unitSearch').value='does-not-exist';f.el('unitSearch').events.input();assert.equal(f.el('unitDetail').hidden,true,'empty search never leaves an unrelated product detail visible');
+ f.el('unitSearch').value='';f.el('unitSearch').events.input();assert.equal(f.el('unitDetail').hidden,false);
+ let focused=0,scrolled=0,back=0;f.el('unitPane').getBoundingClientRect=()=>({width:390});f.el('unitDetail').focus=()=>focused++;f.el('unitDetail').scrollIntoView=()=>scrolled++;
+ f.el('unitRows').events.click({target:{closest:()=>({dataset:{unitArticle:'A'}})}});assert.equal(focused,1);assert.equal(scrolled,1,'narrow selection moves to the expense detail');
+ f.el('unitRows').querySelectorAll=()=>[{dataset:{unitArticle:'A'},setAttribute(){},focus:()=>back++}];f.el('unitBackToTable').events.click();assert.equal(back,1,'return action restores the selected row focus');
+ f.el('unitPane').getBoundingClientRect=()=>({width:1300});f.el('unitRows').events.click({target:{closest:()=>({dataset:{unitArticle:'A'}})}});assert.equal(scrolled,1,'wide side-by-side detail never jumps the page');
+ assert.equal(f.requests.length,1,'filter, sort and detail controls do not call WB or the server');
+}
+console.log('Customers-style workspace PASS: counted segments, matching detail, ascending/descending column sort, explicit zero/unknown expenses, empty search, narrow detail/back focus, no wide jumps and zero interaction requests.');

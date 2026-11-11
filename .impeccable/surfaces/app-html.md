@@ -7,6 +7,8 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+11 November 2026, mandatory owner rule: consult the live Corbel reference before implementing every UI element, animation or structural change. Entry: https://demo.codeandchill.store/corbel/#/customers ; inspect the relevant linked screen and actual interaction, not remembered screenshots. This applies across the WB platform. The current unit redesign borrows Customers' compact statistic row, counted segment filters, search/sort header and sortable financial columns; wide layouts keep the selected SKU's economics next to the list, narrow layouts provide a focused detail/back path. Preserve financial values, null semantics, source caches and the exact private TOPLASH gate.
+
 11 November 2026, private TOPLASH advanced analytics: extend the incumbent shell
 with the same exact-user/shop gated `#daily` view (`#secDailyAnalytics`) and accessible
 «Ежедневная прибыль / Юнит-экономика» tabs. Show actual daily/cumulative profit with
@@ -179,3 +181,21 @@ documentation update includes no commit or deployment.
 ## QUALITY BAR
 
 The pinned Corbel dashboard and profile screenshots are the comparative standard, not an invitation to reinterpret the product. Match the shell proportions, four-cell KPI composition with lower comparison/minichart area, aligned 365px gauge/bar panels, compact profile identity/field grid and small appearance switch. Preserve the same hierarchy in both themes and a usable 390px layout. Quantitative visuals must use actual monthly series, a zero baseline for bars, meaningful precision and explicit missing-data states. Motion follows the measured reference with reduced-motion support; static screenshots alone do not prove full motion fidelity. No demo data or unsupported account tools may be added to the production UI.
+
+## Customers reference adaptation, 11 November 2026
+
+Directly inspected the current Customers list and customer detail in live Corbel,
+and read the page's public stylesheet/animation behavior. Reused its counted
+segments, inline search/sort header, sortable numeric columns and compact metric
+hierarchy under our financial meanings. List/detail transitions are adapted to
+our adjacent ledger rather than replacing the shop route. No invented metrics,
+customer data, billing, remote libraries or financial distribution were added.
+
+Local geometry checked with synthetic responses in `tests/unit-layout-preview.cjs`:
+1600px and 1440px light/dark retain list + 320px ledger in one row; 896px has four
+198px metric tiles in one row; 390px has two columns, readable 16px form controls
+and no page/metric overflow. The 320px unknown-state check preserves dashes and
+explicit explanations; narrow ratio labels were then changed to horizontal rows.
+UI regressions cover segment counts and matching selection, sort directions,
+zero vs unknown expenses, empty results, narrow detail/back focus and no
+interaction requests. These local captures are not physical-device evidence.

@@ -157,6 +157,8 @@ components:
 
 # Design System: Панель продавца
 
+**Обязательный порядок работы, 11.11.2026.** Перед изменением любого UI-объекта, анимации или структуры открывать актуальный [Corbel](https://demo.codeandchill.store/corbel/#/customers), переходить в подходящий раздел и проверять реальные состояния и взаимодействия. Референс может обновляться: старые снимки и описания ниже не заменяют его просмотр. Переносить подходящую структуру и поведение под наши показатели, сохраняя смысл финансов и доступы.
+
 ## Overview
 
 **Creative North Star: "Corbel — рабочая панель продавца"**
@@ -426,16 +428,36 @@ preserve every matching product. Selecting a product opens all direct expense ro
 buyouts net of returns only when that quantity is positive; otherwise the notice
 explicitly retains period amounts. Common costs remain a separate period ledger.
 
-The four separate KPI cards (sales, direct profit, cash advertising, DRR), table and ledger use existing Corbel typography,
-surfaces, borders and semantic gain/loss colors in both themes. Desktop keeps a
-sticky table header and internal scrolling. At ≤600 px the table becomes labelled
-two-column rows with product identity across both columns; search/sort stack,
-month bounds share a two-column toolbar, and the ledger stacks below the table.
-Long labels wrap while amounts stay readable. Row hover/focus uses surface-2 with
-a 150 ms tint and no lift; reduced motion removes that transition. Cancelling on
-period/context change clears stale results, restores Show/preparation controls and
-resets aria-busy; late responses cannot paint the new selection. An empty product
-result also clears the per-unit notice and missing-cost note.
+The unit workspace is capped at 1440px. The four compact metric tiles are capped
+at 1024px, use independent `.unit-stat` classes, and never inherit the legacy KPI
+column spans. They keep four columns above a 740px pane width, two below it.
+The profit tile uses brand/on-brand contrast. Existing fonts and light/dark tokens
+remain shared with Overview.
+
+Customers reference patterns are adapted to the actual article data: counted
+All/Profit/Loss/Advertising/Unknown segment buttons, a filtered count beside the
+table heading, search, native-backed sort, and sortable sales/advertising/profit
+headers with aria-sort and ascending/descending toggles. The top metrics remain
+period totals; these controls belong to the product list. Unknowns sort last.
+Compact mode shows product, sales, advertising, DRR and profit; All metrics reveals
+quantity, expenses, margin and return on costs. At pane width >=1100px, the list
+and a 320px sticky article ledger share a row. Below that, the ledger follows the
+list and a user selection moves focus/scroll to it; Back restores the selected
+row focus, or the table heading if the row is no longer present. Empty searches
+hide the unrelated detail. A row can be selected by pointer or its native button.
+
+The detail starts with identity, period/unit basis, direct profit and ratios,
+then the signed expense ledger. Known zero categories can be explicitly expanded;
+unknown amounts always remain visible. Common shop costs use a separate collapsed
+disclosure. At <=600px pane width the table becomes labelled two-column rows;
+inputs and disclosure controls retain touch targets. At <=360px viewport width,
+ratio labels and values form readable horizontal rows rather than broken words.
+
+Motion adapts Corbel's counted segments and list/detail behavior with bounded
+native animations: 360ms row reordering, 260ms detail change and the existing
+450ms number counter. The sort arrow turns over 450ms. Context/range changes,
+hidden documents and reduced motion cancel animations; no animation triggers a
+server read. The shared private analysis tabs use the compact segmented format.
 
 Local synthetic screenshot evidence and handed-off regression results are scoped
 in the [surface brief](.impeccable/surfaces/app-html.md#private-extension-evidence).
