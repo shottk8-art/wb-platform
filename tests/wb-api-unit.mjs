@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {aggregateUnitFinance,mergeUnitFinance,calculateUnit,unitMonths,readUnit} from '../supabase/functions/wb-api/unit.ts';
 import {aggregateFinanceRows,readCabinet,adsSnapshot} from '../supabase/functions/wb-api/cabinet.ts';
-import {DAILY_SHOP_ID} from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import {cents} from '../supabase/functions/wb-api/core.ts';
 const period={dateFrom:'2026-10-01',dateTo:'2026-10-31'};
 const rows=[

@@ -1,7 +1,7 @@
 import { ApiError, FINANCE_FIELDS, mergeSummaries, pageCursor, sanitizeRows, summarize, validateKey } from './core.ts';
 import { aggregateFinanceRows, mergeFinanceModels } from './cabinet.ts';
 import { aggregateDailyFinance, mergeDailyFinance } from './daily.ts';
-import { DAILY_SHOP_ID } from './daily-access.ts';
+import { privateShopAllowed } from './daily-access.ts';
 import { aggregateUnitFinance, mergeUnitFinance } from './unit.ts';
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
@@ -39,7 +39,7 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     previousModel = data;
   }
   const model = mergeFinanceModels(previousModel, aggregateFinanceRows(freshRows,cursor.toString()));
-  if(shopId===DAILY_SHOP_ID) {
+  if(await privateShopAllowed(admin,shopId)) {
     model.daily=mergeDailyFinance(previousModel?.daily,
       aggregateDailyFinance(freshRows,{dateFrom:job.date_from,dateTo:job.date_to},cursor.toString()));
     model.unit=mergeUnitFinance(previousModel?.unit,aggregateUnitFinance(freshRows,cursor.toString()));

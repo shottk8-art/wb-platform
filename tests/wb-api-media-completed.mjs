@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
 import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
@@ -7,7 +8,7 @@ const unavailable=[{error:'не удалось получить id баннер�
 const initial=()=>({id:'completed-test',shop_id:PILOT_SHOP_ID,date_from:'2026-02-01',date_to:'2026-02-28',status:'loading',failure_count:0,
   summary:{pilot:{stage:'media_stats',finance_complete:true},api_sources:{orders:{status:'downloaded'},internal_ads:{status:'downloaded'},media:{status:'loading',amount:null,selection_version:2,campaign_ids:[421854],campaign_records:[{id:421854,status:7}],stats_offset:0,partial_amount:'0.00'}}}});
 let job,requests,detail;
-const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q},eq(){return q},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject)}};return q}};
+const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){if(table==='shops')return shopOwnerQuery();assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q},eq(){return q},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject)}};return q}};
 const fetcher=async(_token,url)=>{requests.push(url);return url.includes('/stats')?unavailable:detail};
 job=initial();requests=[];detail={advertId:421854,status:7,extended:{expenses:0}};
 await processCabinetSource(admin,structuredClone(job),fetcher);

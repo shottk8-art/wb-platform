@@ -2,7 +2,7 @@ import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateS
 import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
 import { campaignDebits, campaignStats } from './article-ads.ts';
-import { DAILY_SHOP_ID } from './daily-access.ts';
+import { privateShopAllowed } from './daily-access.ts';
 import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
@@ -67,8 +67,8 @@ export function adsSnapshot(response: any, from: string, to: string, collectDail
     ...(collectDaily ? {daily_totals:Object.fromEntries(Object.entries(days).map(([date,types])=>[date,Object.fromEntries(Object.entries(types).map(([type,amount])=>[type,{amount:rub(amount)}]))]))} : {}) };
 }
 
-async function commit(admin: any, job: any, summary: any, status = 'loading') {
-  if(status==='complete' && job.shop_id===DAILY_SHOP_ID && summary.api_sources?.article_ads?.status!=='downloaded'){
+async function commit(admin: any, job: any, summary: any, status = 'loading', privateShop = false) {
+  if(status==='complete' && privateShop && summary.api_sources?.article_ads?.status!=='downloaded'){
     summary.pilot.stage='article_ads_debits';status='loading';
   }
   const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status, failure_count: 0, error_message: null, updated_at: new Date().toISOString() }).eq('id', job.id).eq('shop_id', job.shop_id);
@@ -79,6 +79,7 @@ async function commit(admin: any, job: any, summary: any, status = 'loading') {
 // ten media calls with card fallbacks) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   validateShopId(job.shop_id);
+  const privateShop = await privateShopAllowed(admin,job.shop_id);
   const financialMedia = mediaFinancialSource(job.summary?.deductions, !!job.summary?.pilot?.finance_complete,
     job.date_from, job.date_to, job.updated_at ?? null, job.finance_model);
   // Repair just Media from the already downloaded financial API snapshot.
@@ -88,10 +89,10 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     summary.api_sources ||= {};
     summary.api_sources.media = financialMedia;
     summary.pilot.stage = 'done';
-    await commit(admin, job, summary, 'complete');
+    await commit(admin, job, summary, 'complete', privateShop);
     return { retry_after: 0 };
   }
-  if(String(job.summary?.pilot?.stage).startsWith('article_ads_') && job.shop_id!==DAILY_SHOP_ID)throw new ApiError(403,'Доступ запрещён');
+  if(String(job.summary?.pilot?.stage).startsWith('article_ads_') && !privateShop)throw new ApiError(403,'Доступ запрещён');
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать загрузку');
   if (Number(wait) > 0) return { retry_after: Number(wait) };
@@ -100,7 +101,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
   const { token } = validateKey(String(key));
   const summary = structuredClone(job.summary), pilot = summary.pilot;
   if (pilot.stage === 'article_ads_debits' || pilot.stage === 'article_ads_stats') {
-    if(job.shop_id!==DAILY_SHOP_ID)throw new ApiError(403,'Доступ запрещён');
+    if(!privateShop)throw new ApiError(403,'Доступ запрещён');
     summary.api_sources ||= {};
     if(pilot.stage==='article_ads_debits') {
       const response=await wbFetch(token,`https://advert-api.wildberries.ru/adv/v1/upd?from=${job.date_from}&to=${job.date_to}`);
@@ -120,7 +121,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     }
     const source=summary.api_sources.article_ads;
     if(source.offset===source.campaigns.length){source.status='downloaded';source.fetched_at=new Date().toISOString();pilot.stage='done';}
-    await commit(admin,job,summary,pilot.stage==='done'?'complete':'loading');
+    await commit(admin,job,summary,pilot.stage==='done'?'complete':'loading',privateShop);
   } else if (pilot.stage === 'orders') {
     let response;
     try { response = await wbFetch(token, 'https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
@@ -143,10 +144,10 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     try { response = await wbFetch(token, `https://advert-api.wildberries.ru/adv/v1/upd?from=${job.date_from}&to=${job.date_to}`); }
     catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Для рекламных затрат включите категорию «Продвижение» в персональном ключе'); throw e; }
     summary.api_sources ||= {};
-    summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to, job.shop_id===DAILY_SHOP_ID);
+    summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to, privateShop);
     summary.api_sources.media = financialMedia || { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
     pilot.stage = financialMedia ? 'done' : 'media_list';
-    await commit(admin, job, summary, financialMedia ? 'complete' : 'loading');
+    await commit(admin, job, summary, financialMedia ? 'complete' : 'loading', privateShop);
   } else if (pilot.stage === 'media_list' || pilot.stage === 'media_stats') {
     summary.api_sources ||= {};
     const media = summary.api_sources.media ||= { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
@@ -219,7 +220,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
       }
     }
     // Cursor and totals are committed together: retries cannot duplicate spend.
-    await commit(admin, job, summary, pilot.stage === 'done' ? 'complete' : 'loading');
+    await commit(admin, job, summary, pilot.stage === 'done' ? 'complete' : 'loading', privateShop);
   } else throw new ApiError(400, 'Неизвестный этап загрузки');
   return { retry_after: 63 };
 }

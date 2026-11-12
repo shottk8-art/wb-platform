@@ -1,8 +1,8 @@
-# Private TOPLASH inventory pilot
+# Private account inventory pilot
 
-Only the immutable Karl/TOPLASH identities used by the daily pilot are allowed.
-The normal shop authorization runs first; the server additionally checks the
-exact pilot pair. The DB snapshot and worker functions have no anonymous or
+Only the immutable Karl account is allowed, across its shops (12 November 2026).
+Normal shop authorization runs first; the server additionally checks the exact
+account identity. Background collection and DB helpers require Karl ownership. The DB snapshot and worker functions have no anonymous or
 authenticated grants. The public storefront never loads this feature.
 
 Sources, checked in the live official documentation on 12 November 2026:
@@ -15,7 +15,9 @@ Sources, checked in the live official documentation on 12 November 2026:
   over the last 28 completed Moscow calendar days, including cards with no orders.
 
 WB inventory is updated every 30 minutes. One server cron runs bounded stages,
-one upstream page per tick. It uses a random, single-use, expiring DB capability;
+one upstream page per shop per tick. Dispatch selects at most eight due shops,
+oldest first, with independent single-use leases. New connected owner shops are
+discovered automatically; expired connections are skipped. It uses a random, single-use, expiring DB capability;
 the browser never receives this capability or the WB key. Pagination is complete
 before publication; an incomplete/error snapshot never replaces the last good
 one. Only one compact snapshot and temporary in-progress state exist per shop.
@@ -46,3 +48,12 @@ WB cards can still be restored. Exclusions omit stock from dashboard totals and
 notifications, while source data and financial calculations stay intact. The
 `stocks_tracking` action toggles one nmId atomically under the private gate; it
 never overwrites another exclusion. Check `tests/wb-api-stock-tracking.sql`.
+
+The same account scope covers daily profit, unit economics and article advertising.
+Only the current and preceding month are automatically prepared by the existing
+history reconciler; ready/active jobs are reused and no raw history is retained.
+Existing incomplete aggregates show preparation rather than fabricated figures.
+Other accounts, including team members, cannot enter these experimental routes.
+Ozon stays on the existing file-import path; these API experiments use WB only.
+Regression scope: `tests/private-feature-scope.mjs`, `tests/private-feature-scope.sql`
+(rollback only), `tests/wb-api-stock-routes.mjs`, and both real frontend controllers.

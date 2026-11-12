@@ -506,3 +506,12 @@ Overview/daily and unit advertising use the same debit response. Unknown
 attribution clears advertising/profit/ratios with a product explanation; no
 proportional allocation or silent zero. DRR = direct cash internal advertising /
 the same article's seller-price sales, recomputed from totals across ranges.
+
+### Private experiments across owner shops (12 November 2026)
+
+The account gate for daily/unit analytics and inventory now follows Karl across
+all his shops instead of only TOPLASH. Preserve the existing Corbel layouts and
+motion. The inventory subtitle describes private access without naming a fixed
+shop. Shop switching clears results and ignores late responses; monitoring
+settings, exclusions, snapshots and financial aggregates remain shop-specific.
+No experimental navigation or server endpoint is opened to other accounts.

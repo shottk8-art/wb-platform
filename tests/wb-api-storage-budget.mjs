@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
@@ -19,7 +20,7 @@ const admin = {
     }
     throw Error(`Unexpected RPC ${name}`);
   },
-  from(table) {
+  from(table){if(table==='shops')return shopOwnerQuery();
     let values;
     const q={select(){return q;},eq(){return q;},lte(){return q;},order(){return q;},range(){return q;},upsert(v){values=v;return q;},update(v){values=v;return q;},
       then(resolve,reject){

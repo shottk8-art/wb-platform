@@ -57,3 +57,12 @@ console.log('Stock UI PASS: exact owner/shop and bound API context, late read/sa
  const f=fixture();f.set();f.requests[0].resolve(result());await tick();const pending=f.el('stockTrackToggle').events.click();f.set(owner,'another-shop');f.requests[1].resolve(result());await pending;assert.equal(f.el('stockActionStatus').textContent,'');assert.equal(f.el('stockResults').hidden,true,'late exclusion cannot repaint a different shop');
 }
 console.log('Tracking UI PASS: exclusion, filtered recovery, immediate alert/total updates, reversible restore, double-click guard and late-action isolation.');
+
+{
+ const f=fixture(),second='63175e7a-5b26-425e-893f-68889b32f02f';
+ f.set();f.api.shopId=second;f.set(owner,second);
+ assert.equal(f.requests.length,2,'same private account can load a second shop');
+ f.requests[0].resolve(result());await tick();assert.equal(f.el('stockTotal').textContent,'—','old shop response cannot paint the new shop');
+ f.requests[1].resolve(result());await tick();assert.equal(f.el('stockResults').hidden,false);
+ f.set('member',second);assert.equal(f.el('stockBell').hidden,true);assert.equal(f.el('stockRows').innerHTML,'');
+}

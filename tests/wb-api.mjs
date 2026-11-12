@@ -7,7 +7,8 @@ import { PILOT_USER_ID, PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings } from '../supabase/functions/wb-api/cabinet.ts';
 import { authorizeShop } from '../supabase/functions/wb-api/access.ts';
-import { authorizeDaily,DAILY_SHOP_ID,DAILY_USER_ID } from '../supabase/functions/wb-api/daily-access.ts';
+import { authorizeDaily,DAILY_USER_ID } from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import { readDaily } from '../supabase/functions/wb-api/daily.ts';
 
 let assertions = 0;
@@ -233,7 +234,7 @@ assert.ok(!JSON.stringify(ownConnect.body).includes(storedKey)); assertions++;
 const beforeDaily=outbound.length;
 assert.equal((await invoke({action:'daily',month:'2026-09'})).status,403);assertions++;
 authenticatedId=DAILY_USER_ID;
-assert.equal((await invoke({action:'daily_start',month:'2026-09'})).status,403);assertions++;
+assert.equal((await invoke({action:'daily_start',month:'2026-09'})).status,200,'Karl can prepare another authorized shop');assertions++;
 job.shop_id=DAILY_SHOP_ID;
 authenticatedId='00000000-0000-4000-8000-000000000099';
 assert.equal((await invoke({action:'daily',month:'2026-09'})).status,403);assertions++;

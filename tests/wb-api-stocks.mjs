@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {stockPage,mergeStockRows,demandPeriod,demandPage,inventoryView,stockSettings,stockTracking,stocksAction,processStocks} from '../supabase/functions/wb-api/stocks.ts';
-import {DAILY_USER_ID,DAILY_SHOP_ID} from '../supabase/functions/wb-api/daily-access.ts';
+import {DAILY_USER_ID} from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 const period=demandPeriod(new Date('2026-11-12T00:00:00Z'));
 assert.deepEqual(period,{from:'2026-10-15',to:'2026-11-11',days:28});
 assert.deepEqual(demandPeriod(new Date('2026-11-11T22:00:00Z')),period,'completed Moscow days exclude today');
@@ -30,7 +31,7 @@ const response={data:{products:[{product:{nmId:1,vendorCode:'A',title:'Това�
 assert.equal(demandPage(response,period)[0].orders,28);
 assert.throws(()=>demandPage(response,{...period,to:'2026-11-10'}),/период/);
 let reads=0;const never={from(){reads++;throw Error('unauthorized read');},rpc(){reads++;throw Error('unauthorized write');}};
-for(const [u,s] of [[DAILY_USER_ID,'00000000-0000-0000-0000-000000000001'],['other',DAILY_SHOP_ID]])for(const action of ['stocks','stocks_refresh','stocks_settings','stocks_tracking'])await assert.rejects(()=>stocksAction(never,u,s,{action}),e=>e.status===403);
+for(const [u,s] of [[DAILY_USER_ID,'invalid-shop'],['other',DAILY_SHOP_ID]])for(const action of ['stocks','stocks_refresh','stocks_settings','stocks_tracking'])await assert.rejects(()=>stocksAction(never,u,s,{action}),e=>e.status===403);
 assert.equal(reads,0,'private gate precedes every data read and queue write');
 const excluding=inventoryView(snapshot,{alert_days:14,target_days:30,excluded_products:{'1':{article:'A',name:'Товар'},'999':{article:'Retired',name:'Выведенная карточка'}}});
 assert.equal(excluding.totals.quantity,21);assert.equal(excluding.totals.products,3);assert.equal(excluding.totals.excluded,2);assert.equal(excluding.totals.low,0);
@@ -42,7 +43,7 @@ assert.deepEqual(stockTracking({nm_id:'1',excluded:true}),{p_nm_id:'1',p_exclude
 for(const body of [{nm_id:1,excluded:true},{nm_id:'0',excluded:true},{nm_id:'1',excluded:'true'},{nm_id:'1;delete',excluded:true}])assert.throws(()=>stockTracking(body));
 const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({acc:3,exp:Math.floor(Date.now()/1000)+86400})).toString('base64url')+'.'+ 'x'.repeat(64);
 let state={shop_id:DAILY_SHOP_ID,stage:'wb',pending:{},page_offset:0,lease_token:'lease',alert_days:14,target_days:30,snapshot:{old:true}};
-const writes=[];const admin={rpc:async name=>({data:token,error:null}),from(table){return {update(patch){const filters={};const q={eq(k,v){filters[k]=v;return q;},then(a,b){assert.equal(filters.shop_id,DAILY_SHOP_ID);assert.equal(filters.lease_token,'lease');writes.push(patch);state={...state,...patch};return Promise.resolve({error:null}).then(a,b);}};return q;}};}};
+const writes=[];const admin={rpc:async name=>({data:token,error:null}),from(table){if(table==='shops'){const q={select(){return q},eq(){return q},maybeSingle:async()=>({data:{owner_id:DAILY_USER_ID},error:null})};return q;}return {update(patch){const filters={};const q={eq(k,v){filters[k]=v;return q;},then(a,b){assert.equal(filters.shop_id,DAILY_SHOP_ID);assert.equal(filters.lease_token,'lease');writes.push(patch);state={...state,...patch};return Promise.resolve({error:null}).then(a,b);}};return q;}};}};
 const endpoints=[];const fetcher=async(t,url,body)=>{endpoints.push(url);assert.equal(t,token);return url.includes('wb-warehouses')?{data:{items:[raw()]}}:url.includes('seller-warehouses')?null:{data:{products:[{...response.data.products[0],statistic:{selected:{period:body.selectedPeriod,orderCount:28}}}]}};};
 await processStocks(admin,state,fetcher);assert.deepEqual(state.snapshot,{old:true});assert.equal(state.stage,'seller');
 await processStocks(admin,state,fetcher);assert.deepEqual(state.snapshot,{old:true});assert.equal(state.stage,'demand');

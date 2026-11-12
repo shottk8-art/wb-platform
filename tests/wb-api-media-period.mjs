@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { processCabinetSource } from '../supabase/functions/wb-api/cabinet.ts';
 import { PILOT_SHOP_ID } from './fixtures/wb-api-identities.mjs';
@@ -12,7 +13,7 @@ for(const row of [{advertId:1,status:7,endTime:'bad'}, {advertId:1,status:7,endT
 assert.equal(mediaCampaignSelection([{advertId:1,createTime:'2026-09-30T21:00:00Z'}],from,to)[0].excluded_reason,'created_after_month','Moscow month boundary');
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 let job={id:'period-filter',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,summary:{pilot:{stage:'media_list'},api_sources:{}}};
-const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(){let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject);}};return q;}};
+const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){if(table==='shops')return shopOwnerQuery();let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject);}};return q;}};
 await processCabinetSource(admin,structuredClone(job),async()=>[
   {advertId:11,status:7,createTime:'2026-08-01T00:00:00+03:00',endTime:'2026-08-31T23:59:59+03:00'},
   {advertId:22,status:6,createTime:'2026-10-01T00:00:00+03:00'},

@@ -1,8 +1,8 @@
 (function () {
-  const SHOP='853b81a0-e0e2-4195-bc80-1cdc362af946',OWNER='bbb002c4-cd7a-490d-b9c0-72aed5424261';
+  const OWNER='bbb002c4-cd7a-490d-b9c0-72aed5424261';
   const el=id=>document.getElementById(id);
   if(!el('secDailyAnalytics'))return;
-  const allowed=(userId,shopId)=>userId===OWNER && shopId===SHOP;
+  const allowed=(userId,shopId)=>userId===OWNER && typeof shopId==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shopId);
   const money=value=>value==null?'—':Number(value).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
   const dateLabel=date=>date==='unallocated'?'Без даты операции':new Date(date+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'});
   const safe=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { mediaCampaignPage, mediaIntervalAmount, mediaSource } from '../supabase/functions/wb-api/media.ts';
 import { processCabinetSource, readCabinet, monthSettings, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
@@ -23,7 +24,7 @@ assert.throws(()=>monthSettings({operational_expenses:0,external_promotion_expen
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 let job={id:'media-test',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,summary:{pilot:{stage:'media_list'},api_sources:{media:{status:'loading',amount:null,campaign_ids:[],list_offset:0}}}};
 let fail=false, requests=[];
-const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){if(!fail)Object.assign(job,values);return Promise.resolve({error:fail?{}:null}).then(resolve,reject);}};return q;}};
+const admin={rpc:async name=>({data:name==='wb_api_read_key'?token:0}),from(table){if(table==='shops')return shopOwnerQuery();assert.equal(table,'wb_api_preview_jobs');let values;const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){if(!fail)Object.assign(job,values);return Promise.resolve({error:fail?{}:null}).then(resolve,reject);}};return q;}};
 const fetcher=async(_key,url,body)=>{requests.push({url,body});return url.includes('/adverts?')?[{advertId:11},{advertId:22}]:url.includes('/advert?id=')?{advertId:Number(new URL(url).searchParams.get('id')),extended:{expenses:'100.00'}}:block([body[0].id===11?'10.10':'20.20']);};
 await processCabinetSource(admin,structuredClone(job),fetcher);
 assert.equal(job.summary.pilot.stage,'media_stats');assert.equal(job.summary.api_sources.media.amount,null);

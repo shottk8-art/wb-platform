@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { processPage } from '../supabase/functions/wb-api/process.ts';
 import { ApiError, mergeSummaries, summarize, validatePeriod } from '../supabase/functions/wb-api/core.ts';
@@ -21,7 +22,7 @@ const admin = {
     if(name==='wb_api_finance_read_model') return {data:aggregateFinanceRows([...saved.values()].filter(r=>Number(r.rrdId)<=Number(job.cursor_id)),String(job.cursor_id))};
     return { data: name === 'wb_api_read_key' ? key : wait };
   },
-  from(table) {
+  from(table){if(table==='shops')return shopOwnerQuery();
     let values, range, ceiling = Infinity;
     const q = {
       select() { return q; }, eq() { return q; }, order() { return q; },

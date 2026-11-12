@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import { adsSnapshot, cabinetPeriod, orderPage, processCabinetSource, readCabinet, monthSettings, readCabinetTrend, aggregateFinanceRows } from '../supabase/functions/wb-api/cabinet.ts';
 import { PILOT_SHOP_ID, PILOT_USER_ID } from './fixtures/wb-api-identities.mjs';
@@ -29,7 +30,7 @@ assert.throws(()=>adsSnapshot([{updTime:from,updSum:'x',paymentType:'Балан�
 const token = `e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 const job = {id:'test-job',shop_id:PILOT_SHOP_ID,status:'loading',date_from:from,date_to:to,summary:{pilot:{stage:'orders'},api_sources:{}}};
 let wait=0,calls=0,fail=false;
-const admin = {rpc:async name=>({data:name==='wb_api_read_key'?token:wait}),from(table){
+const admin = {rpc:async name=>({data:name==='wb_api_read_key'?token:wait}),from(table){if(table==='shops')return shopOwnerQuery();
   let values;
   const q={update(v){values=v;return q;},eq(){return q;},then(resolve,reject){ if(fail)return Promise.resolve({error:{}}).then(resolve,reject);Object.assign(job,values);return Promise.resolve({error:null}).then(resolve,reject); }};
   assert.equal(table,'wb_api_preview_jobs');return q;

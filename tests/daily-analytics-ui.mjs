@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {DAILY_SHOP_ID,DAILY_USER_ID} from '../supabase/functions/wb-api/daily-access.ts';
+import {DAILY_USER_ID} from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 const source=readFileSync(new URL('../assets/daily-analytics.js',import.meta.url),'utf8');
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
@@ -107,3 +108,11 @@ assert.match(html,/id="dailyAnalyticsLink" hidden/);
 assert.match(html,/view === 'daily' && !window.WBDaily\?\.allowed/,'a manually entered fragment cannot open a private screen');
 assert.match(readFileSync(new URL('../assets/reference.js',import.meta.url),'utf8'),/!link.hidden &&/,'hidden navigation is also excluded from the finder');
 console.log('Daily UI: PASS (exact user/shop, zero inactive requests, stale responses, reset, read retry, background loading, double-click guard, hidden finder).');
+
+{
+ const f=fixture(),second='63175e7a-5b26-425e-893f-68889b32f02f';
+ f.context();f.context(true,DAILY_USER_ID,second);assert.equal(f.requests.length,2);
+ f.requests[0].resolve(ready());await tick();assert.equal(f.el('dailyProfit').textContent,'—');
+ f.requests[1].resolve(ready());await tick();assert.equal(f.el('dailyResults').hidden,false);
+ f.context(true,'member',second);assert.equal(f.el('dailyAnalyticsLink').hidden,true);
+}

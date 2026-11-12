@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {campaignDebits,campaignStats,articleAdvertising} from '../supabase/functions/wb-api/article-ads.ts';
 import {aggregateUnitFinance,calculateUnit,attachArticleAds} from '../supabase/functions/wb-api/unit.ts';
 import {aggregateFinanceRows,readCabinet,processCabinetSource,adsSnapshot} from '../supabase/functions/wb-api/cabinet.ts';
-import {DAILY_SHOP_ID} from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import {cents} from '../supabase/functions/wb-api/core.ts';
 const from='2026-10-01',to='2026-10-31';
 const debit=(advertId,amount,type='Баланс',date=from)=>({advertId,updSum:amount,paymentType:type,updTime:date+'T10:00:00+03:00'});
@@ -43,7 +43,7 @@ assert.equal(r.products.reduce((n,p)=>n+cents(p.net_profit),0n)-r.common_expense
 // replay-safe retries, privacy gate, no partial source committing after a failure.
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 let wait=0,reads=0,fail=false;const saved={id:'job',shop_id:DAILY_SHOP_ID,date_from:from,date_to:to,summary:{pilot:{stage:'article_ads_debits'},api_sources:{}}};
-const admin={rpc:async name=>{if(name==='wb_api_read_key')reads++;return {data:name==='wb_api_read_key'?token:wait};},from(){let update;const q={update(v){update=v;return q},eq(){return q},then(a,b){if(fail)return Promise.resolve({error:{}}).then(a,b);Object.assign(saved,update);return Promise.resolve({error:null}).then(a,b)}};return q;}};
+const admin={rpc:async name=>{if(name==='wb_api_read_key')reads++;return {data:name==='wb_api_read_key'?token:wait};},from(table){if(table==='shops'){let id;const q={select(){return q},eq(k,v){id=v;return q},maybeSingle:async()=>({data:{owner_id:id===DAILY_SHOP_ID?'bbb002c4-cd7a-490d-b9c0-72aed5424261':'other'},error:null})};return q;}let update;const q={update(v){update=v;return q},eq(){return q},then(a,b){if(fail)return Promise.resolve({error:{}}).then(a,b);Object.assign(saved,update);return Promise.resolve({error:null}).then(a,b)}};return q;}};
 let calls=0;const fetcher=async(_token,url)=>{calls++;return url.includes('/upd?')?[debit(1,100)]:[stat(1,[nm(1,100)])]};
 wait=30;await processCabinetSource(admin,structuredClone(saved),fetcher);assert.equal(reads,0);assert.equal(calls,0);
 wait=0;await processCabinetSource(admin,structuredClone(saved),fetcher);assert.equal(saved.summary.pilot.stage,'article_ads_stats');assert.equal(saved.summary.api_sources.internal_ads.period_totals.Баланс.amount,'100.00','overview and unit share the exact debit read');

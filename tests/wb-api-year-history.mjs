@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {cabinetPeriod,readCabinet,aggregateFinanceRows} from '../supabase/functions/wb-api/cabinet.ts';
@@ -20,7 +21,7 @@ const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString(
 const jobs=[],admin={rpc:async(name,args)=>{
  if(name==='wb_api_commit_finance_page'){jobs.push({summary:args.p_summary,finance_model:args.p_model});return {data:true};}
  return {data:name==='wb_api_read_key'?token:0};
-},from(){const q={update(v){jobs.push(v);return q;},eq(){return q;},then(resolve){return Promise.resolve({error:null}).then(resolve);}};return q;}};
+},from(table){if(table==='shops')return shopOwnerQuery();const q={update(v){jobs.push(v);return q;},eq(){return q;},then(resolve){return Promise.resolve({error:null}).then(resolve);}};return q;}};
 let request;
 await processPage(admin,{id:'current',shop_id:PILOT_SHOP_ID,date_from:'2026-10-01',date_to:'2026-10-10',cursor_id:'0',summary:{pilot:{stage:'finance',finance_period:'daily'}}},PILOT_SHOP_ID,async(_key,_url,body)=>{request=body;return [];});
 assert.equal(request.period,'daily');assert.equal(request.dateTo,'2026-10-10T23:59:59');

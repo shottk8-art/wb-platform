@@ -1,5 +1,5 @@
 import { ApiError, validateKey } from './core.ts';
-import { authorizeDaily, DAILY_SHOP_ID } from './daily-access.ts';
+import { authorizeDaily, privateShopAllowed } from './daily-access.ts';
 
 export const STOCK_INTERVAL = 30 * 60 * 1000;
 const PAGE = 10000, MAX_ROWS = 250000;
@@ -136,7 +136,7 @@ export async function stockFetch(token:string,url:string,body:any) {
   try{return await r.json();}catch{throw new ApiError(502,'WB вернул нечитаемый отчёт об остатках');}
 }
 export async function processStocks(admin:any,state:any,fetcher=stockFetch) {
-  if(state.shop_id!==DAILY_SHOP_ID)throw new ApiError(403,'Доступ запрещён');
+  if(!await privateShopAllowed(admin,state.shop_id))throw new ApiError(403,'Доступ запрещён');
   const save=async(patch:any)=>{
     const {error}=await admin.from('wb_stock_snapshots').update({...patch,updated_at:new Date().toISOString()}).eq('shop_id',state.shop_id).eq('lease_token',state.lease_token);
     if(error)throw new ApiError(500,'Не удалось сохранить обновление остатков');

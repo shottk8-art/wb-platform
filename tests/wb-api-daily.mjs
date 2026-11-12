@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {aggregateFinanceRows,mergeFinanceModels,adsSnapshot,readCabinet} from '../supabase/functions/wb-api/cabinet.ts';
 import {aggregateDailyFinance,mergeDailyFinance,calculateDaily,allocateAmount,operationDay,readDaily,compareDaily} from '../supabase/functions/wb-api/daily.ts';
-import {DAILY_SHOP_ID,DAILY_USER_ID,dailyAllowed,authorizeDaily} from '../supabase/functions/wb-api/daily-access.ts';
+import {DAILY_USER_ID,dailyAllowed,authorizeDaily} from '../supabase/functions/wb-api/daily-access.ts';
+const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import {cents} from '../supabase/functions/wb-api/core.ts';
 const period={dateFrom:'2026-10-01',dateTo:'2026-10-31'};
 const rows=[
@@ -34,7 +35,8 @@ assert.equal(operationDay('2026-10-01T00:00:00'),'2026-10-01');
 assert.equal(operationDay('2026-02-30'),null);
 assert.equal(operationDay(null),null);
 assert.equal(dailyAllowed(DAILY_USER_ID,DAILY_SHOP_ID),true);
-for(const [user,shop] of [['member',DAILY_SHOP_ID],[DAILY_USER_ID,'11111111-1111-4111-8111-111111111111'],['',DAILY_SHOP_ID]]) {
+assert.equal(dailyAllowed(DAILY_USER_ID,'11111111-1111-4111-8111-111111111111'),true,'private features follow the account across valid shops');
+for(const [user,shop] of [['member',DAILY_SHOP_ID],[DAILY_USER_ID,'invalid-shop'],['',DAILY_SHOP_ID]]) {
   assert.equal(dailyAllowed(user,shop),false);assert.throws(()=>authorizeDaily(user,shop),e=>e.status===403);
 }
 const f=await fixture(),result=calculateDaily(f.cabinet,f.daily,ads.daily_totals);

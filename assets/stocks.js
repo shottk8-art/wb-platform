@@ -2,7 +2,7 @@
   'use strict';
   const el=id=>document.getElementById(id);
   if(!el('secStocks'))return;
-  const allowed=(user,shop)=>user==='bbb002c4-cd7a-490d-b9c0-72aed5424261'&&shop==='853b81a0-e0e2-4195-bc80-1cdc362af946';
+  const allowed=(user,shop)=>user==='bbb002c4-cd7a-490d-b9c0-72aed5424261'&&typeof shop==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shop);
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=(v,d=0)=>v==null?'—':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:d});
   const dailyCount=v=>v!=null&&v>0&&v<0.1?'< 0,1':number(v,1);

@@ -1,3 +1,4 @@
+import {shopOwnerQuery} from './helpers/private-owner.mjs';
 import assert from 'node:assert/strict';
 import {processPage} from '../supabase/functions/wb-api/process.ts';
 const shop='shop-a';
@@ -17,7 +18,7 @@ const admin={
   if(name==='wb_api_commit_finance_page') {Object.assign(job,{cursor_id:args.p_cursor,row_count:args.p_model.row_count,finance_model:args.p_model,summary:args.p_summary});return {data:true};}
   throw Error(`Unexpected RPC ${name}`);
  },
- from(table){return {upsert:async rows=>{assert.equal(table,'sku_costs');for(const row of rows)if(!catalogue.some(c=>c.shop_id===row.shop_id && c.article===row.article))catalogue.push(row);return {error:null};}};}
+ from(table){if(table==='shops')return shopOwnerQuery();return {upsert:async rows=>{assert.equal(table,'sku_costs');for(const row of rows)if(!catalogue.some(c=>c.shop_id===row.shop_id && c.article===row.article))catalogue.push(row);return {error:null};}};}
 };
 const rows=['top-114',' TOP-114 ','new-1','NEW-1'].map((article,i)=>({rrdId:i+1,vendorCode:article,title:'Товар',sellerOperName:'Продажа',quantity:1,retailAmount:100,forPay:80}));
 await processPage(admin,structuredClone(job),shop,async()=>rows);
