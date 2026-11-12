@@ -6,6 +6,7 @@ import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, rea
 import { authorizeDaily } from './daily-access.ts';
 import { readDaily } from './daily.ts';
 import { readUnit } from './unit.ts';
+import { stocksAction, processStocks } from './stocks.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -50,6 +51,18 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "Метод не поддерживается" }, 405);
   try {
+    if(req.headers.has('X-WB-Stock-Lease')) {
+      if(origin)throw new ApiError(403,'Доступ запрещён');
+      const lease=validateShopId(req.headers.get('X-WB-Stock-Lease')),text=await req.text();
+      if(text.length>1000)throw new ApiError(400,'Некорректный запрос');
+      let body;try{body=JSON.parse(text);}catch{throw new ApiError(400,'Некорректный запрос');}
+      const shopId=validateShopId(body?.shop_id);
+      const admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+      const {data:states,error}=await admin.rpc('wb_stock_accept_lease',{p_shop_id:shopId,p_lease:lease});
+      if(error||!states?.[0])throw new ApiError(403,'Доступ запрещён');
+      try{return json(await processStocks(admin,states[0]));}
+      finally{await admin.from('wb_stock_snapshots').update({lease_token:null,lease_until:null,lease_used_at:null}).eq('shop_id',shopId).eq('lease_token',lease);}
+    }
     // One-use, expiring capability issued only by private DB scheduler. Never
     // expose it to a browser or accept a public/anon key as worker authorization.
     if (req.headers.has('X-WB-Worker-Lease')) {
@@ -97,6 +110,7 @@ Deno.serve(async (req) => {
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     await authorizeShop(admin,shopId,auth.user.id,body.action);
+    if(['stocks','stocks_refresh','stocks_settings'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
     if(['daily','daily_start','unit'].includes(body.action)) {
       authorizeDaily(auth.user.id,shopId);
       if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));
