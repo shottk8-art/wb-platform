@@ -47,7 +47,11 @@
 .stock-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
 .stock-badge[data-stock-state="low"]{background:var(--warm-bg);color:var(--warm)}
 .stock-badge[data-stock-state="out"]{background:var(--bad-bg);color:var(--bad)}
-.stock-badge[data-stock-state="unknown"]{background:var(--surface-2);color:var(--ink-mute)}
+.stock-badge[data-stock-state="unknown"],.stock-badge[data-stock-state="excluded"]{background:var(--surface-2);color:var(--ink-mute)}
+.stock-action-status{font-size:12px;line-height:1.7;color:var(--ink-soft);margin:0 0 16px;max-width:85ch}
+.stock-action-status:empty{display:none}
+.stock-tracking{border-top:1px solid var(--line);margin-top:18px;padding-top:14px}
+.stock-tracking .stock-caption{margin-bottom:4px}
 .stock-count{padding:12px 20px;margin:0;font-size:12px;color:var(--ink-mute)}
 .stock-empty{padding:30px!important;text-align:center!important;color:var(--ink-mute);cursor:default}
 .stock-detail{container:stock-detail / inline-size;padding:18px;min-width:0;width:100%;max-width:720px;scroll-margin-top:20px}

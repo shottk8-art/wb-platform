@@ -59,6 +59,10 @@ export function stockSettings(body: any) {
   if (!Number.isInteger(alert) || alert<1 || alert>180 || !Number.isInteger(target) || target<alert || target>365) throw new ApiError(400, 'Порог: 1–180 дней. Целевой запас: от порога до 365 дней');
   return {alert_days:alert,target_days:target};
 }
+export function stockTracking(body: any) {
+  if(typeof body.nm_id!=='string'||!/^[1-9]\d{0,19}$/.test(body.nm_id)||typeof body.excluded!=='boolean')throw new ApiError(400,'Выберите товар и действие отслеживания');
+  return {p_nm_id:body.nm_id,p_excluded:body.excluded};
+}
 export function inventoryView(snapshot: any, settings: any) {
   if (!snapshot) return null;
   const products = new Map<string,any>(), warehouses = new Map<string,any>();
@@ -75,24 +79,32 @@ export function inventoryView(snapshot: any, settings: any) {
     location.quantity=sum(location.quantity,row.quantity);location.to_client=sum(location.to_client,row.to_client);location.from_client=sum(location.from_client,row.from_client);
     location.sizes.push({id:row.size_id,quantity:row.quantity});
   }
+  const exclusions=settings.excluded_products||{};
+  for(const [nm,meta] of Object.entries(exclusions) as [string,any][])if(!products.has(nm))products.set(nm,{nm_id:nm,article:meta.article||nm,name:meta.name||`Артикул WB ${nm}`,orders:null,quantity:null,wb:null,seller:null,to_client:null,from_client:null,warehouses:[],missing:true});
   const rows=[...products.values()].map(p=>{
     const daily=p.orders==null?null:p.orders/snapshot.demand.days;
     const days=daily>0?p.quantity/daily:null;
-    return {...p,daily_orders:daily,days_left:days,status:p.quantity===0?'out':days!=null&&days<=settings.alert_days?'low':days==null?'unknown':'ok',
+    return {...p,excluded:Object.hasOwn(exclusions,p.nm_id),daily_orders:daily,days_left:days,status:p.quantity===0?'out':days!=null&&days<=settings.alert_days?'low':days==null?'unknown':'ok',
       recommended:daily>0?Math.max(0,Math.ceil(settings.target_days*daily-p.quantity)):null};
   });
+  const tracked=rows.filter(p=>!p.excluded),trackedWarehouses=new Set(tracked.flatMap(p=>p.warehouses.map((w:any)=>w.id)));
+  for(const w of warehouses.values())w.quantity=0;
+  for(const p of tracked)for(const location of p.warehouses){const w=warehouses.get(location.id);w.quantity=sum(w.quantity,location.quantity);}
   return {products:rows,warehouses:[...warehouses.values()].sort((a,b)=>a.name.localeCompare(b.name,'ru')),demand:snapshot.demand,
     wb_checked_at:snapshot.wb_checked_at,seller_checked_at:snapshot.seller_checked_at,
-    totals:{quantity:rows.reduce((n,p)=>sum(n,p.quantity),0),products:rows.length,warehouses:warehouses.size,
-      low:rows.filter(p=>p.status==='low').length,out:rows.filter(p=>p.status==='out').length,unknown:rows.filter(p=>p.status==='unknown').length}};
+    totals:{quantity:tracked.reduce((n,p)=>sum(n,p.quantity),0),products:tracked.length,all_products:rows.length,excluded:rows.length-tracked.length,warehouses:trackedWarehouses.size,
+      low:tracked.filter(p=>p.status==='low').length,out:tracked.filter(p=>p.status==='out').length,unknown:tracked.filter(p=>p.status==='unknown').length}};
 }
 export async function readStocks(admin:any,shopId:string) {
-  const {data:s,error}=await admin.from('wb_stock_snapshots').select(COLUMNS).eq('shop_id',shopId).maybeSingle();
-  if(error)throw new ApiError(500,'Не удалось прочитать остатки');
+  const [{data:s,error},{data:tracking,error:trackingError}]=await Promise.all([
+    admin.from('wb_stock_snapshots').select(COLUMNS).eq('shop_id',shopId).maybeSingle(),
+    admin.from('wb_stock_tracking').select('excluded_products').eq('shop_id',shopId).maybeSingle(),
+  ]);
+  if(error||trackingError)throw new ApiError(500,'Не удалось прочитать остатки и правила отслеживания');
   if(!s)return {status:'not_connected',settings:{alert_days:14,target_days:30},inventory:null};
   return {status:s.stage!=='idle'?'loading':s.error_message?'error':'ready',fetched_at:s.fetched_at,next_update_at:s.next_run_at,
     stale:!s.fetched_at || Date.now()-Date.parse(s.fetched_at)>STOCK_INTERVAL+10*60000,error:s.error_message,
-    settings:{alert_days:s.alert_days,target_days:s.target_days},inventory:inventoryView(s.snapshot,s)};
+    settings:{alert_days:s.alert_days,target_days:s.target_days},inventory:inventoryView(s.snapshot,{...s,excluded_products:tracking?.excluded_products||{}})};
 }
 export async function stocksAction(admin:any,userId:string,shopId:string,body:any) {
   authorizeDaily(userId,shopId);
@@ -103,6 +115,9 @@ export async function stocksAction(admin:any,userId:string,shopId:string,body:an
     const settings=stockSettings(body);
     const {error}=await admin.from('wb_stock_snapshots').update(settings).eq('shop_id',shopId);
     if(error)throw new ApiError(500,'Не удалось сохранить порог пополнения');
+  } else if(body.action==='stocks_tracking') {
+    const {error}=await admin.rpc('wb_stock_set_tracking',{p_shop_id:shopId,...stockTracking(body)});
+    if(error)throw new ApiError(500,'Не удалось изменить отслеживание товара. Повторите попытку');
   }
   return readStocks(admin,shopId);
 }

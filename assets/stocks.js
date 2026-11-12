@@ -8,18 +8,18 @@
   const dailyCount=v=>v!=null&&v>0&&v<0.1?'< 0,1':number(v,1);
   const date=v=>v?new Date(v).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):'—';
   const statusNames={ok:'В наличии',low:'Мало запаса',out:'Нет в наличии',unknown:'Нет прогноза'};
-  const attention=p=>p.status==='low'||p.status==='out'&&p.orders>0;
-  let context=null,active=false,epoch=0,busy=false,saving=false,data=null,selected=null,segment='all',timer=null,subscribed=false,focusPending=false,detailAnimation=null;
+  const attention=p=>!p.excluded&&(p.status==='low'||p.status==='out'&&p.orders>0);
+  let context=null,active=false,epoch=0,busy=false,saving=false,tracking=false,data=null,selected=null,segment='all',timer=null,subscribed=false,focusPending=false,detailAnimation=null;
   const enabled=()=>allowed(context?.userId,context?.shopId);
   const canRead=()=>enabled()&&window.WBApi?.shopId===context.shopId&&window.WBApi.connected;
   const inventory=()=>data?.inventory;
-  const matches=(p,key)=>key==='all'||key==='attention'&&attention(p)||key===p.status;
+  const matches=(p,key)=>key==='excluded'?p.excluded:!p.excluded&&(key==='all'||key==='attention'&&attention(p)||key===p.status);
   const days=p=>p.days_left==null?'—':p.days_left===0?'0 дн.':p.days_left<1?'< 1 дня':`${number(p.days_left,1)} дн.`;
   function status(text,error=false){el('stockStatus').textContent=text;el('stockStatus').dataset.error=String(error);}
   function closeNotifications(focus=false){el('stockNotifications').hidden=true;el('stockBell').setAttribute('aria-expanded','false');if(focus&&!el('stockBell').hidden)el('stockBell').focus();}
-  function reset(){clearTimeout(timer);detailAnimation?.cancel();detailAnimation=null;data=null;selected=null;focusPending=false;segment='all';busy=false;saving=false;el('stockResults').hidden=true;el('stockDetail').hidden=true;el('stockRows').replaceChildren();el('stockLocations').replaceChildren();el('stockNotificationList').replaceChildren();el('stockNotificationInfo').textContent='';el('stockBellCount').hidden=true;el('stockBell').setAttribute('aria-label','Уведомления об остатках');el('stockWarehouse').innerHTML='<option value="all">Все склады</option>';el('stockSearch').value='';el('stockSort').value='priority';el('stockAlertDays').value='14';el('stockTargetDays').value='30';el('stockSettingsStatus').textContent='';el('stockDemandPeriod').textContent='';el('stockWarning').hidden=true;for(const id of ['stockTotal','stockLow','stockOut','stockWarehouses','stockDetailTitle','stockDetailArticle','stockDetailQuantity','stockDetailWb','stockDetailSeller','stockDetailToClient','stockDetailFromClient'])el(id).textContent='—';el('stockRecommendation').textContent='';closeNotifications();}
+  function reset(){clearTimeout(timer);detailAnimation?.cancel();detailAnimation=null;data=null;selected=null;focusPending=false;segment='all';busy=false;saving=false;tracking=false;el('stockActionStatus').textContent='';el('stockResults').hidden=true;el('stockDetail').hidden=true;el('stockRows').replaceChildren();el('stockLocations').replaceChildren();el('stockNotificationList').replaceChildren();el('stockNotificationInfo').textContent='';el('stockBellCount').hidden=true;el('stockBell').setAttribute('aria-label','Уведомления об остатках');el('stockWarehouse').innerHTML='<option value="all">Все склады</option>';el('stockSearch').value='';el('stockSort').value='priority';el('stockAlertDays').value='14';el('stockTargetDays').value='30';el('stockSettingsStatus').textContent='';el('stockDemandPeriod').textContent='';el('stockWarning').hidden=true;for(const id of ['stockTotal','stockLow','stockOut','stockWarehouses','stockDetailTitle','stockDetailArticle','stockDetailQuantity','stockDetailWb','stockDetailSeller','stockDetailToClient','stockDetailFromClient'])el(id).textContent='—';el('stockRecommendation').textContent='';closeNotifications();}
   function settingsDirty(){return !!data&&(Number(el('stockAlertDays').value)!==data.settings.alert_days||Number(el('stockTargetDays').value)!==data.settings.target_days);}
-  function controls(){el('stockRefresh').disabled=busy||saving||!canRead();el('secStocks').setAttribute('aria-busy',String(busy));el('stockSaveSettings').disabled=busy||saving||!canRead()||!data||data.status==='not_connected'||!settingsDirty();el('stockAlertDays').disabled=el('stockTargetDays').disabled=saving;}
+  function controls(){el('stockRefresh').disabled=busy||saving||tracking||!canRead();el('secStocks').setAttribute('aria-busy',String(busy||tracking));el('stockSaveSettings').disabled=busy||saving||tracking||!canRead()||!data||data.status==='not_connected'||!settingsDirty();el('stockAlertDays').disabled=el('stockTargetDays').disabled=saving;el('stockTrackToggle').disabled=busy||saving||tracking||!selected||!canRead();}
   function drawNotifications(){
     const items=(inventory()?.products||[]).filter(attention).sort(comparePriority),total=items.length;
     el('stockBellCount').textContent=total>99?'99+':String(total);el('stockBellCount').hidden=!total;
@@ -33,12 +33,14 @@
     const rows=(inventory()?.products||[]).filter(p=>matches(p,segment)&&(!q||`${p.name} ${p.article} ${p.nm_id}`.toLocaleLowerCase('ru-RU').includes(q)));
     return rows.sort(sort==='quantity'?(a,b)=>quantity(a)-quantity(b)||a.name.localeCompare(b.name,'ru'):sort==='name'?(a,b)=>a.name.localeCompare(b.name,'ru'):comparePriority);
   }
-  function quantity(p){const w=el('stockWarehouse').value;return w==='all'?p.quantity:p.warehouses.find(x=>x.id===w)?.quantity||0;}
+  function quantity(p){if(p.missing)return null;const w=el('stockWarehouse').value;return w==='all'?p.quantity:p.warehouses.find(x=>x.id===w)?.quantity||0;}
   function selectProduct(id){
     const p=inventory()?.products.find(x=>x.nm_id===id);if(!p)return;selected=id;el('stockDetail').hidden=false;
     el('stockDetailTitle').textContent=p.name;el('stockDetailArticle').textContent=`${p.article} · WB ${p.nm_id}`;el('stockDetailQuantity').textContent=number(p.quantity)+' шт.';
     for(const [id,key] of [['stockDetailWb','wb'],['stockDetailSeller','seller'],['stockDetailToClient','to_client'],['stockDetailFromClient','from_client']])el(id).textContent=number(p[key])+' шт.';
-    el('stockRecommendation').textContent=p.recommended==null?'Нет данных для прогноза срока и объёма пополнения.':`${p.status==='out'?'Товар закончился. ':''}Средний спрос ${dailyCount(p.daily_orders)} шт./день. ${p.days_left===0?'Запаса нет.':`Запаса примерно на ${days(p)}.`} ${p.recommended>0?`До ${data.settings.target_days} дней запаса: поставить ≈ ${number(p.recommended)} шт.`:'Запас выше целевого уровня.'}`;
+    el('stockTrackToggle').textContent=tracking?'Сохраняем…':p.excluded?'Вернуть в отслеживание':'Не отслеживать';
+    el('stockTrackingNote').textContent=p.excluded?'Товар исключён из показателей остатков и уведомлений. Его можно вернуть в любое время.':'Исключите товар, если больше не планируете его продавать.';
+    el('stockRecommendation').textContent=p.excluded?(p.missing?'Этой карточки больше нет в текущем снимке WB. Настройка исключения сохранена.':'Товар не отслеживается. Данные последнего снимка показаны для сведения.'):p.recommended==null?'Нет данных для прогноза срока и объёма пополнения.':`${p.status==='out'?'Товар закончился. ':''}Средний спрос ${dailyCount(p.daily_orders)} шт./день. ${p.days_left===0?'Запаса нет.':`Запаса примерно на ${days(p)}.`} ${p.recommended>0?`До ${data.settings.target_days} дней запаса: поставить ≈ ${number(p.recommended)} шт.`:'Запас выше целевого уровня.'}`;
     const locations=inventory().warehouses;
     el('stockLocations').innerHTML=p.warehouses.length?p.warehouses.map(w=>{const loc=locations.find(x=>x.id===w.id);return `<div class="stock-location"><div><span>${safe(loc?.name||w.id)}</span><strong>${number(w.quantity)} шт.</strong></div><small>${loc?.kind==='seller'?'Склад продавца':'Склад WB'}${loc?.region?` · ${safe(loc.region)}`:''}${w.to_client?` · к клиентам ${number(w.to_client)}`:''}${w.from_client?` · возвраты ${number(w.from_client)}`:''}</small>${w.sizes.length>1?`<details><summary>Размеры: ${w.sizes.length}</summary><dl>${w.sizes.map(s=>`<div><dt>ID ${safe(s.id)}</dt><dd>${number(s.quantity)} шт.</dd></div>`).join('')}</dl></details>`:''}</div>`;}).join(''):'<p class="stock-caption">В полных отчётах WB нет остатков этого товара на складах.</p>';
   }
@@ -46,12 +48,13 @@
     if(!inventory())return;const rows=filteredRows();
     if(!rows.some(p=>p.nm_id===selected))selected=rows[0]?.nm_id||null;
     const w=el('stockWarehouse').value,warehouse=inventory().warehouses.find(x=>x.id===w);
-    el('stockRows').innerHTML=rows.length?rows.map(p=>`<tr data-stock-row="${safe(p.nm_id)}"><th scope="row"><button type="button" data-stock-product="${safe(p.nm_id)}" aria-pressed="${p.nm_id===selected}" aria-controls="stockDetail"><span class="stock-product-mark" aria-hidden="true">${safe(p.name.split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase())}</span><span class="stock-product-copy"><strong>${safe(p.name)}</strong><span>${safe(p.article)} · WB ${safe(p.nm_id)}</span></span></button></th><td data-label="Доступно${warehouse?' · выбранный склад':''}"><strong>${number(quantity(p))}</strong></td><td data-label="Заказов в день, все склады">${dailyCount(p.daily_orders)}</td><td data-label="Запас, все склады">${safe(days(p))}</td><td data-label="Статус, все склады"><span class="stock-badge" data-stock-state="${safe(p.status)}">${safe(statusNames[p.status])}</span></td></tr>`).join(''):'<tr><td colspan="5" class="stock-empty">Товары не найдены</td></tr>';
-    el('stockShowing').textContent=number(rows.length);el('stockCount').textContent=`${rows.length} из ${inventory().products.length} товаров${warehouse?` · количество: ${warehouse.name}; прогноз и статус — по всем складам`:''}`;
+    el('stockRows').innerHTML=rows.length?rows.map(p=>`<tr data-stock-row="${safe(p.nm_id)}"><th scope="row"><button type="button" data-stock-product="${safe(p.nm_id)}" aria-pressed="${p.nm_id===selected}" aria-controls="stockDetail"><span class="stock-product-mark" aria-hidden="true">${safe(p.name.split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase())}</span><span class="stock-product-copy"><strong>${safe(p.name)}</strong><span>${safe(p.article)} · WB ${safe(p.nm_id)}</span></span></button></th><td data-label="Доступно${warehouse?' · выбранный склад':''}"><strong>${number(quantity(p))}</strong></td><td data-label="Заказов в день, все склады">${dailyCount(p.daily_orders)}</td><td data-label="Запас, все склады">${safe(days(p))}</td><td data-label="Статус, все склады"><span class="stock-badge" data-stock-state="${p.excluded?'excluded':safe(p.status)}">${p.excluded?'Не отслеживается':safe(statusNames[p.status])}</span></td></tr>`).join(''):'<tr><td colspan="5" class="stock-empty">Товары не найдены</td></tr>';
+    el('stockShowing').textContent=number(rows.length);el('stockCount').textContent=`${rows.length} из ${segment==='excluded'?(inventory().totals.excluded||0):inventory().totals.products} ${segment==='excluded'?'исключённых':'отслеживаемых'} товаров${warehouse?` · количество: ${warehouse.name}; прогноз и статус — по всем складам`:''}`;
     el('stockDetail').hidden=!selected;if(selected)selectProduct(selected);
-    const counts={All:inventory().products.length,Attention:inventory().products.filter(attention).length,Out:inventory().totals.out,Unknown:inventory().totals.unknown};
+    const counts={All:inventory().totals.products,Attention:inventory().products.filter(attention).length,Out:inventory().totals.out,Unknown:inventory().totals.unknown,Excluded:inventory().totals.excluded||0};
     for(const [k,v] of Object.entries(counts))el('stockCount'+k).textContent=number(v);
     for(const b of el('stockSegments').querySelectorAll('button'))b.setAttribute('aria-pressed',String(b.dataset.stockSegment===segment));
+    controls();
   }
   function render(result){
     const dirty=settingsDirty();data=result;
@@ -69,7 +72,7 @@
   }
   function schedule(){clearTimeout(timer);if(canRead()&&!document.hidden)timer=setTimeout(()=>load(),data?.status==='loading'?30000:300000);}
   async function load(refresh=false){
-    if(!canRead()||busy||saving)return;const ticket=epoch;busy=true;controls();if(!inventory())status('Загружаем остатки…');
+    if(!canRead()||busy||saving||tracking)return;const ticket=epoch;busy=true;controls();if(!inventory())status('Загружаем остатки…');
     try{const result=await window.WBApi.cabinet(refresh?'stocks_refresh':'stocks');if(ticket!==epoch)return;render(result);}
     catch(e){if(ticket!==epoch)return;status((e.message||'Не удалось загрузить остатки. Попробуйте ещё раз.')+(inventory()?` Последний снимок: ${date(data.fetched_at)}.`:''),true);if(inventory()){el('stockWarning').hidden=false;el('stockWarning').textContent='Не удалось проверить обновление. Показан последний полученный снимок.';}drawNotifications();}
     finally{if(ticket===epoch){busy=false;controls();schedule();}}
@@ -88,6 +91,14 @@
     if(active&&focusPending){focusPending=false;requestAnimationFrame(focusDetail);}
   }
   el('stockRefresh').addEventListener('click',()=>load(true));
+  el('stockTrackToggle').addEventListener('click',async()=>{
+    if(!canRead()||busy||saving||tracking||!selected)return;
+    const p=inventory()?.products.find(x=>x.nm_id===selected);if(!p)return;
+    const excluded=!p.excluded,ticket=epoch;tracking=true;controls();el('stockTrackToggle').textContent='Сохраняем…';el('stockActionStatus').textContent='Сохраняем отслеживание товара…';
+    try{const result=await window.WBApi.cabinet('stocks_tracking',undefined,false,{nm_id:p.nm_id,excluded});if(ticket!==epoch)return;render(result);el('stockActionStatus').textContent=excluded?`«${p.name}» исключён из отслеживания. Вернуть можно через фильтр «Исключённые».`:`«${p.name}» снова отслеживается.`;}
+    catch(e){if(ticket===epoch)el('stockActionStatus').textContent=e.message||'Не удалось изменить отслеживание. Повторите попытку.';}
+    finally{if(ticket===epoch){tracking=false;if(selected)selectProduct(selected);controls();schedule();}}
+  });
   el('stockSearch').addEventListener('input',table);el('stockSort').addEventListener('change',table);el('stockWarehouse').addEventListener('change',table);
   el('stockSegments').addEventListener('click',e=>{const b=e.target.closest('[data-stock-segment]');if(!b)return;segment=b.dataset.stockSegment;table();});
   el('stockRows').addEventListener('click',e=>{if(window.getSelection?.().toString())return;const b=e.target.closest('[data-stock-product]')||e.target.closest('[data-stock-row]')?.querySelector('[data-stock-product]');if(!b)return;selected=b.dataset.stockProduct;table();detailAnimation?.cancel();if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)detailAnimation=el('stockDetail').animate?.([{opacity:.7,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.16,1,.3,1)'});focusDetail();});
@@ -100,7 +111,7 @@
   document.addEventListener('pointerdown',e=>{if(!el('stockNotifications').hidden&&!el('stockNotifications').contains(e.target)&&!el('stockBell').contains(e.target))closeNotifications();});
   for(const id of ['stockAlertDays','stockTargetDays'])el(id).addEventListener('input',()=>{el('stockSettingsStatus').textContent='';controls();});
   el('stockSettingsForm').addEventListener('submit',async e=>{
-    e.preventDefault();if(!canRead()||busy||saving||!settingsDirty())return;
+    e.preventDefault();if(!canRead()||busy||saving||tracking||!settingsDirty())return;
     const alert=Number(el('stockAlertDays').value),target=Number(el('stockTargetDays').value);
     if(!Number.isInteger(alert)||alert<1||alert>180||!Number.isInteger(target)||target<alert||target>365){el('stockSettingsStatus').textContent='Порог: 1–180 дней. Целевой запас — от порога до 365 дней.';return;}
     const ticket=epoch;saving=true;controls();el('stockSettingsStatus').textContent='Сохраняем…';

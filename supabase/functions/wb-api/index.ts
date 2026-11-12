@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     await authorizeShop(admin,shopId,auth.user.id,body.action);
-    if(['stocks','stocks_refresh','stocks_settings'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
+    if(['stocks','stocks_refresh','stocks_settings','stocks_tracking'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
     if(['daily','daily_start','unit'].includes(body.action)) {
       authorizeDaily(auth.user.id,shopId);
       if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));

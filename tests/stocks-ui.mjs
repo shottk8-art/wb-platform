@@ -44,3 +44,16 @@ const result=()=>({status:'ready',fetched_at:'2026-11-12T06:00:00Z',stale:false,
  const f=fixture(),r=result();r.inventory.products.unshift({...r.inventory.products[0],nm_id:'3',name:'Неактивный товар',status:'out',quantity:0,orders:0,daily_orders:0,days_left:null,recommended:null});f.set();f.requests[0].resolve(r);await tick();assert.ok(f.el('stockRows').innerHTML.indexOf('data-stock-row="1"')<f.el('stockRows').innerHTML.indexOf('data-stock-row="3"'),'actionable replenishment appears before dormant zero-stock cards');
 }
 console.log('Stock UI PASS: exact owner/shop and bound API context, late read/save isolation, count and restock notifications, safe labels, cache on view changes, empty/unknown/loading, retained dated snapshot on error and validated settings.');
+{
+ const f=fixture();f.set();f.requests[0].resolve(result());await tick();
+ const pending=f.el('stockTrackToggle').events.click();assert.equal(f.requests[1].action,'stocks_tracking');assert.equal(f.requests[1].payload.nm_id,'1');assert.equal(f.requests[1].payload.excluded,true);assert.equal(f.el('stockTrackToggle').disabled,true);
+ await f.el('stockTrackToggle').events.click();assert.equal(f.requests.length,2,'double-click does not exclude another product');
+ const excluded=result();excluded.inventory.products[0].excluded=true;Object.assign(excluded.inventory.totals,{quantity:20,products:1,excluded:1,low:0});f.requests[1].resolve(excluded);await pending;
+ assert.doesNotMatch(f.el('stockRows').innerHTML,/data-stock-row="1"/);assert.equal(f.el('stockBellCount').hidden,true);assert.equal(f.el('stockTotal').textContent,'20');assert.equal(f.el('stockCountExcluded').textContent,'1');
+ f.el('stockSegments').events.click({target:{closest:()=>({dataset:{stockSegment:'excluded'}})}});assert.match(f.el('stockRows').innerHTML,/data-stock-row="1"/);assert.equal(f.el('stockTrackToggle').textContent,'Вернуть в отслеживание');assert.match(f.el('stockRows').innerHTML,/Не отслеживается/);
+ const restore=f.el('stockTrackToggle').events.click();assert.equal(f.requests[2].payload.excluded,false);f.requests[2].resolve(result());await restore;assert.equal(f.el('stockDetail').hidden,true);assert.equal(f.el('stockBellCount').textContent,'1');assert.match(f.el('stockActionStatus').textContent,/снова отслеживается/);
+}
+{
+ const f=fixture();f.set();f.requests[0].resolve(result());await tick();const pending=f.el('stockTrackToggle').events.click();f.set(owner,'another-shop');f.requests[1].resolve(result());await pending;assert.equal(f.el('stockActionStatus').textContent,'');assert.equal(f.el('stockResults').hidden,true,'late exclusion cannot repaint a different shop');
+}
+console.log('Tracking UI PASS: exclusion, filtered recovery, immediate alert/total updates, reversible restore, double-click guard and late-action isolation.');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {stockPage,mergeStockRows,demandPeriod,demandPage,inventoryView,stockSettings,stocksAction,processStocks} from '../supabase/functions/wb-api/stocks.ts';
+import {stockPage,mergeStockRows,demandPeriod,demandPage,inventoryView,stockSettings,stockTracking,stocksAction,processStocks} from '../supabase/functions/wb-api/stocks.ts';
 import {DAILY_USER_ID,DAILY_SHOP_ID} from '../supabase/functions/wb-api/daily-access.ts';
 const period=demandPeriod(new Date('2026-11-12T00:00:00Z'));
 assert.deepEqual(period,{from:'2026-10-15',to:'2026-11-11',days:28});
@@ -30,8 +30,16 @@ const response={data:{products:[{product:{nmId:1,vendorCode:'A',title:'Това�
 assert.equal(demandPage(response,period)[0].orders,28);
 assert.throws(()=>demandPage(response,{...period,to:'2026-11-10'}),/период/);
 let reads=0;const never={from(){reads++;throw Error('unauthorized read');},rpc(){reads++;throw Error('unauthorized write');}};
-for(const [u,s] of [[DAILY_USER_ID,'00000000-0000-0000-0000-000000000001'],['other',DAILY_SHOP_ID]])for(const action of ['stocks','stocks_refresh','stocks_settings'])await assert.rejects(()=>stocksAction(never,u,s,{action}),e=>e.status===403);
+for(const [u,s] of [[DAILY_USER_ID,'00000000-0000-0000-0000-000000000001'],['other',DAILY_SHOP_ID]])for(const action of ['stocks','stocks_refresh','stocks_settings','stocks_tracking'])await assert.rejects(()=>stocksAction(never,u,s,{action}),e=>e.status===403);
 assert.equal(reads,0,'private gate precedes every data read and queue write');
+const excluding=inventoryView(snapshot,{alert_days:14,target_days:30,excluded_products:{'1':{article:'A',name:'Товар'},'999':{article:'Retired',name:'Выведенная карточка'}}});
+assert.equal(excluding.totals.quantity,21);assert.equal(excluding.totals.products,3);assert.equal(excluding.totals.excluded,2);assert.equal(excluding.totals.low,0);
+assert.equal(excluding.warehouses.reduce((n,w)=>n+w.quantity,0),excluding.totals.quantity,'warehouse totals also omit excluded stock');
+assert.equal(excluding.products.find(p=>p.nm_id==='999').quantity,null,'a removed excluded card remains restorable without a fabricated zero');
+assert.equal(excluding.products.find(p=>p.nm_id==='999').name,'Выведенная карточка');
+assert.equal(inventoryView(snapshot,{alert_days:14,target_days:30,excluded_products:{}}).totals.quantity,view.totals.quantity,'restoration returns the unchanged original inventory');
+assert.deepEqual(stockTracking({nm_id:'1',excluded:true}),{p_nm_id:'1',p_excluded:true});
+for(const body of [{nm_id:1,excluded:true},{nm_id:'0',excluded:true},{nm_id:'1',excluded:'true'},{nm_id:'1;delete',excluded:true}])assert.throws(()=>stockTracking(body));
 const token='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({acc:3,exp:Math.floor(Date.now()/1000)+86400})).toString('base64url')+'.'+ 'x'.repeat(64);
 let state={shop_id:DAILY_SHOP_ID,stage:'wb',pending:{},page_offset:0,lease_token:'lease',alert_days:14,target_days:30,snapshot:{old:true}};
 const writes=[];const admin={rpc:async name=>({data:token,error:null}),from(table){return {update(patch){const filters={};const q={eq(k,v){filters[k]=v;return q;},then(a,b){assert.equal(filters.shop_id,DAILY_SHOP_ID);assert.equal(filters.lease_token,'lease');writes.push(patch);state={...state,...patch};return Promise.resolve({error:null}).then(a,b);}};return q;}};}};

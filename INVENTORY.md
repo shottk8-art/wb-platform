@@ -39,3 +39,10 @@ Checks: `node tests/wb-api-stocks.mjs`, `node tests/wb-api-stock-routes.mjs`,
 `node tests/stocks-ui.mjs`; DB lease/grant checks in `tests/wb-api-stocks.sql`
 always roll back. `node tests/stocks-layout-preview.mjs` serves production UI with
 explicitly synthetic inventory at localhost:4192 for responsive verification.
+
+Excluded products are durable monitoring preferences in `wb_stock_tracking`,
+independent of the API connection. Only their identity is retained, so removed
+WB cards can still be restored. Exclusions omit stock from dashboard totals and
+notifications, while source data and financial calculations stay intact. The
+`stocks_tracking` action toggles one nmId atomically under the private gate; it
+never overwrites another exclusion. Check `tests/wb-api-stock-tracking.sql`.
