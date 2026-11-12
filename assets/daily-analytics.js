@@ -7,7 +7,7 @@
   const dateLabel=date=>date==='unallocated'?'Без даты операции':new Date(date+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'});
   const safe=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const currentMonth=()=>new Date(Date.now()+3*3600000).toISOString().slice(0,7);
-  let viewActive=false,subview='daily';
+  let viewActive=false,subview='daily',marketplace='wildberries',availableMonths=null,monthRequest=0;
   let context=null,active=false,epoch=0,ticket=0,timer=null,busy=false,data=null,chart=null,selected=null,mode='daily',style='bar';
   const tone=value=>value==null?'':Number(value)<0?'loss':'gain';
   const changeMarkup=change=>{
@@ -29,6 +29,10 @@
     el('dailyResults').hidden=true;el('dailyUnallocated').hidden=true;el('dailyUnallocated').textContent='';
   }
   function fillMonths() {
+    if(marketplace==='ozon' && availableMonths){
+      el('dailyMonth').innerHTML=availableMonths.map(m=>`<option value="${m}">${safe(new Date(m+'-01T12:00:00Z').toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');
+      el('dailyMonth').value=availableMonths[0]||'';return;
+    }
     const now=new Date(Date.now()+3*3600000),dates=Array.from({length:12},(_,i)=>new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)));
     el('dailyMonth').innerHTML=dates.map(d=>`<option value="${d.toISOString().slice(0,7)}">${safe(d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');
     el('dailyMonth').value=currentMonth();
@@ -100,8 +104,9 @@
     el('dailyPreviousLegend').hidden=!(result.days||[]).some(day=>day.previous_period?.profit!=null);
     const ready=result.status==='ready';
     el('dailyResults').hidden=!ready;
-    el('dailyRefresh').textContent=ready?'Обновить данные':result.status==='loading'?'Данные загружаются':'Подготовить по дням';
+    el('dailyRefresh').textContent=marketplace==='ozon'?(ready?'Обновить расчёт':'Загрузить отчёт'):ready?'Обновить данные':result.status==='loading'?'Данные загружаются':'Подготовить по дням';
     el('dailyRefresh').disabled=busy || result.refreshing || result.status==='loading';
+    if(!ready && marketplace==='ozon'){status(result.message||'Загрузите отчёт по начислениям Ozon за выбранный месяц.');return;}
     if(!ready){status(result.status==='loading'?'Собираем ежедневные данные на сервере. Можно закрыть страницу.':result.refresh_error || 'За этот месяц сохранены только месячные итоги. Нажмите «Подготовить по дням» — загрузка продолжится в фоне.',!!result.refresh_error);return;}
     const known=result.days.every(d=>d.net_profit!=null),sum=result.days.reduce((n,d)=>n+Number(d.net_profit||0),0);
     el('dailyProfit').textContent=money(result.monthly_profit);el('dailyProfit').dataset.tone=tone(result.monthly_profit);
@@ -129,8 +134,9 @@
       : preparing?'Предыдущий период загружается на сервере. Текущие данные доступны.'
         : comparison?.status==='needs_preparation'?'Для сравнения нужно подготовить ежедневные данные предыдущего месяца.'
           : comparison?.error?'Сравнение недоступно: '+comparison.error:'';
+    if(marketplace==='ozon' && comparison?.status!=='ready')el('dailyComparisonInfo').textContent=comparison?.error||`Для сравнения загрузите отчёт Ozon за ${comparison?.month||'предыдущий месяц'}.`;
     const updated=result.updated_at?new Date(result.updated_at).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Moscow'}):'';
-    status(result.refresh_error?'Не удалось обновить данные: '+result.refresh_error+'. Показана предыдущая готовая выгрузка.':result.refreshing?'Обновление идёт в фоне. Пока показана предыдущая готовая выгрузка.':`По данным WB${updated?' от '+updated+' (МСК)':''}. ${result.period.dateFrom.slice(0,7)===currentMonth()?'Текущий месяц предварительный.':''}`,!!result.refresh_error);
+    status(result.refresh_error?'Не удалось обновить данные: '+result.refresh_error+'. Показана предыдущая готовая выгрузка.':result.refreshing?'Обновление идёт в фоне. Пока показана предыдущая готовая выгрузка.':`По данным ${marketplace==='ozon'?'отчёта Ozon':'WB'}${updated?' от '+updated+' (МСК)':''}. ${result.period.dateFrom.slice(0,7)===currentMonth()?'Текущий месяц предварительный.':''}`,!!result.refresh_error);
     el('dailyRows').innerHTML=result.days.map(row=>`<tr><th scope="row"><button type="button" data-daily-date="${row.date}" aria-pressed="false">${safe(dateLabel(row.date))}</button></th><td data-label="Продажи">${safe(money(row.sales))}</td><td data-label="Учтённые расходы">${safe(money(row.net_profit==null||row.sales==null?null:Number(row.sales)-Number(row.net_profit)))}</td><td data-label="Чистая прибыль" data-tone="${tone(row.net_profit)}">${safe(money(row.net_profit))}<small class="daily-row-change">${changeMarkup(row.previous_day?.change)}</small></td></tr>`).join('');
     if(result.unallocated) {
       el('dailyUnallocated').hidden=false;
@@ -145,13 +151,14 @@
   }
   async function load(refresh=false,background=false,comparisonMonth=null) {
     if(!active || !context?.allowed || busy)return;
+    if(marketplace==='ozon' && !availableMonths?.length){el('dailyRefresh').textContent=availableMonths?'Загрузить отчёт':'Обновить расчёт';status(availableMonths?'Загрузите отчёт по начислениям Ozon в разделе «Отчёты».':'Читаем периоды Ozon…');return;}
     const ownEpoch=epoch,ownTicket=++ticket,month=el('dailyMonth').value;
     busy=true;el('secDailyAnalytics').setAttribute('aria-busy','true');el('dailyRefresh').disabled=true;
     if(!background){reset();status(refresh||comparisonMonth?'Ставим обновление в очередь сервера…':'Загружаем ежедневную аналитику…');}
     try {
-      if(refresh || comparisonMonth)await window.WBApi.cabinet('daily_start',comparisonMonth||month);
+      if(marketplace!=='ozon' && (refresh || comparisonMonth))await window.WBApi.cabinet('daily_start',comparisonMonth||month);
       if(ownEpoch!==epoch || ownTicket!==ticket)return;
-      const result=await window.WBApi.cabinet('daily',month);
+      const result=await window.WBApi.cabinet('daily',month,false,marketplace==='ozon'?{marketplace:'ozon'}:{});
       if(ownEpoch!==epoch || ownTicket!==ticket)return;
       busy=false;render(result);
     } catch(error) {
@@ -164,18 +171,34 @@
   }
   function setContext(next) {
     const enabled=allowed(next.userId,next.shopId);
-    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId || context?.allowed!==enabled;
-    context={...next,allowed:enabled};el('dailyAnalyticsLink').hidden=!enabled;
-    if(changed){epoch++;ticket++;busy=false;reset();fillMonths();}
+    const scope=next.marketplace||marketplace;
+    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId || context?.allowed!==enabled || scope!==marketplace;
+    marketplace=scope;
+    if(marketplace==='ozon')el('dailyRefresh').textContent='Обновить расчёт';
+    context={...next,allowed:enabled,marketplace};el('dailyAnalyticsLink').hidden=!enabled;
+    if(changed){monthRequest++;availableMonths=null;epoch++;ticket++;busy=false;reset();fillMonths();}
+    if(el('advancedScope'))for(const b of el('advancedScope').querySelectorAll('button')){const on=b.dataset.advancedScope===marketplace;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));}
+    if(el('advancedOzonHelp'))el('advancedOzonHelp').hidden=marketplace!=='ozon';
+    if(el('advancedWbMethod'))el('advancedWbMethod').hidden=marketplace==='ozon';
     const wasActive=active;
     viewActive=next.active===true;
-    window.WBUnit?.setContext({...next,active:viewActive && subview==='unit'});
+    window.WBUnit?.setContext({...next,marketplace,months:availableMonths,active:viewActive && subview==='unit'});
     active=enabled && viewActive && subview==='daily';
+    if(enabled && marketplace==='ozon' && changed){
+      const own=monthRequest;
+      window.WBApi.cabinet('ozon_months',null,false,{marketplace:'ozon'}).then(result=>{
+        if(own!==monthRequest || !context?.allowed)return;
+        availableMonths=result.months;fillMonths();
+        window.WBUnit?.setContext({...context,marketplace,months:availableMonths,active:viewActive&&subview==='unit'});
+        if(active)load();
+      }).catch(error=>{if(own===monthRequest){status(error.message,true);if(subview==='unit')el('unitStatus').textContent=error.message+' Нажмите «Показать», чтобы повторить.';}});
+    }
+
     if(!active){clearTimeout(timer);if(wasActive){epoch++;busy=false;reset();}return;}
     if(changed || !wasActive)load();
   }
   el('dailyMonth').addEventListener('change',()=>{epoch++;busy=false;reset();load();});
-  el('dailyRefresh').addEventListener('click',()=>load(['needs_preparation','ready'].includes(data?.status)));
+  el('dailyRefresh').addEventListener('click',()=>{if(marketplace==='ozon' && availableMonths===null){window.WBDaily.reload();return;}if(marketplace==='ozon' && data?.status!=='ready'){document.dispatchEvent(new CustomEvent('open-ozon-report'));return;}load(marketplace!=='ozon' && ['needs_preparation','ready'].includes(data?.status));});
   el('dailyPrepareComparison').addEventListener('click',()=>{if(data?.comparison?.month)load(false,false,data.comparison.month);});
   el('dailyMode').addEventListener('click',event=>{
     const button=event.target.closest('[data-daily-mode]');if(!button)return;
@@ -196,5 +219,8 @@
   }
   el('advancedTabs').addEventListener('click',event=>{const button=event.target.closest('[data-advanced-tab]');if(button)selectSection(button.dataset.advancedTab);});
   el('advancedTabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const value=event.key==='Home'?'daily':event.key==='End'?'unit':subview==='daily'?'unit':'daily';selectSection(value);el(value==='daily'?'dailyTab':'unitTab').focus();});
-  window.WBDaily={allowed,setContext,reload:()=>{if(active){epoch++;busy=false;reset();load();}},get active(){return active;}};
+  el('advancedScope')?.addEventListener('click',event=>{const b=event.target.closest('[data-advanced-scope]');if(b && b.dataset.advancedScope!==marketplace && context)setContext({...context,marketplace:b.dataset.advancedScope});});
+  document.addEventListener('ozon-analytics-changed',event=>{if(context?.shopId===event.detail?.shopId && marketplace==='ozon'){availableMonths=null;context={...context,allowed:false};setContext({...context,allowed:true});}});
+  el('advancedOzonHelp')?.querySelector?.('a')?.addEventListener('click',event=>{event.preventDefault();document.dispatchEvent(new CustomEvent('open-ozon-report'));});
+  window.WBDaily={allowed,setContext,reload:()=>{if(marketplace==='ozon'&&availableMonths===null&&context){context={...context,allowed:false};setContext({...context,active:viewActive});return;}if(active){epoch++;busy=false;reset();load();}},get active(){return active;}};
 })();

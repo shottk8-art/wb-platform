@@ -25,10 +25,10 @@
   let cache=new Map(),cacheGeneration=0,subscribed=false;
   const enabled=()=>window.WBDaily?.allowed(context?.userId,context?.shopId)===true;
   function read(from,to,force=false){
-    const key=from+':'+to,ownCache=cache,generation=cacheGeneration,entry=ownCache.get(key);
+    const key=(context?.marketplace||'wildberries')+':'+from+':'+to,ownCache=cache,generation=cacheGeneration,entry=ownCache.get(key);
     if(entry?.promise)return entry.promise;
     if(!force && entry?.value && entry.expires>Date.now())return Promise.resolve(entry.value);
-    const promise=window.WBApi.cabinet('unit',from,false,{month_to:to}).then(result=>{
+    const promise=window.WBApi.cabinet('unit',from,false,{month_to:to,...(context?.marketplace==='ozon'?{marketplace:'ozon'}:{})}).then(result=>{
       if(cache===ownCache && generation===cacheGeneration && enabled()){
         if(result.status==='ready'){
           const current=new Date(Date.now()+3*3600000).toISOString().slice(0,7);
@@ -41,7 +41,9 @@
     ownCache.set(key,{promise});return promise;
   }
   function prefetch(){
-    if(!enabled() || window.WBApi?.connected!==true)return;
+    if(!enabled())return;
+    if(context?.marketplace==='ozon'){for(const month of (context.months||[]).slice(0,2))read(month,month).catch(()=>{});return;}
+    if(window.WBApi?.connected!==true)return;
     const now=new Date(Date.now()+3*3600000);
     for(let i=0;i<2;i++){
       const month=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)).toISOString().slice(0,7);
@@ -49,11 +51,12 @@
     }
   }
   function invalidate(){cache=new Map();cacheGeneration++;}
-  function sourceChanged(){if(!enabled())return;invalidate();cancelLoad();prefetch();if(active)load();}
+  function sourceChanged(){if(!enabled() || context?.marketplace==='ozon')return;invalidate();cancelLoad();prefetch();if(active)load();}
   const status=(text,error=false)=>{el('unitStatus').textContent=text;el('unitStatus').dataset.error=String(error);};
   function reset(){stopCounter();stopMotion();clearTimeout(timer);data=null;selected=null;el('unitResults').hidden=true;el('unitRows').replaceChildren();el('unitExpenses').replaceChildren();el('unitCommon').replaceChildren();el('unitZeroCosts').hidden=true;el('unitPrepare').hidden=true;for(const id of ['unitSales','unitProfit','unitMargin','unitProfitability','unitAds','unitDrr','unitDetailDrr'])el(id).textContent='—';}
   function cancelLoad(){epoch++;busy=false;reset();el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;}
   function fillMonths(){
+    if(context?.marketplace==='ozon' && context.months){const options=context.months.map(m=>`<option value="${m}">${safe(new Date(m+'-01T12:00:00Z').toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');for(const id of ['unitFrom','unitTo']){el(id).innerHTML=options;el(id).value=context.months[0]||'';}return;}
     const now=new Date(Date.now()+3*3600000),dates=Array.from({length:12},(_,i)=>new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)));
     const options=dates.map(d=>`<option value="${d.toISOString().slice(0,7)}">${safe(d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}).replace(/\s*г\.$/,''))}</option>`).join('');
     for(const id of ['unitFrom','unitTo']){el(id).innerHTML=options;el(id).value=dates[0].toISOString().slice(0,7);}
@@ -87,7 +90,7 @@
     el('unitRows').innerHTML=rows.length?rows.map(p=>{
       const initials=(p.name||p.article).split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0]).join('').toUpperCase();
       const share=Math.max(0,Math.min(100,Number(p.sales)>0 && Number(data.totals.sales)>0?Number(p.sales)/Number(data.totals.sales)*100:0));
-      return `<tr data-unit-row="${safe(p.article)}"><th scope="row"><button type="button" data-unit-article="${safe(p.article)}" aria-pressed="${p.article===selected}" aria-controls="unitDetail"><span class="unit-product-mark" aria-hidden="true">${safe(initials)}</span><span class="unit-product-name"><strong>${safe(p.name||p.article)}</strong><span>${safe(p.article)}</span></span></button></th><td data-label="Выкупили" class="unit-extra-col">${p.quantity.toLocaleString('ru-RU')}</td><td data-label="Продажи"><strong>${safe(money(p.sales))}</strong><span class="unit-sales-track" aria-hidden="true"><i style="width:${share}%"></i></span></td><td data-label="Внутренняя реклама">${safe(money(p.internal_ads))}</td><td data-label="ДРР"><span class="unit-rate">${rate(p.drr)}</span></td><td data-label="Прямые расходы" class="unit-extra-col">${safe(money(p.total_expenses))}</td><td data-label="Чистая прибыль" data-tone="${tone(p.net_profit)}"><strong>${safe(money(p.net_profit))}</strong></td><td data-label="Маржинальность" class="unit-extra-col">${rate(p.margin)}</td><td data-label="Рентабельность" class="unit-extra-col">${rate(p.profitability)}</td></tr>`;
+      return `<tr data-unit-row="${safe(p.article)}"><th scope="row"><button type="button" data-unit-article="${safe(p.article)}" aria-pressed="${p.article===selected}" aria-controls="unitDetail"><span class="unit-product-mark" aria-hidden="true">${safe(initials)}</span><span class="unit-product-name"><strong>${safe(p.name||p.article)}</strong><span>${safe(p.article)}</span></span></button></th><td data-label="Выкупили" class="unit-extra-col">${p.quantity.toLocaleString('ru-RU')}</td><td data-label="Продажи"><strong>${safe(money(p.sales))}</strong><span class="unit-sales-track" aria-hidden="true"><i style="width:${share}%"></i></span></td><td data-label="${context?.marketplace==='ozon'?'Продвижение и реклама':'Внутренняя реклама'}">${safe(money(p.internal_ads))}</td><td data-label="ДРР"><span class="unit-rate">${rate(p.drr)}</span></td><td data-label="Прямые расходы" class="unit-extra-col">${safe(money(p.total_expenses))}</td><td data-label="Чистая прибыль" data-tone="${tone(p.net_profit)}"><strong>${safe(money(p.net_profit))}</strong></td><td data-label="Маржинальность" class="unit-extra-col">${rate(p.margin)}</td><td data-label="Рентабельность" class="unit-extra-col">${rate(p.profitability)}</td></tr>`;
     }).join(''):'<tr><td colspan="9" class="unit-empty">Товары не найдены</td></tr>';
     el('unitDetail').hidden=!rows.length;
     if(rows.length&&!rows.some(p=>p.article===selected))details(rows[0].article);
@@ -100,6 +103,7 @@
     data=result;const ready=result.status==='ready';el('unitResults').hidden=!ready;
     el('unitPrepare').hidden=ready || !(result.pending||[]).some(p=>p.status!=='loading');
     el('unitPrepare').disabled=busy;el('unitLoad').disabled=busy;
+    if(!ready && context?.marketplace==='ozon'){el('unitPrepare').hidden=true;status(result.message||'Загрузите отчёт по начислениям Ozon за выбранный период.');return;}
     if(!ready){
       const pending=(result.pending||[]).map(p=>p.month).join(', ');
       status(result.status==='loading'?`Данные за ${pending} загружаются на сервере. Можно закрыть страницу.`:`Нужно подготовить расходы по артикулам за ${pending}. Это отдельная обработка финансовой выгрузки.`,!!result.pending?.some(p=>p.error));return;
@@ -119,13 +123,15 @@
   el('unitShowAll').addEventListener('click',()=>{const button=el('unitShowAll'),on=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(on));button.textContent=on?'Краткий вид':'Все показатели';el('unitTable').classList.toggle('is-expanded',on);});
   function schedule(){clearTimeout(timer);if(active&&!document.hidden&&data?.status==='loading')timer=setTimeout(()=>load(false,true),30000);}
   async function load(prepare=false,background=false,force=false){
-    if(!active || busy)return;const ownEpoch=epoch,from=el('unitFrom').value,to=el('unitTo').value;
+    if(!active || busy)return;
+    if(context?.marketplace==='ozon'&&!context.months?.length){if(force&&context.months==null)window.WBDaily?.reload?.();status(context.months?'Загрузите отчёт по начислениям Ozon в разделе «Отчёты».':'Читаем периоды Ozon…');return;}
+    const ownEpoch=epoch,from=el('unitFrom').value,to=el('unitTo').value;
     if(from>to){reset();status('Начало периода должно быть раньше окончания.',true);return;}
     const pending=(data?.pending||[]).filter(p=>p.status!=='loading');
     busy=true;el('unitPane').setAttribute('aria-busy','true');el('unitLoad').disabled=el('unitPrepare').disabled=true;
     if(!background){reset();status(prepare?'Ставим подготовку выбранных месяцев в очередь…':'Загружаем расходы по артикулам…');}
     try{
-      if(prepare){invalidate();for(const item of pending){if(ownEpoch!==epoch)return;await window.WBApi.cabinet('daily_start',item.month);}}
+      if(prepare && context?.marketplace!=='ozon'){invalidate();for(const item of pending){if(ownEpoch!==epoch)return;await window.WBApi.cabinet('daily_start',item.month);}}
       if(ownEpoch!==epoch)return;
       const result=await read(from,to,prepare||background||force);
       if(ownEpoch!==epoch)return;busy=false;render(result);
@@ -135,8 +141,13 @@
   function setContext(next){
     if(!subscribed){window.WBApi?.subscribe?.(sourceChanged);window.WBApiCabinet?.subscribe?.(sourceChanged);subscribed=true;}
     const enabled=window.WBDaily?.allowed(next.userId,next.shopId)===true;
-    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId;
+    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId || context?.marketplace!==next.marketplace || (context?.months||[]).join()!==(next.months||[]).join();
     const wasActive=active;context=next;active=enabled&&next.active===true;
+    if(el('unitAdsCaption'))el('unitAdsCaption').textContent=next.marketplace==='ozon'?'Расходы по отчёту':'Денежные расходы по товарам';
+    if(el('unitAdsLabel'))el('unitAdsLabel').textContent=next.marketplace==='ozon'?'Продвижение и реклама':'Внутренняя реклама';
+    if(el('unitDrrCaption'))el('unitDrrCaption').textContent=next.marketplace==='ozon'?'Реклама по артикулу / продажи':'Внутренняя реклама / продажи';
+    if(el('unitDrrHelpText'))el('unitDrrHelpText').textContent=next.marketplace==='ozon'?'Расходы группы «Продвижение и реклама» с прямой привязкой к артикулу / продажи этого артикула × 100%. Расходы без артикула показаны отдельно.':'Денежные расходы внутренней рекламы / продажи этих же товаров × 100%. Промобонусы не включены.';
+    if(el('unitWbAdMethod'))el('unitWbAdMethod').hidden=next.marketplace==='ozon';if(el('unitOzonAdMethod'))el('unitOzonAdMethod').hidden=next.marketplace!=='ozon';
     if(changed){invalidate();cancelLoad();fillMonths();el('unitSearch').value='';segment='all';sortDirection='desc';}
     if(enabled)prefetch();
     if(!active){clearTimeout(timer);if(wasActive)cancelLoad();return;}

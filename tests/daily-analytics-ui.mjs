@@ -15,7 +15,7 @@ function fixture(withChart=false) {
       addEventListener(event,handler){this.events[event]=handler;}});
     return nodes.get(id);
   };
-  const appWindow={addEventListener(){},WBApi:{cabinet(action,month){const pending=deferred();requests.push({...pending,action,month});return pending.promise;}}};
+  const appWindow={addEventListener(){},WBApi:{cabinet(action,month,refresh,payload){const pending=deferred();requests.push({...pending,action,month,payload});return pending.promise;}}};
   if(withChart)appWindow.Chart=class{constructor(canvas,config){charts.push(config);}destroy(){}};
   const state={window:appWindow,document:{getElementById:el,body:{},hidden:false,addEventListener(){}},Intl,Map,Date,
     getComputedStyle:()=>({getPropertyValue:key=>key}),matchMedia:()=>({matches:true}),
@@ -116,3 +116,16 @@ console.log('Daily UI: PASS (exact user/shop, zero inactive requests, stale resp
  f.requests[1].resolve(ready());await tick();assert.equal(f.el('dailyResults').hidden,false);
  f.context(true,'member',second);assert.equal(f.el('dailyAnalyticsLink').hidden,true);
 }
+
+{
+ const f=fixture();f.context();
+ f.el('advancedScope').events.click({target:{closest:()=>({dataset:{advancedScope:'ozon'}})}});
+ assert.equal(f.requests[1].action,'ozon_months');assert.equal(f.requests[1].payload.marketplace,'ozon');
+ f.requests[0].resolve(ready());await tick();assert.equal(f.el('dailyResults').hidden,true,'late WB response is discarded after selecting Ozon');
+ f.requests[1].resolve({months:['2026-10','2026-09']});await tick();assert.equal(f.requests[2].month,'2026-10');assert.equal(f.requests[2].payload.marketplace,'ozon');
+ f.requests[2].resolve({...ready(),marketplace:'ozon'});await tick();assert.match(f.el('dailyStatus').textContent,/Ozon/);
+ f.el('dailyRefresh').events.click();assert.equal(f.requests[3].action,'daily','Ozon refresh reads a report aggregate, never daily_start');
+ f.el('advancedScope').events.click({target:{closest:()=>({dataset:{advancedScope:'wildberries'}})}});assert.equal(f.el('dailyResults').hidden,true);assert.equal(f.requests[4].payload.marketplace,undefined);
+ f.requests[3].resolve({...ready(),monthly_profit:'999'});await tick();assert.equal(f.el('dailyProfit').textContent,'—');
+}
+console.log('Ozon daily UI PASS: source switch clears data, stale WB/Ozon reads rejected, report months selected, Ozon refresh never starts WB.');

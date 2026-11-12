@@ -55,7 +55,7 @@ assert.deepEqual(merged,f.unit,'pagination preserves exact category amounts, nam
 const compact=aggregateUnitFinance(Array.from({length:50000},()=>rows[0]));assert.ok(JSON.stringify(compact).length<2500);assert.doesNotMatch(JSON.stringify(compact),/rrdId|retailPriceWithDisc|sellerOperName/);
 assert.deepEqual(unitMonths('2026-09','2026-11'),['2026-09','2026-10','2026-11']);assert.throws(()=>unitMonths('2026-11','2026-09'),/Начало/);assert.throws(()=>unitMonths('2027-01','2027-01'));
 const handler=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8');
-assert.match(handler,/\['daily','daily_start','unit'\]/);assert.ok(handler.indexOf('authorizeDaily(auth.user.id,shopId)')<handler.indexOf("if(body.action==='unit')"));
+assert.match(handler,/\['daily','daily_start','unit','ozon_months'\]/);assert.ok(handler.indexOf('authorizeDaily(auth.user.id,shopId)')<handler.indexOf("if(body.action==='unit')"));
 const reads=[];
 const admin={from(table){let columns='',limit;const filters={};
  const jobs=['2026-10','2026-11'].map(month=>({...f.job,id:'unit-'+month,date_from:month+'-01',date_to:month==='2026-10'?'2026-10-31':'2026-11-11',finance_model:{...f.job.finance_model,unit:f.unit}}));

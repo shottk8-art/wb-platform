@@ -305,6 +305,7 @@
     };
 
     const byMonth = new Map();
+    const details = new Map();
     let transactionCount = 0;
     for (let r = headerIdx + 1; r < aoa.length; r++) {
       const row = aoa[r];
@@ -455,6 +456,7 @@
     const knownGroups = ["Продажи", "Возвраты", "Вознаграждение Ozon", "Продвижение и реклама", "Услуги партнёров", "Компенсации и декомпенсации", "Услуги доставки", "Услуги FBO", "Другие услуги и штрафы", "Прочие начисления"];
     const knownTypes = ["Выручка", "Возврат выручки"];
     const byMonth = new Map();
+    const details = new Map();
     let transactionCount = 0;
     for (let r = headerIdx + 1; r < aoa.length; r++) {
       const row = aoa[r];
@@ -466,6 +468,11 @@
       const group = normalizeOzonText(row[i.group], knownGroups);
       const type = normalizeOzonText(row[i.type], knownTypes);
       const amount = num(row[i.total]);
+      if(window.WBOzonModel){
+        if(!details.has(key))details.set(key,window.WBOzonModel.create(null));
+        const day=`${year}-${String(month).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+        window.WBOzonModel.add(details.get(key),{date:day,group,type,amount:row[i.total],article:String(row[i.article]??row[i.sku]??'').trim(),name:safeOzonProductName(row[i.name]),quantity:num(row[i.qty])});
+      }
       period.totalNet += amount;
       period.groups.set(group, (period.groups.get(group) || 0) + amount);
 
@@ -516,6 +523,11 @@
     periods.forEach((period) => period.skus.forEach((sku) => {
       if (!sku.name && recoveredNames.has(sku.article)) sku.name = recoveredNames.get(sku.article);
     }));
+    if(window.WBOzonModel)for(const p of periods){
+      const detail=details.get(`${p.report.year}-${p.report.month}`),dates=[...detail.days.keys()].sort();
+      detail.coverage=window.WBOzonModel.coverage(aoa.slice(0,headerIdx),p.report.year,p.report.month,dates);
+      p.analytics=window.WBOzonModel.finish(detail,recoveredNames);
+    }
     if (!periods.length) throw new Error("В отчёте Ozon не найдено ни одной операции с датой начисления.");
     return { periods, transactionCount };
   }

@@ -1,3 +1,4 @@
+import {readOzonDaily,readOzonUnit,readOzonMonths} from './ozon.ts';
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { ApiError, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { authorizeShop } from './access.ts';
@@ -111,8 +112,16 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
     await authorizeShop(admin,shopId,auth.user.id,body.action);
     if(['stocks','stocks_refresh','stocks_settings','stocks_tracking'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
-    if(['daily','daily_start','unit'].includes(body.action)) {
+    if(['daily','daily_start','unit','ozon_months'].includes(body.action)) {
       authorizeDaily(auth.user.id,shopId);
+      if(body.marketplace && !['wildberries','ozon'].includes(body.marketplace))throw new ApiError(400,'Неизвестная площадка');
+      if(body.action==='ozon_months')return json(await readOzonMonths(admin,shopId));
+      if(body.marketplace==='ozon'){
+        if(body.action==='daily_start')throw new ApiError(409,'Ozon обновляется из отчёта по начислениям');
+        if(body.action==='daily')return json(await readOzonDaily(admin,shopId,body.month));
+        return json(await readOzonUnit(admin,shopId,body.month,body.month_to||body.month));
+      }
+
       if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));
       if(body.action==='unit')return json(await readUnit(admin,shopId,body.month,body.month_to || body.month));
       // Reuse the durable, rate-limited queue and its existing refresh snapshot.

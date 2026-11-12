@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
-<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261111-unitlayout1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261112-ozon1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
@@ -536,6 +536,8 @@
     </section>
 
     <section class="section app-view" id="secDailyAnalytics" data-view="daily" aria-busy="false">
+      <div class="advanced-marketplace"><div class="segmented-control" id="advancedScope" role="group" aria-label="Площадка углублённой аналитики"><button type="button" data-advanced-scope="wildberries" class="active" aria-pressed="true">Wildberries</button><button type="button" data-advanced-scope="ozon" aria-pressed="false">Ozon</button></div></div>
+      <p class="daily-note advanced-ozon-help" id="advancedOzonHelp" hidden>Ozon рассчитывается из «Отчёта по начислениям» по датам начисления. После загрузки нового файла расчёты обновляются. <a href="#reports">Загрузить отчёт</a></p>
       <div class="advanced-tabs" id="advancedTabs" role="tablist" aria-label="Углублённая аналитика">
         <button type="button" id="dailyTab" role="tab" data-advanced-tab="daily" aria-selected="true" aria-controls="dailyPane">Ежедневная прибыль</button>
         <button type="button" id="unitTab" role="tab" data-advanced-tab="unit" aria-selected="false" aria-controls="unitPane" tabindex="-1">Юнит-экономика</button>
@@ -566,7 +568,7 @@
           <div class="card daily-breakdown"><h2 id="dailyDetailTitle">Расходы за день</h2><p class="daily-note" id="dailyNoOperations" hidden>В полученной выгрузке нет финансовых операций за этот день. Рекламные списания могут быть учтены.</p><p class="daily-note" id="dailyMissing" hidden></p><dl id="dailyDetails"></dl><div class="daily-detail-total"><span>Чистая прибыль</span><strong id="dailyDetailProfit">—</strong></div><p id="dailyDetailChange"></p></div>
         </div>
       </div>
-      <details class="daily-method"><summary>Как считается ежедневная прибыль</summary><ul>
+      <details class="daily-method" id="advancedWbMethod"><summary>Как считается ежедневная прибыль</summary><ul>
         <li>Тестовый раздел показывает Wildberries. Файлы Ozon не содержат полной ежедневной экономики и сюда не включены.</li>
         <li>Продажи, возвраты и удержания относятся к дате финансовой операции WB (rrDate), а не к дате заказа. Время — московское. WB может добавлять и корректировать операции, особенно в текущем месяце.</li>
         <li>Из стоимости выкупов вычитаются комиссия и расчёты WB, логистика, хранение, приёмка, штрафы, прочие удержания, корректировки, отзывы и лояльность, себестоимость, налог и денежная реклама. Реклама из удержаний не вычитается повторно; промобонусы прибыль не уменьшают.</li>
@@ -583,13 +585,13 @@
           <button type="button" class="ghost small" id="unitLoad">Показать</button>
           <button type="button" class="primary small" id="unitPrepare" hidden>Подготовить расходы по артикулам</button>
         </div>
-        <div class="unit-context"><p class="unit-status" id="unitStatus" role="status" aria-live="polite"></p><details class="unit-info unit-method-tip"><summary>Только прямые расходы <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover">Расходы, которые WB связал с артикулом, себестоимость и налог. Общие расходы магазина не распределяются между товарами, поэтому итог может отличаться от прибыли в обзоре.</span></details></div>
+        <div class="unit-context"><p class="unit-status" id="unitStatus" role="status" aria-live="polite"></p><details class="unit-info unit-method-tip"><summary>Только прямые расходы <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover">Расходы маркетплейса, прямо связанные с артикулом, себестоимость и налог. Общие расходы магазина не распределяются между товарами, поэтому итог может отличаться от прибыли в обзоре.</span></details></div>
         <div id="unitResults" hidden>
           <dl class="unit-summary">
             <div class="unit-stat"><dt class="unit-stat-label">Продажи по артикулам</dt><dd class="unit-stat-value" id="unitSales">—</dd><dd class="unit-stat-caption">Выкупы за вычетом возвратов</dd></div>
             <div class="unit-stat unit-stat--profit"><dt class="unit-stat-label">Чистая прибыль</dt><dd class="unit-stat-value" id="unitProfit">—</dd><dd class="unit-stat-caption">По прямым расходам</dd></div>
-            <div class="unit-stat"><dt class="unit-stat-label">Внутренняя реклама</dt><dd class="unit-stat-value" id="unitAds">—</dd><dd class="unit-stat-caption">Денежные расходы по товарам</dd></div>
-            <div class="unit-stat"><dt class="unit-stat-label">ДРР от продаж <details class="unit-info"><summary aria-label="Формула ДРР"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover">Денежные расходы внутренней рекламы / продажи этих же товаров × 100%. Промобонусы не включены.</span></details></dt><dd class="unit-stat-value" id="unitDrr">—</dd><dd class="unit-stat-caption">Внутренняя реклама / продажи</dd></div>
+            <div class="unit-stat"><dt class="unit-stat-label" id="unitAdsLabel">Внутренняя реклама</dt><dd class="unit-stat-value" id="unitAds">—</dd><dd class="unit-stat-caption" id="unitAdsCaption">Денежные расходы по товарам</dd></div>
+            <div class="unit-stat"><dt class="unit-stat-label">ДРР от продаж <details class="unit-info"><summary aria-label="Формула ДРР"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover" id="unitDrrHelpText">Денежные расходы внутренней рекламы / продажи этих же товаров × 100%. Промобонусы не включены.</span></details></dt><dd class="unit-stat-value" id="unitDrr">—</dd><dd class="unit-stat-caption" id="unitDrrCaption">Внутренняя реклама / продажи</dd></div>
           </dl>
           <div class="unit-workspace">
           <div class="card unit-table-card">
@@ -612,9 +614,10 @@
           <details class="card unit-common" id="unitCommonPanel"><summary><span>Расходы магазина без привязки к товару</span><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div><p class="unit-note">Показаны для сведения и не уменьшают прибыль конкретного артикула.</p><dl class="unit-ledger" id="unitCommon"></dl></div></details>
         </div>
         <details class="unit-help"><summary>Формулы и состав расходов</summary>
-          <p>Чистая прибыль по прямым расходам = продажи − расходы, которые WB связал с артикулом, − себестоимость − налог. Удержания, возвраты, компенсации и корректировки сохраняют свой знак. Налог считается по текущей ставке магазина; себестоимость берётся из общего справочника.</p>
+          <p>Чистая прибыль по прямым расходам = продажи − расходы маркетплейса, прямо связанные с артикулом, − себестоимость − налог. Удержания, возвраты, компенсации и корректировки сохраняют свой знак. Налог считается по текущей ставке магазина; себестоимость берётся из общего справочника.</p>
           <p>Маржинальность = эта прибыль / продажи × 100%. Рентабельность = эта прибыль / прямые расходы × 100%. При нулевой или отрицательной базе процент не рассчитывается. На единицу: сумма за период / выкупы за вычетом возвратов.</p>
-          <p>Внутренняя реклама привязана к товару по статистике кампаний WB, денежные списания — по истории затрат. У кампании с одним товаром берём её денежные расходы целиком. У кампании с несколькими товарами используем точные расходы по товарам, только если они совпадают с денежными списаниями и не смешаны с бонусами. Если точной привязки нет, показываем прочерк с пояснением. Повторно удержанную рекламу не вычитаем. Промобонусы прибыль не уменьшают. ДРР = денежные расходы внутренней рекламы / продажи того же артикула × 100%.</p>
+          <p id="unitWbAdMethod">Внутренняя реклама привязана к товару по статистике кампаний WB, денежные списания — по истории затрат. У кампании с одним товаром берём её денежные расходы целиком. У кампании с несколькими товарами используем точные расходы по товарам, только если они совпадают с денежными списаниями и не смешаны с бонусами. Если точной привязки нет, показываем прочерк с пояснением. Повторно удержанную рекламу не вычитаем. Промобонусы прибыль не уменьшают. ДРР = денежные расходы внутренней рекламы / продажи того же артикула × 100%.</p>
+          <p id="unitOzonAdMethod" hidden>Для Ozon берём все начисления, прямо связанные с артикулом. Реклама и ДРР включают только расходы группы «Продвижение и реклама» с этим артикулом. Общая реклама и услуги без артикула показаны отдельно и не распределяются. ДРР = эти расходы / продажи артикула × 100%. Данные относятся к датам начисления, а не к датам заказа.</p>
           <p>В отличие от обзора, расходы без артикула, операционные расходы и внешнее продвижение не вычитаются из прибыли товара. Для диапазона нужны готовые расходы каждого выбранного месяца; неполный период не показывается как полный.</p>
         </details>
       </div>
@@ -676,10 +679,11 @@
 <script src="/assets/shop-name.js?v=20261022-rename1"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
-<script src="/assets/parse.js?v=20261012-orders1"></script>
-<script src="/assets/upload.js?v=20261110-costs1"></script>
-<script src="/assets/daily-analytics.js?v=20261112-private-shops1"></script>
-<script src="/assets/unit-economics.js?v=20261111-unitlayout1"></script>
+<script src="/assets/ozon-model.js?v=20261112-ozon1"></script>
+<script src="/assets/parse.js?v=20261112-ozon1"></script>
+<script src="/assets/upload.js?v=20261112-ozon1"></script>
+<script src="/assets/daily-analytics.js?v=20261112-ozon1"></script>
+<script src="/assets/unit-economics.js?v=20261112-ozon1"></script>
 <script src="/assets/trend-interaction.js?v=20261111-daily3"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>
@@ -1786,6 +1790,7 @@
       }
     });
 
+    document.addEventListener('open-ozon-report',()=>{reportMarketplace='ozon';updateShareBox();setActiveView('reports');});
     document.getElementById("shopSwitch").addEventListener("change", async (e) => {
       const selectedShopId = e.target.value;
       const generation = ++shopChange;

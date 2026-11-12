@@ -9,7 +9,7 @@ function fixture(warm=false){
  const el=id=>{if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',innerHTML:'',dataset:{},attrs:{},events:{},hidden:false,disabled:false,classList:{toggle(){}},getAttribute(k){return this.attrs[k];},removeAttribute(k){delete this.attrs[k];},setAttribute(k,v){this.attrs[k]=v;},replaceChildren(){this.innerHTML='';this.textContent='';},querySelectorAll:()=>[],addEventListener(event,cb){this.events[event]=cb;}});return nodes.get(id);};
  const window={WBDaily:{allowed:(u,s)=>u==='owner'&&s==='toplash'},WBApi:{connected:warm,subscribe:cb=>listeners.push(cb),cabinet(action,month,refresh,payload){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});requests.push({action,month,payload,resolve,reject});return promise;}}};
  vm.runInNewContext(source,{window,document:{getElementById:el,hidden:false,addEventListener(){}},Intl,Map,Date:Clock,Number,setTimeout:cb=>{timers.push(cb);return timers.length;},clearTimeout(){}});
- return {el,requests,timers,advance:ms=>clock+=ms,invalidate:()=>listeners.forEach(cb=>cb()),set:(active=true,userId='owner',shopId='toplash')=>window.WBUnit.setContext({active,userId,shopId})};
+ return {el,requests,timers,advance:ms=>clock+=ms,invalidate:()=>listeners.forEach(cb=>cb()),set:(active=true,userId='owner',shopId='toplash',extra={})=>window.WBUnit.setContext({active,userId,shopId,...extra})};
 }
 const result=()=>({status:'ready',period:{dateFrom:'2026-11-01',dateTo:'2026-11-11'},totals:{sales:'100',net_profit:'40',margin:40,profitability:66.67},products:[{article:'SKU',name:'Название <b>',quantity:2,sales:'100',total_expenses:'60',net_profit:'40',margin:40,profitability:66.67,expenses:[{label:'Себестоимость',amount:'60'}]}],common_expenses:[{key:'media',label:'WB Медиа',amount:'20'}]});
 {
@@ -96,3 +96,18 @@ console.log('Article ads UI PASS: cash advertising and DRR, expandable columns, 
  assert.equal(f.requests.length,1,'filter, sort and detail controls do not call WB or the server');
 }
 console.log('Customers-style workspace PASS: counted segments, matching detail, ascending/descending column sort, explicit zero/unknown expenses, empty search, narrow detail/back focus, no wide jumps and zero interaction requests.');
+
+{
+ const f=fixture();f.set();f.set(true,'owner','toplash',{marketplace:'ozon',months:['2026-10']});
+ assert.equal(f.requests[1].payload.marketplace,'ozon');assert.equal(f.requests[1].month,'2026-10');
+ f.requests[0].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,true);
+ f.requests[1].resolve({status:'needs_import',pending:[{month:'2026-10',status:'needs_import'}],message:'Загрузите отчёт Ozon'});await tick();
+ assert.equal(f.el('unitPrepare').hidden,true);assert.match(f.el('unitStatus').textContent,/Ozon/);
+}
+console.log('Ozon unit UI PASS: separate report ranges/cache, no WB preparation and no stale source repaint.');
+
+{
+ const f=fixture(true);f.set(false,'owner','toplash',{marketplace:'ozon',months:['2026-10','2026-09']});assert.equal(f.requests.length,2);assert.ok(f.requests.every(r=>r.payload.marketplace==='ozon'));
+ f.invalidate();assert.equal(f.requests.length,2,'WB notifications must not flush an Ozon file cache');
+ f.set(true,'owner','toplash',{marketplace:'ozon',months:['2026-10','2026-09']});assert.equal(f.requests.length,2,'opening Ozon joins the two-month preload');
+}

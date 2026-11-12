@@ -104,6 +104,15 @@
 
   async function uploadOzonAccruals(shopId, file) {
     const { periods, transactionCount } = await window.WBParse.parseOzonAccruals(file);
+    const {data:auth,error:authError}=await sb().auth.getSession();
+    if(authError)throw authError;
+    if(auth.session?.user.id==='bbb002c4-cd7a-490d-b9c0-72aed5424261' && periods.every(p=>p.analytics)){
+      const {data,error}=await sb().rpc('import_ozon_report',{p_shop_id:shopId,p_filename:file.name,p_periods:periods,p_row_count:transactionCount});
+      if(error)throw error;
+      document.dispatchEvent(new CustomEvent('ozon-analytics-changed',{detail:{shopId}}));
+      return data;
+    }
+
     const reports = periods.map((p) => ({ shop_id: shopId, marketplace: "ozon", ...p.report }));
     const { error: reportError } = await sb().from("monthly_reports").upsert(reports, { onConflict: "shop_id,marketplace,year,month" });
     if (reportError) throw reportError;

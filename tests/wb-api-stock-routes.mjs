@@ -14,7 +14,7 @@ const admin={rpc:async name=>name==='wb_stock_accept_lease'?{data:[],error:null}
 const user={auth:{getUser:async()=>({data:{user:{id:currentUser}},error:null})}};
 const source=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
 const context=vm.createContext({...core,authorizeShop,authorizeDaily,stocksAction,processStocks,
-  readDaily:async(a,shop)=>{privateReads.push(shop);return {shop}},readUnit:async(a,shop)=>{privateReads.push(shop);return {shop}},cabinetPeriod:m=>({dateFrom:m+'-01',dateTo:m+'-28'}),
+  readOzonDaily:async(a,shop)=>{privateReads.push(shop);return {marketplace:'ozon',shop}},readOzonUnit:async(a,shop)=>{privateReads.push(shop);return {marketplace:'ozon',shop}},readOzonMonths:async(a,shop)=>({months:['2026-10']}),readDaily:async(a,shop)=>{privateReads.push(shop);return {shop}},readUnit:async(a,shop)=>{privateReads.push(shop);return {shop}},cabinetPeriod:m=>({dateFrom:m+'-01',dateTo:m+'-28'}),
   Request,Response,AbortSignal,console,Set,createClient:(url,key,options)=>options?.global?user:admin,
   fetch:async(url,opts)=>{upstream.push(url);return new Response(JSON.stringify(url.includes('seller-info')?{sid:'seller',name:'Test'}:{}),{status:200,headers:{'Content-Type':'application/json'}})},
   Deno:{env:{get:name=>name},serve:fn=>{handler=fn;}}});
@@ -43,3 +43,11 @@ assert.equal((await handler(request({action:'stocks',shop_id:foreign},{Authoriza
 assert.equal(privateReads.length,beforePrivate,'forbidden accounts never enter private analytics reads');
 assert.ok(scopedReads.filter(r=>r.table.startsWith('wb_stock_')).every(r=>[DAILY_SHOP_ID,second].includes(r.filters.shop_id)));
 console.log('Private route scope PASS: account across shops, members/other owners denied, normal shop authorization preserved.');
+
+for(const action of ['daily','unit','ozon_months']){
+ const r=await handler(request({action,shop_id:second,month:'2026-10',marketplace:'ozon'},{Authorization:'Bearer session'}));assert.equal(r.status,200);
+}
+assert.equal((await handler(request({action:'daily_start',shop_id:second,month:'2026-10',marketplace:'ozon'},{Authorization:'Bearer session'}))).status,409,'Ozon never queues a WB download');
+currentUser='member';
+for(const action of ['daily','unit','ozon_months'])assert.equal((await handler(request({action,shop_id:second,month:'2026-10',marketplace:'ozon'},{Authorization:'Bearer session'}))).status,403);
+console.log('Ozon routes PASS: account gate, scoped reads without WB connection, and no WB enqueue for manual Ozon.');
