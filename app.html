@@ -937,14 +937,19 @@
   }
 
   function updateShareBox() {
-    window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='daily'});
-    window.WBStock?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='stocks'});
     if (!shop) {
+      window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='daily'});
+    window.WBStock?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='stocks'});
+
       document.getElementById('marketplaceBadge').textContent = 'WB · Ozon';
       window.WBShell?.setProfile(session.user, false);
       document.getElementById('profileRole').value = 'Магазин не выбран';
       return;
     }
+    // Bind requests before setActiveView can open private analytics.
+    const owner = isOwner();
+    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
+    window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
     const marketplace = reportMarketplace;
     const marketplaceName = marketplace === "ozon" ? "Ozon" : "Wildberries";
     const badge = document.getElementById("marketplaceBadge");
@@ -976,11 +981,10 @@
     // Витрина, налог, удаление магазина и добавление участников — только
     // владелец: RLS всё равно отклонит эти действия от участника, поэтому
     // прячем элементы управления, чтобы не показывать ложные ошибки.
-    const owner = isOwner();
     window.WBShopName?.setContext({shop,userId:session.user.id});
     window.WBShell?.setProfile(session.user, owner);
-    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
-    window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
+    window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='daily'});
+    window.WBStock?.setContext({userId:session?.user?.id,shopId:shop?.id,active:activeView==='stocks'});
     updateOverviewSource();
     document.getElementById("deleteShopBtn").hidden = !owner;
     document.getElementById("shareToggle").disabled = !owner;
