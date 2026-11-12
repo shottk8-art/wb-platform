@@ -40,4 +40,7 @@ const result=()=>({status:'ready',fetched_at:'2026-11-12T06:00:00Z',stale:false,
 {
  const f=fixture(),r=result();r.inventory.products[0]={...r.inventory.products[0],status:'out',quantity:0,orders:0,daily_orders:0,days_left:null,recommended:null};f.set();f.requests[0].resolve(r);await tick();assert.equal(f.el('stockBellCount').hidden,true,'no replenishment alarm for a dormant card with no stock and no orders');assert.match(f.el('stockRows').innerHTML,/Нет в наличии/,'zero-stock cards remain visible in inventory');
 }
+{
+ const f=fixture(),r=result();r.inventory.products.unshift({...r.inventory.products[0],nm_id:'3',name:'Неактивный товар',status:'out',quantity:0,orders:0,daily_orders:0,days_left:null,recommended:null});f.set();f.requests[0].resolve(r);await tick();assert.ok(f.el('stockRows').innerHTML.indexOf('data-stock-row="1"')<f.el('stockRows').innerHTML.indexOf('data-stock-row="3"'),'actionable replenishment appears before dormant zero-stock cards');
+}
 console.log('Stock UI PASS: exact owner/shop and bound API context, late read/save isolation, count and restock notifications, safe labels, cache on view changes, empty/unknown/loading, retained dated snapshot on error and validated settings.');
