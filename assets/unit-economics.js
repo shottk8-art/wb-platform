@@ -115,6 +115,7 @@
     const date=value=>new Date(value+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).replace(/\s*г\.$/,'');
     const unknown=result.products.filter(p=>p.advertising_unknown).length;
     status(`${date(result.period.dateFrom)} — ${date(result.period.dateTo)}${unknown?' У '+unknown+' товаров нет точного разделения денежной рекламы и бонусов — откройте товар для пояснения.':''}`);
+    if(result.media_estimated)el('unitStatus').textContent+=' В общих расходах WB Media временно принята за 0 ₽; прямые расходы товаров не изменены.';
     el('unitCommon').innerHTML=result.common_expenses.filter(e=>e.amount==null || Number(e.amount)!==0).map(e=>`<div><dt>${safe(e.label)}</dt><dd>${safe(money(e.amount))}</dd></div>`).join('')||'<p class="hint">В полученных данных нет общих расходов.</p>';
     el('unitSearch').value=el('unitSearch').value||'';table();
     if(result.products.length)details(result.products.some(p=>p.article===selected)?selected:result.products[0].article);

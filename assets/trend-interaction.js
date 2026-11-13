@@ -59,7 +59,9 @@
         const inverse=['internalAds','mediaAds','drrOrders','drrSales'].includes(metricKey);
         const sentiment=delta==null || delta===0 || metricKey==='promo' ? 'neutral' : (delta>0)!==inverse ? 'up' : 'down';
         const secondary=metricKey==='quantity' ? numeric(row.sales) : numeric(row.quantity);
-        return { index, month:`${months[Number(row.month)]} ${row.year}`, value, secondary, note:value==null?unavailableReason(row):'',
+        const affected=['profit','profitability','mediaAds','drrOrders','drrSales'].includes(metricKey);
+        const note=value==null?unavailableReason(row):affected && row.mediaEstimated?'Расчёт предварительный: расходы WB Media временно приняты за 0 ₽.':affected && prior?.mediaEstimated?'Сравнение предварительное: WB Media прошлого месяца временно принята за 0 ₽.':'';
+        return { index, month:`${months[Number(row.month)]} ${row.year}`, value, secondary, note,
           secondaryLabel:metricKey==='quantity'?'Сумма продаж':'Выкупили',secondaryUnit:metricKey==='quantity'?'₽':'шт.',
           comparisonLabel:partial?'Месяц не закрыт':'К пред. месяцу',delta,sentiment,
           deltaText:delta==null?'—':`${delta>0?'+':delta<0?'−':''}${rate.format(Math.abs(delta))}${metric.unit==='%'?' п.п.':'%'}` };
@@ -216,6 +218,9 @@
     state.summary.textContent=custom?.summaryText ?? `${format(state.model.summary,state.model.metric.unit,true)} ${state.model.metric.unit==='%'?'за период':`за ${rows.length} мес.`}`;
     if(!custom && state.model.unavailable.length)state.summary.textContent+=` · нет расчёта: ${state.model.unavailable.length} мес.`;
     state.summary.title=custom?.summaryTitle ?? `${state.model.metric.label}: ${format(state.model.summary,state.model.metric.unit)}. ${state.model.detail(0).month} — ${state.model.detail(rows.length-1).month}. Неизвестные месячные суммы не подменяются нулём.`;
+    if(!custom && state.model.summary!=null && ['profit','profitability','mediaAds','drrOrders','drrSales'].includes(state.model.metricKey) && rows.some(row=>row.mediaEstimated)){
+      state.summary.textContent+=' · предварительно';state.summary.title+=' Расходы WB Media в части месяцев временно приняты за 0 ₽.';
+    }
     if(!custom && state.model.unavailable.length)state.summary.title+=' '+state.model.unavailable.map(i=>{const d=state.model.detail(i);return `${d.month}: ${d.note}`;}).join(' ');
     if(changed || force || geometry!==state.geometry){
       state.geometry=geometry;

@@ -15,16 +15,15 @@ const pending=async(_key,url)=>{
   if(url.includes('/advert?id=')){cardCalls++;return {advertId:11,extended:{expenses:'100.00'}};}
   statsCalls++;return [{interval:{begin:from,end:to},advert_id:11,error:'Статистика в процессе получения'}];
 };
-let stopped;
 for(let tick=0;tick<25;tick++){
-  try{await processCabinetSource(admin,structuredClone(job),pending);}
-  catch(error){stopped=error;break;}
+  await processCabinetSource(admin,structuredClone(job),pending);
+  if(job.status==='complete')break;
 }
-assert.ok(stopped,'WB Media must not repeat the same pending response forever without a bounded, actionable result');
-assert.equal(stopped.status,400,'upstream preparation timeout is resumable by the user, not another automatic error retry loop');
-assert.match(stopped.message,/WB Медиа/);
-assert.equal(job.summary.api_sources.media.amount,null,'timeout is not zero spend');
+assert.equal(job.status,'complete','unavailable Media must not block other known financial data');
+assert.equal(job.summary.api_sources.media.amount,'0.00');
+assert.equal(job.summary.api_sources.media.status,'estimated','temporary zero is explicitly distinguished from received zero');
+assert.equal(job.summary.api_sources.media.estimated,true);
 assert.equal(job.summary.api_sources.media.stats_offset,0,'never skip an unresolved campaign');
 assert.equal(cardCalls,1,'persisted expense evidence must not be refetched on every preparation retry');
-assert.equal(statsCalls,8);
-console.log('WB Media stalled preparation: bounded wait, unknown spend, preserved cursor passed.');
+assert.equal(statsCalls,3,'two interval attempts and one complete-history fallback before a labelled estimate');
+console.log('WB Media stalled preparation: bounded wait, explicit temporary zero, preserved cursor passed.');

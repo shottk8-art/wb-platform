@@ -158,7 +158,7 @@ export async function readUnit(admin:any,shopId:string,from:unknown,to:unknown) 
     if(job.article_ads?.version!==1 || job.article_ads.status!=='downloaded' || (job.article_ads.date_from && (job.article_ads.date_from!==cabinet.period.dateFrom || job.article_ads.date_to!==cabinet.period.dateTo))){pending.push({month,status:cabinet.refresh_job?.status==='loading'?'loading':'needs_preparation',error:cabinet.refresh_job?.error_message||null});continue;}
     const result=job.unit?.cursor_id===String(job.cursor_id)?calculateUnit(cabinet,job.unit):{status:'needs_preparation'};
     if(result.status!=='ready')pending.push({month,status:cabinet.refresh_job?.status==='loading'?'loading':'needs_preparation',error:cabinet.refresh_job?.error_message||null});
-    else items.push({...attachArticleAds(result,job.article_ads,job.orders,cabinet),month,period:cabinet.period,updated_at:cabinet.job.updated_at});
+    else items.push({...attachArticleAds(result,job.article_ads,job.orders,cabinet),media_estimated:!!cabinet.sources.media.estimated,month,period:cabinet.period,updated_at:cabinet.job.updated_at});
   }
   if(pending.length)return {status:pending.some(p=>p.status==='loading')?'loading':'needs_preparation',pending,products:[],months};
   const products=new Map<string,any>();const common=new Map<string,any>();
@@ -180,6 +180,6 @@ export async function readUnit(admin:any,shopId:string,from:unknown,to:unknown) 
   const rows=[...products.values()].sort((a,b)=>Number(b.sales)-Number(a.sales));
   const sum=(key:string)=>rows.some(p=>p[key]==null)?null:rub(rows.reduce((n,p)=>n+cents(p[key]),0n));
   const totals={sales:sum('sales'),expenses:sum('total_expenses'),net_profit:sum('net_profit'),internal_ads:sum('internal_ads'),drr:ratio(sum('internal_ads'),sum('sales'))};
-  return {status:'ready',method:'direct_only',products:rows,common_expenses:[...common.values()],totals:{...totals,margin:ratio(totals.net_profit,totals.sales),profitability:ratio(totals.net_profit,totals.expenses)},months,
+  return {status:'ready',method:'direct_only',products:rows,common_expenses:[...common.values()],media_estimated:items.some(p=>p.media_estimated),totals:{...totals,margin:ratio(totals.net_profit,totals.sales),profitability:ratio(totals.net_profit,totals.expenses)},months,
     period:{dateFrom:items[0].period.dateFrom,dateTo:items.at(-1).period.dateTo},updated_at:items.map(p=>p.updated_at).sort()[0]};
 }

@@ -22,10 +22,11 @@ assert.equal(job.summary.api_sources.media.format_issue,undefined);
 
 for (const evidence of [null,{advertId:421854,status:7},{advertId:421854,status:7,extended:{expenses:100}},{advertId:123,extended:{expenses:0}}]) {
   job=initial();requests=[];detail=evidence;
-  await assert.rejects(()=>processCabinetSource(admin,structuredClone(job),fetcher));
+  await processCabinetSource(admin,structuredClone(job),fetcher);
   assert.equal(job.summary.api_sources.media.stats_offset,0,'unknown/nonzero evidence must not advance the cursor');
-  assert.equal(job.summary.api_sources.media.amount,null);
-  assert.notEqual(job.status,'complete');
+  assert.equal(job.summary.api_sources.media.amount,'0.00');
+  assert.equal(job.summary.api_sources.media.estimated,true,'unknown is an explicit temporary estimate, not a received zero');
+  assert.equal(job.status,'complete');
 }
 // Positive lifetime spend is only a selection hint, not the monthly expense.
 // Missing lifetime expense must still request interval stats rather than skip.

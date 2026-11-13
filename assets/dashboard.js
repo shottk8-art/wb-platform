@@ -256,25 +256,30 @@
     return {rep,commission,skuRows,cogs,tax,netProfit:n(c.net_profit),ads:e.advertising_total == null ? null : n(e.internal_ads)+n(s.media?.amount),
       manualExpenses:(rep.operational_expenses || 0)+(rep.external_promotion_expenses || 0),expenses,
       ordersSummary: s.orders?.status === 'downloaded' ? {amount:rep.orders_amount,qty:rep.orders_qty} : {amount:null,qty:null},
-      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,salesRefreshRequired:!!c.finance && rep.sales_amount == null,missing:e.missing || [],missingCosts:c.missing_costs || []};
+      rates:{drrOrders:e.drr_orders ?? null,drrSales:e.drr_sales ?? null},isApi:true,mediaEstimated:s.media?.estimated===true,salesRefreshRequired:!!c.finance && rep.sales_amount == null,missing:e.missing || [],missingCosts:c.missing_costs || []};
   }
 
   function combineDerived(entries) {
     if (!entries.length) return computeDerived(null, [], new Map(), 0);
     const rep = {};
     let commission = 0, cogs = 0, ads = 0, tax = 0, manualExpenses = 0, netProfit = 0;
+    const nullableSum=(a,b)=>a===null || b===null ? null : a+(b || 0);
+    const expenses=new Map();
     const skuRows = [];
     entries.forEach(({ derived, shop }) => {
       Object.entries(derived.rep || {}).forEach(([key, value]) => {
         if (value == null || rep[key] === null) rep[key] = null;
         else if (typeof value === "number") rep[key] = (rep[key] || 0) + value;
       });
-      commission += derived.commission || 0;
-      cogs += derived.cogs || 0;
-      ads += derived.ads || 0;
-      tax += derived.tax || 0;
-      manualExpenses += derived.manualExpenses || 0;
-      netProfit += derived.netProfit || 0;
+      commission = nullableSum(commission,derived.commission);
+      cogs = nullableSum(cogs,derived.cogs);
+      ads = nullableSum(ads,derived.ads);
+      tax = nullableSum(tax,derived.tax);
+      manualExpenses = nullableSum(manualExpenses,derived.manualExpenses);
+      netProfit = nullableSum(netProfit,derived.netProfit);
+      // Keep each source's signed ledger, including advertising already
+      // withheld by WB. Rebuilding an API ledger as file fields double counts it.
+      expenseItems(derived,shop?.marketplace).forEach(([label,value])=>expenses.set(label,nullableSum(expenses.has(label)?expenses.get(label):0,value)));
       derived.skuRows.forEach((row) => skuRows.push(entries.length > 1 ? {
         ...row,
         article: `${shop.marketplace === "ozon" ? "Ozon" : "WB"} · ${row.article}`,
@@ -288,7 +293,10 @@
       const values = entries.map(({derived,shop}) => shop?.marketplace === 'ozon' ? null : derived.ordersSummary?.[field]);
       ordersSummary[field] = values.every(value => Number.isFinite(value)) ? values.reduce((sum,value) => sum+value,0) : null;
     }
-    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary,
+    const adTotal=ads===null || rep.external_promotion_expenses===null ? null : ads+(rep.external_promotion_expenses || 0);
+    return { rep, commission, skuRows, cogs, ads, tax, manualExpenses, netProfit, ordersSummary,expenses:[...expenses],isApi:entries.some(({derived})=>derived.isApi),
+      rates:{drrOrders:adTotal!=null && ordersSummary.amount>0?adTotal/ordersSummary.amount*100:null,drrSales:adTotal!=null && rep.sales_amount>0?adTotal/rep.sales_amount*100:null},
+      mediaEstimated:entries.some(({derived})=>derived.mediaEstimated),
       salesRefreshRequired:entries.some(({derived})=>derived.salesRefreshRequired),
       missing:[...new Set(entries.flatMap(({derived})=>derived.missing || []))],missingCosts:entries.flatMap(({derived})=>derived.missingCosts || []) };
   }
@@ -303,6 +311,7 @@
       });
       current.missing = [...new Set([...(current.missing || []), ...(row.missing || [])])];
       current.missingCostsCount = (current.missingCostsCount || 0) + (row.missingCostsCount || 0);
+      current.mediaEstimated = !!(current.mediaEstimated || row.mediaEstimated);
       periods.set(key, current);
     });
     return [...periods.values()].map((row) => ({
@@ -417,6 +426,9 @@
     visibleCards.forEach((c, index) => {
       const unavailable = c.metric === 'profit' ? window.WBProfitNotice?.describe(d)
         : c.metric === 'sales' && d.salesRefreshRequired ? {short:'Обновите месяц — нужны цены выкупов'} : null;
+      const affected = ['profit','mediaAds','drrOrders','drrSales'].includes(c.metric);
+      const estimateNote = affected && d.mediaEstimated ? 'Предварительно: WB Media = 0 ₽'
+        : affected && prevD?.mediaEstimated ? 'Сравнение предварительное: WB Media = 0 ₽' : '';
       const heroClass = c.hero ? " kpi--hero" : "";
       const negClass = c.hero && c.value < 0 ? " neg" : "";
       const valStr = c.value == null ? "—" : c.unit === "%" ? fmtRate.format(c.value) : c.unit === "шт." ? fmtQty.format(Math.round(c.value)) : fmtMoney.format(Math.round(c.value));
@@ -425,11 +437,11 @@
       const asContent = (html) => interactive ? html.replace(/<div\b/g, "<span").replace(/<\/div>/g, "</span>") : html;
       const card = el(`
         <${tag} class="kpi${heroClass}${c.className || ""}${interactive ? " kpi--interactive" + (c.metric === activeMetric ? " is-selected" : "") : ""}"
-          ${interactive ? `title="Показать на графике: ${escapeHtml(c.label)}"` : ""}
+          ${interactive ? `title="Показать на графике: ${escapeHtml(c.label)}${estimateNote ? '. '+escapeHtml(estimateNote) : ''}"` : ""}
           ${interactive ? `type="button" data-trend-metric="${c.metric}" aria-pressed="${c.metric === activeMetric}" aria-controls="trendChart"` : ""}>
           <${block} class="kpi-label">${escapeHtml(c.label)}</${block}>
           <${block} class="kpi-reading"><${block} class="kpi-value${negClass}"><span class="kpi-number">${valStr}</span> <span class="kpi-unit">${c.value == null ? "" : c.unit}</span></${block}></${block}>
-          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${unavailable ? escapeHtml(unavailable.short) : c.value != null && c.prev != null ? escapeHtml(interaction?.comparisonLabel || 'к предыдущему месяцу') : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
+          <${block} class="kpi-comparison"><${block} class="kpi-comparison-copy">${asContent(renderDeltaChip(c.value, c.prev, c.unit, { lowerIsBetter: c.lowerIsBetter, neutral: c.neutral }))}<span class="kpi-comparison-label">${unavailable ? escapeHtml(unavailable.short) : estimateNote ? escapeHtml(estimateNote) : c.value != null && c.prev != null ? escapeHtml(interaction?.comparisonLabel || 'к предыдущему месяцу') : 'Нет данных для сравнения'}</span></${block}><span class="kpi-mini" data-kpi-mini="${c.metric}" aria-hidden="true"></span></${block}>
           ${asContent(c.extra || "")}
           ${interactive ? '<span class="kpi-action"><span>Смотреть динамику</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>' : ''}
         </${tag}>
@@ -475,6 +487,7 @@
     document.getElementById('profitabilityGauge').setAttribute('aria-label', margin == null ? 'Рентабельность: недостаточно данных' : `Рентабельность: ${fmtRate.format(margin)}% чистой прибыли от продаж`);
     document.getElementById('profitabilityCaption').textContent = margin == null ? 'Заполните недостающие данные' : margin < 0 ? 'Магазин работает в убыток' : 'Прибыль на каждый рубль продаж';
     document.getElementById('profitabilityNote').textContent = margin == null ? 'Для расчёта нужны продажи и чистая прибыль.' : `${fmtRate.format(Math.abs(margin))} коп. ${margin < 0 ? 'убытка' : 'чистой прибыли'} с 1 ₽ продаж.`;
+    if(margin!=null && derived.mediaEstimated)document.getElementById('profitabilityNote').textContent+=' WB Media временно принята за 0 ₽.';
     const delta = document.getElementById('profitabilityDelta');
     delta.textContent = margin == null || before == null ? '' : `${margin >= before ? '+' : '−'}${fmtRate.format(Math.abs(margin-before))} п.п.`;
     delta.classList.toggle('is-negative', margin != null && before != null && margin < before);

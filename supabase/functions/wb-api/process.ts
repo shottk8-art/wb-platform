@@ -14,7 +14,10 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
   if (keyError || !token) throw new ApiError(400, 'Сначала подключите API магазина');
   const personal = validateKey(String(token));
   const response = await wbFetch(personal.token, 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed', {
-    dateFrom: job.date_from, dateTo: `${job.date_to}T23:59:59`, limit: 50000,
+    // Monthly + daily + SKU aggregates share the runtime's CPU allowance.
+    // Smaller durable pages retain the same cursor/money transaction while
+    // leaving headroom below the observed ~2-second Edge CPU limit.
+    dateFrom: job.date_from, dateTo: `${job.date_to}T23:59:59`, limit: 10000,
     rrdId: Number(job.cursor_id), period: job.summary?.pilot?.finance_period || 'weekly', fields: FINANCE_FIELDS,
   });
   const rows = sanitizeRows(response || []);

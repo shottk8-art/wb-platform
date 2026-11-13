@@ -39,6 +39,7 @@ const missing = model([{ ...rows[0], profit:null, missingCostsCount:5, missing:[
 assert.equal(missing.unavailable.length,1);
 assert.match(missing.detail(0).note,/себестоимость.*5 арт/);
 assert.equal(missing.detail(1).note,'','a known month clears missing-cost explanations');
+assert.match(model(rows.map(r=>({...r,mediaEstimated:true}))).detail(0).note,/предварительный.*WB Media.*0 ₽/);
 assert.match(metric.lossColor,/^#/);
 assert.equal(model([{ ...rows[0], month: 7 }, rows[1]]).detail(1).delta, null);
 assert.equal(window.WBTrend.model(rows, 'profitability', metric, '', new Date(2026, 8, 15)).detail(1).delta, null);

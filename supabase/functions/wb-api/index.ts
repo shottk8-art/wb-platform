@@ -8,6 +8,7 @@ import { authorizeDaily } from './daily-access.ts';
 import { readDaily } from './daily.ts';
 import { readUnit } from './unit.ts';
 import { stocksAction, processStocks } from './stocks.ts';
+import { readMediaHistoryResponse } from './media.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -30,7 +31,10 @@ async function wbFetch(token: string, url: string, body?: unknown) {
     throw upstreamError(response.status, retry);
   }
   if (response.status === 204) return null;
-  try { return await response.json(); } catch { throw new ApiError(502, "Не удалось прочитать ответ WB"); }
+  try {
+    if(url==='https://advert-media-api.wildberries.ru/adv/v1/stats' && Array.isArray(body) && body.length===1 && !body[0]?.interval)return await readMediaHistoryResponse(response);
+    return await response.json();
+  } catch { throw new ApiError(502, "Не удалось прочитать ответ WB"); }
 }
 async function verifyConnection(token: string) {
   const seller = await wbFetch(token, "https://common-api.wildberries.ru/api/v1/seller-info");

@@ -317,6 +317,7 @@ create policy "owner removes shop_members"
 create or replace function public.is_admin(p_user_id uuid default auth.uid())
 returns boolean
 language sql stable
+set search_path = ''
 as $$
   select p_user_id = 'bbb002c4-cd7a-490d-b9c0-72aed5424261'::uuid;
 $$;

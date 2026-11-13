@@ -12,6 +12,7 @@ assert.equal(window.WBDashboard.computeDerived(report,rows,new Map([['other',116
 console.log('Case-insensitive file costs: PASS.');
 const requests=[];
 window.supabaseClient={
+ auth:{getSession:async()=>({data:{session:{user:{id:'regular-owner'}}},error:null})},
  rpc:async(name,args)=>{requests.push({name,args});return {data:1,error:null};},
  from(table){let shopId;
   const q={select(){return q;},eq(column,value){if(column==='shop_id')shopId=value;return q;},order(){return q;},range(){return q;},

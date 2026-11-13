@@ -33,6 +33,7 @@
 .api-source-list li { display:flex; flex-direction:column; gap:5px; font-size:13px; }
 .api-source-list strong { font-weight:500; color:var(--ink-soft); }
 .api-source-list [data-state="downloaded"] { color:var(--good); }
+.api-source-list [data-state="estimated"] { color:var(--warm); }
 .api-source-list [data-state="confirmed_by_user"] { color:var(--accent); }
 .api-cabinet-warning { color:var(--ink-soft); font-size:13px; line-height:1.6; }
 .api-finance-details { margin:20px 0; }

@@ -4,7 +4,7 @@ for(const file of ['app.html','index.html']){
   const html=fs.readFileSync(file,'utf8');
   assert.match(html,/class="[^"]*analytics-section[^"]*"/);
   assert.match(html,/class="grid-2 analytics-grid"/);
-  assert.match(html,/reference\.css\?v=20261019-center1/);
+  assert.match(html,/reference\.css\?v=\d{8}-[a-z0-9]+/,'layout styles retain an explicit cache version');
 }
 assert.match(css,/container:seller-analytics \/ inline-size/);
 assert.match(css,/@container seller-analytics \(min-width:1100px\)/);

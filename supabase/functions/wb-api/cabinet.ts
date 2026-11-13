@@ -3,7 +3,7 @@ import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
 import { campaignDebits, campaignStats } from './article-ads.ts';
 import { privateShopAllowed } from './daily-access.ts';
-import { mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
+import { MEDIA_ESTIMATE_NOTE, mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaCampaignDailyAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
 
 export function cabinetPeriod(value: unknown, now = new Date()) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) throw new ApiError(400, 'Выберите месяц');
@@ -78,6 +78,23 @@ async function commit(admin: any, job: any, summary: any, status = 'loading', pr
 // permits a personal-token burst of 10; inspect at most five campaigns (at most
 // ten media calls with card fallbacks) per tick, under the existing shared quota.
 export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
+  try{return await processCabinetSourceStrict(admin,job,wbFetch);}
+  catch(error){
+    // Owner policy: unavailable Media must not block otherwise known figures.
+    // Only Media/upstream failures get a clearly labelled temporary zero; DB
+    // persistence errors and failures in finance/orders/internal ads still fail.
+    if(!['media_list','media_stats'].includes(job.summary?.pilot?.stage) || !(error instanceof ApiError) || ![400,403,429,502].includes(error.status))throw error;
+    const summary=structuredClone(job.summary);summary.api_sources ||= {};
+    const media=summary.api_sources.media ||= {};
+    Object.assign(media,{status:'estimated',amount:'0.00',estimated:true,date_from:job.date_from,date_to:job.date_to,
+      retry_stage:summary.pilot.stage,estimate_reason:error.message,note:MEDIA_ESTIMATE_NOTE,fetched_at:new Date().toISOString()});
+    if((error as any).mediaDiagnostic)media.format_issue=(error as any).mediaDiagnostic;
+    summary.pilot.stage='done';
+    await commit(admin,job,summary,'complete',await privateShopAllowed(admin,job.shop_id));
+    return {retry_after:0,media_estimated:true};
+  }
+}
+async function processCabinetSourceStrict(admin: any, job: any, wbFetch: any) {
   validateShopId(job.shop_id);
   const privateShop = await privateShopAllowed(admin,job.shop_id);
   const financialMedia = mediaFinancialSource(job.summary?.deductions, !!job.summary?.pilot?.finance_complete,
@@ -196,16 +213,26 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
           try { amount = mediaIntervalAmount(response, job.date_from, job.date_to); }
           catch (e) {
             media.format_issue = {campaign_id:id,...mediaResponseDiagnostic(response)};
+            if(e instanceof ApiError)(e as any).mediaDiagnostic=media.format_issue;
             const {error} = await admin.from('wb_api_preview_jobs').update({summary,updated_at:new Date().toISOString()}).eq('id',job.id).eq('shop_id',job.shop_id);
             if (error) throw new ApiError(500,'Не удалось сохранить диагностику WB Медиа');
             throw e;
+          }
+          // Two interval preparations are enough to try the campaign-only API.
+          // Bound large-history reads to two per campaign; never persist raw
+          // placements/platform statistics or infer zero from an empty reply.
+          if(amount===null && (media.pending_count || 0)>=1 && (record.daily_attempts || 0)<2){
+            record.daily_attempts=(record.daily_attempts || 0)+1;
+            const all=await fetchMedia('https://advert-media-api.wildberries.ru/adv/v1/stats',[{id}]);
+            const evidence=mediaCampaignDailyAmount(all,id,job.date_from,job.date_to,record.evidence.lifetime_expenses);
+            if(evidence){record.daily_evidence=evidence;amount=evidence.amount;}
           }
         }
         delete media.format_issue;
         if (amount === null) {
           media.pending_count = (media.pending_count || 0) + 1;
           await commit(admin, job, summary);
-          if (media.pending_count >= 8) throw new ApiError(400, 'WB Медиа пока не отдаёт статистику. Данные сохранены; попробуйте продолжить загрузку позже');
+          if (media.pending_count >= 2) throw new ApiError(400, 'WB Медиа пока не отдаёт статистику. Данные сохранены; загрузка будет повторена');
           return { retry_after: 63 };
         }
         media.pending_count = 0;
@@ -220,6 +247,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
       }
     }
     // Cursor and totals are committed together: retries cannot duplicate spend.
+    if(media.status==='downloaded'){delete media.estimated;delete media.estimate_reason;delete media.note;delete media.retry_stage;}
     await commit(admin, job, summary, pilot.stage === 'done' ? 'complete' : 'loading', privateShop);
   } else throw new ApiError(400, 'Неизвестный этап загрузки');
   return { retry_after: 63 };
@@ -350,7 +378,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const media = mediaFinancialSource(job.summary?.deductions, financialComplete, period.dateFrom, period.dateTo, job.updated_at ?? null, model)
     || mediaSource(sources.media, period.dateFrom, period.dateTo);
-  const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && media.status === 'downloaded';
+  const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && ['downloaded','estimated'].includes(media.status);
   const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
   const finance = financialComplete ? {...model.totals,salesAmount:model.sales_covered_rows === model.row_count ? model.totals.salesAmount ?? null : null,bought_qty:model.bought_qty} : null;
@@ -358,7 +386,7 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   // Return aggregates only, never full upstream advertising rows or private leases.
   return { shop, job: { id: job.id, status: job.status, stage: job.summary?.pilot?.stage || (complete ? 'done' : 'finance'), row_count: model.row_count, updated_at: job.updated_at, error_message: job.error_message },
     complete, period, settings, cogs, finance, products: safeProducts,
-    missing_costs: missing,
+    missing_costs: missing, warnings: media.status==='estimated' ? [MEDIA_ESTIMATE_NOTE] : [],
     sources: { finance: { status: financialComplete ? 'downloaded' : 'loading' },
       orders: { status: sources.orders?.status || 'pending', amount: sources.orders?.orders_amount ?? null, count: sources.orders?.orders_count ?? null },
       ads: { status: sources.internal_ads?.status || 'pending', totals: sources.internal_ads?.period_totals || {}, undated: sources.internal_ads?.undated_operations || 0 },
@@ -417,7 +445,7 @@ export async function readCabinetTrend(admin: any, shopId: string) {
     const c = await readCabinet(admin, shopId, {dateFrom:job.date_from,dateTo:job.date_to}, job.id,
       {shop:shopResult.data,settings:settingsResult.data || [],costs:costsResult.data || [],job});
     if (!c.complete) continue;
-    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:c.finance?.salesAmount == null ? null : Number(c.finance.salesAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo), missing:c.economy?.missing || [], missingCostsCount:c.missing_costs?.length || 0 });
+    byMonth.set(month, { year:Number(month.slice(0,4)), month:Number(month.slice(5)), sales:c.finance?.salesAmount == null ? null : Number(c.finance.salesAmount), orders:Number(s.orders.orders_amount), quantity:c.finance?.bought_qty ?? null, internalAds:Number(c.economy?.internal_ads), externalAds:Number(c.settings.external_promotion_expenses), transfer:Number(c.economy?.payout), profit:c.net_profit == null ? null : Number(c.net_profit), mediaAds:c.sources.media.amount == null ? null : Number(c.sources.media.amount), drrOrders:c.economy?.drr_orders ?? null, drrSales:c.economy?.drr_sales ?? null, promo:Number(c.economy?.promo), missing:c.economy?.missing || [], missingCostsCount:c.missing_costs?.length || 0, mediaEstimated:c.sources.media.status==='estimated' });
     if (byMonth.size >= 12) break;
   }
   return [...byMonth.values()].sort((a,b)=>a.year-b.year || a.month-b.month).slice(-12);

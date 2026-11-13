@@ -35,6 +35,10 @@ assert.equal(unknown.netProfit,null);assert.equal(unknown.rep.wb_media_spend,nul
 const unknownRows=[];api.renderKPI({innerHTML:'',appendChild:card=>unknownRows.push(card)},unknown,null,'wildberries');
 assert.ok(unknownRows.find(row=>row.html.includes('Медийная реклама')).html.includes('—'));
 assert.equal(api.fromApiCabinet(null).netProfit,null);
+const estimated=api.fromApiCabinet({...cabinet,sources:{...cabinet.sources,media:{status:'estimated',estimated:true,amount:'0.00'}}});
+assert.equal(estimated.mediaEstimated,true);
+const markedRows=[];api.renderKPI({innerHTML:'',appendChild:card=>markedRows.push(card)},estimated,null,'wildberries');
+for(const label of ['Медийная реклама','Чистая прибыль','ДРР (заказа)','ДРР (выкупа)'])assert.match(markedRows.find(row=>row.html.includes(label)).html,/Предварительно: WB Media = 0 ₽/);
 console.log('API → familiar dashboard: passed (exact server totals, signed expenses, true SKU revenue, missing data, incumbent cards).');
 const css=fs.readFileSync(require('node:path').join(__dirname,'../assets/styles.css'),'utf8');
 assert.match(css,/\.expense-card\{container-type:inline-size;/);

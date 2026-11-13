@@ -37,7 +37,7 @@
     for (const id of ['apiOperationalExpenses','apiExternalExpenses']) el(id).disabled = busy || !context?.allowed;
     el('apiSaveExpenses').disabled = busy || !context?.allowed || !dirty;
     const sources = cabinet?.sources || {}, f = cabinet?.finance;
-    const labels = {downloaded:'Получено из API',loading:'Загружается',pending:'Ожидает загрузки'};
+    const labels = {downloaded:'Получено из API',estimated:'Временно принято 0 ₽',loading:'Загружается',pending:'Ожидает загрузки'};
     el('apiCabinetSources').innerHTML = [['finance','Финансы'],['orders','Заказы'],['ads','Внутренняя реклама'],['media','WB Media']].map(([key,label]) => {
       const state = sources[key]?.status || 'pending';
       return `<li><span>${label}</span><strong data-state="${esc(state)}">${esc(labels[state] || 'Требует проверки')}</strong></li>`;
@@ -56,9 +56,9 @@
       f ? missing ? `Себестоимость не заполнена: ${missing} товаров с выкупами.` : 'Себестоимость заполнена для товаров с выкупами.' : 'Себестоимость проверим после загрузки финансов.',
       `Ставка налога: ${number(cabinet?.shop?.tax_rate)}%.`, `Себестоимость выкупов: ${money(cabinet?.cogs)}.`,
       sources.ads?.undated ? `Списания без даты: ${sources.ads.undated}. Не распределены по месяцам.` : 'Реклама распределяется по дате списания, время Москвы.',
-      sources.media?.status === 'downloaded' ? `WB Медиа: ${money(sources.media.amount)} — ${sources.media.source === 'wb_financial_deductions' ? 'удержания финансового отчёта WB за выбранный период; даты могут отличаться от выписки рекламного кабинета' : 'получено автоматически за выбранный месяц'}.` : 'WB Медиа получим автоматически через API. Неполная загрузка не считается нулём.',
+      sources.media?.estimated ? 'Расходы WB Media временно приняты за 0 ₽: данные не получены. Повторяем загрузку в фоне; фактическая сумма заменит временный ноль.' : sources.media?.status === 'downloaded' ? `WB Медиа: ${money(sources.media.amount)} — ${sources.media.source === 'wb_financial_deductions' ? 'удержания финансового отчёта WB за выбранный период; даты могут отличаться от выписки рекламного кабинета' : 'получено автоматически за выбранный месяц'}.` : 'WB Медиа получим автоматически через API. При ошибке временно примем 0 ₽ с пометкой о предварительном расчёте.',
     ].map(s=>`<li>${esc(s)}</li>`).join('');
-    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Прибыль = к перечислению после удержаний − себестоимость − налог − денежная реклама − операционные расходы − внешнее продвижение. Внутренняя реклама и WB Медиа получены из API. Реклама в удержаниях не вычитается повторно. Бонусы — справочно. Данные API не публикуются в витрине.' : 'Текущий и 11 предыдущих месяцев загружаются автоматически на сервере. Текущий месяц — по сегодняшнюю дату; суммы предварительные и зависят от готовности отчётов WB.';
+    el('apiCabinetWarning').textContent = cabinet?.complete ? 'Прибыль = к перечислению после удержаний − себестоимость − налог − денежная реклама − операционные расходы − внешнее продвижение. '+(sources.media?.estimated?'Расчёт предварительный: WB Media временно принята за 0 ₽. ':'Внутренняя реклама и WB Медиа получены из API. ')+'Реклама в удержаниях не вычитается повторно. Бонусы — справочно. Данные API не публикуются в витрине.' : 'Текущий и 11 предыдущих месяцев загружаются автоматически на сервере. Текущий месяц — по сегодняшнюю дату; суммы предварительные и зависят от готовности отчётов WB.';
   }
   function fillExpenses() {
     const settings = cabinet?.settings || {};
@@ -116,7 +116,7 @@
       const saved = result.cabinet;
       // Upgrade an already downloaded month once; do not restart its financial
       // history or require the owner to confirm WB Media manually.
-      if (action === 'cabinet' && saved?.job?.status === 'complete' && saved.finance && saved.sources?.orders?.status === 'downloaded' && saved.sources?.ads?.status === 'downloaded' && saved.sources?.media?.status !== 'downloaded') {
+      if (action === 'cabinet' && saved?.job?.status === 'complete' && saved.finance && saved.sources?.orders?.status === 'downloaded' && saved.sources?.ads?.status === 'downloaded' && !['downloaded','estimated'].includes(saved.sources?.media?.status)) {
         result = await window.WBApi.cabinet('cabinet_start',month);
       }
       if (current !== epoch || ticket !== requestId) return;

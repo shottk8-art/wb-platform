@@ -41,7 +41,7 @@ const admin = {
   },
 };
 let page = [{ rrdId: 2, retailAmount: '20.00' }, { rrdId: 3, retailAmount: '0.01' }];
-const fetcher = async (_key, _url, body) => { outbound++; assert.equal(body.limit, 50000); return page; };
+const fetcher = async (_key, _url, body) => { outbound++; assert.equal(body.limit, 10000); return page; };
 await assert.rejects(() => processPage(admin, { ...job }, job.shop_id, fetcher));
 assert.equal(job.cursor_id, '2');
 assert.equal(saved.size, 2,'failed compact commit never saves raw operations');

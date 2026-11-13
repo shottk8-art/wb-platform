@@ -1,5 +1,20 @@
 import { ApiError, cents, rub } from './core.ts';
 
+export const MEDIA_ESTIMATE_NOTE='Расходы WB Media временно приняты за 0 ₽: данные не получены. Расчёт предварительный.';
+
+// Full campaign history is an optional recovery path, never an unbounded body
+// that can terminate the worker before its ordinary error handler runs.
+export async function readMediaHistoryResponse(response:Response) {
+  const reader=response.body?.getReader();if(!reader)throw new ApiError(502,'WB Медиа не вернул историю кампании');
+  const chunks:Uint8Array[]=[];let size=0;
+  try{
+    for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;
+      if(size>1048576){await reader.cancel();throw new ApiError(502,'История WB Медиа слишком велика для безопасной обработки');}chunks.push(value);}
+    const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }finally{reader.releaseLock();}
+}
+
 // WB's financial API also supplies billed Media services in deduction rows.
 // A campaign-card/list zero must never erase these actual charges. This source
 // follows financial-report recognition, not the spending statement's dates.
@@ -102,6 +117,64 @@ export function mediaIntervalAmount(response: any, from: string, to: string) {
   return rub(total);
 }
 
+// WB can keep an interval request "preparing" even for an old closed campaign.
+// Its documented campaign-only variant returns all placements/days instead.
+// Use it only with complete monetary coverage: platform/day charges must match
+// EACH placement's expenses AND their sum must match the campaign card's actual
+// lifetime expenses. A missing day then cannot hide an unaccounted charge.
+// https://dev.wildberries.ru/docs/openapi/promotion#tag/statistics/operation/postV1Stats
+export function mediaCampaignDailyAmount(response: any, id: number, from: string, to: string, lifetime: unknown) {
+  if (!Array.isArray(response) || response.length !== 1 || lifetime == null) return null;
+  const block=response[0];
+  if (block?.error || block?.interval || block?.dates || !Array.isArray(block?.stats) || !block.stats.length) return null;
+  if (block.advert_id != null && block.advert_id !== id) return null;
+  const expected=cents(lifetime);
+  if(expected<0n)return null;
+  const formatter=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Moscow',year:'numeric',month:'2-digit',day:'2-digit'});
+  const dayOf=(value:unknown)=>{
+    if(typeof value!=='string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value)))return null;
+    const day=value.slice(0,10);
+    if(new Date(day+'T00:00:00Z').toISOString().slice(0,10)!==day)return null;
+    const parts=formatter.formatToParts(new Date(value));
+    return ['year','month','day'].map(key=>parts.find(p=>p.type===key)!.value).join('-');
+  };
+  const placements=new Set(),days=new Map<string,bigint>();
+  let covered=0n,period=0n;
+  for(const row of block.stats){
+    if(!Number.isSafeInteger(row?.item_id) || row.item_id<=0 || placements.has(row.item_id) || row.expenses==null || !Array.isArray(row.daily_stats))return null;
+    placements.add(row.item_id);
+    const expense=cents(row.expenses);if(expense<0n)return null;
+    const seenDays=new Set();let dated=0n;
+    for(const daily of row.daily_stats){
+      const day=dayOf(daily?.date);
+      if(!day || seenDays.has(day) || !Array.isArray(daily.app_type_stats) || !daily.app_type_stats.length)return null;
+      seenDays.add(day);
+      const apps=new Set();let amount=0n;
+      for(const app of daily.app_type_stats){
+        if(!Number.isSafeInteger(app?.app_type) || app.app_type<=0 || apps.has(app.app_type) || !Array.isArray(app.stats) || !app.stats.length)return null;
+        apps.add(app.app_type);
+        for(const stat of app.stats){
+          if(!stat || typeof stat!=='object' || Array.isArray(stat))return null;
+          // Legacy WB replies label a daily platform charge "price". Never use
+          // the placement's price/budget. Accept that alias only under the full
+          // expense reconciliation below; sparse no-charge counters omit it.
+          if(stat.expenses!=null && stat.price!=null && cents(stat.expenses)!==cents(stat.price))return null;
+          const value=cents(stat.expenses ?? stat.price ?? 0);if(value<0n)return null;
+          amount+=value;
+        }
+      }
+      dated+=amount;days.set(day,(days.get(day)||0n)+amount);
+      if(day>=from && day<=to)period+=amount;
+    }
+    if(dated!==expense)return null;
+    covered+=expense;
+  }
+  if(covered!==expected)return null;
+  const spent=[...days].filter(([,amount])=>amount>0n).map(([day])=>day).sort();
+  return {amount:rub(period),covered_expenses:rub(covered),lifetime_expenses:rub(expected),
+    first_spend:spent[0] ?? null,last_spend:spent.at(-1) ?? null,date_from:from,date_to:to,source:'wb_media_campaign_daily_stats'};
+}
+
 // Private failure metadata only: never persist a raw body, headers, SKU stats
 // or arbitrary upstream fields. This distinguishes period/shape errors.
 export function mediaResponseDiagnostic(response: any) {
@@ -116,6 +189,9 @@ export function mediaResponseDiagnostic(response: any) {
 export function mediaSource(source: any, from: string, to: string) {
   if (source?.status === 'downloaded' && source.date_from === from && source.date_to === to && source.amount != null && cents(source.amount) >= 0n) {
     return { status: 'downloaded', amount: rub(cents(source.amount)), date_from: from, date_to: to, fetched_at: source.fetched_at ?? null };
+  }
+  if(source?.estimated===true && source.date_from===from && source.date_to===to){
+    return {status:'estimated',amount:'0.00',estimated:true,date_from:from,date_to:to,source:'temporary_zero',note:MEDIA_ESTIMATE_NOTE,fetched_at:source.fetched_at ?? null};
   }
   return { status: source?.status === 'loading' ? 'loading' : 'pending', amount: null, date_from: from, date_to: to };
 }

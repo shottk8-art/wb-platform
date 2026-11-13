@@ -178,6 +178,16 @@ Corbel — закреплённый пользователем визуальн�
 
 ## Colors
 
+Owner policy, 13 November 2026: if WB Media cannot be read after bounded attempts,
+use a temporary zero and visibly qualify the affected profit, profitability,
+Media and DRR results as preliminary in the existing compact supporting copy.
+Retain the flag in chart tooltips, combined/range results, private daily/unit views,
+Settings and AI data quality. Never label this source as received from WB. A
+background Media-only retry runs with six-hour backoff, preserving the estimate
+during loading; confirmed expenses replace it. Missing cost prices and failures
+of other financial sources remain unknown. Keep the established Corbel layout,
+motion and semantic theme tokens; no extra blocking modal or large alert panel.
+
 ### Signed profitability and unavailable months — 13 November 2026
 
 Preserve the Corbel gauge and travelling chart highlight. A loss retains its signed

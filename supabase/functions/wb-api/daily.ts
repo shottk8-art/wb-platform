@@ -145,7 +145,7 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
   const expectedProfit=profitBeforeManual(cabinet);
   if(expectedProfit!=null && total!==expectedProfit)throw new ApiError(409,'Дневная прибыль не совпала с итогом без ручных расходов. Проверьте себестоимость и обновите месяц.');
   return {status:'ready',days:rows,unallocated,monthly_profit:total,tax_rounding:taxRounding,
-    excluded_expenses:['operational_expenses','external_promotion_expenses'],media_allocation:!financialMedia,timezone:'Europe/Moscow',date_basis:'rrDate'};
+    excluded_expenses:['operational_expenses','external_promotion_expenses'],media_estimated:!!cabinet.sources.media.estimated,media_allocation:!financialMedia,timezone:'Europe/Moscow',date_basis:'rrDate'};
 }
 
 export function moneyChange(current:unknown,previous:unknown) {
@@ -168,6 +168,7 @@ export function compareDaily(current:any,previous:any) {
   const compareDays=(previous.days||[]).filter((d:any)=>closed || Number(d.date.slice(-2))<=end.getUTCDate());
   const sum=(rows:any[])=>rows.length && rows.every((d:any)=>d.net_profit!=null)?rub(rows.reduce((n:bigint,d:any)=>n+cents(d.net_profit),0n)):null;
   if(previous.status==='ready') {
+    comparison.media_estimated=!!previous.media_estimated;
     const covered=compareDays.length===Math.min(closed?31:end.getUTCDate(),new Date(Date.UTC(Number(previousMonthKey.slice(0,4)),Number(previousMonthKey.slice(5)),0)).getUTCDate());
     const incompletePrevious=previous.period?.dateTo?.slice(0,7)!==previousMonthKey || !covered;
     comparison.status=incompletePrevious?'unavailable':'ready';
