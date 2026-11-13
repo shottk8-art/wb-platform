@@ -46,9 +46,11 @@
 
   function getTrendMetric(key, marketplace) {
     const metric = { ...(TREND_METRICS[key] || TREND_METRICS.sales) };
+    if (key === 'profit' || key === 'profitability') metric.lossColor = '#b0412b';
     if(typeof getComputedStyle==='function' && document.body){
       const token=key==='profit'||key==='profitability'?'--good':key==='mediaAds'||key==='drrSales'?'--violet':key==='drrOrders'?'--warm':'--accent';
       metric.color=getComputedStyle(document.body).getPropertyValue(token).trim() || metric.color;
+      if (metric.lossColor) metric.lossColor=getComputedStyle(document.body).getPropertyValue('--bad').trim() || metric.lossColor;
     }
     if (key === "internalAds" && marketplace === "ozon") metric.label = "Продвижение Ozon";
     if (key === "transfer" && marketplace === "wildberries") metric.label = "Итого к перечислению (WB)";
@@ -299,6 +301,8 @@
       ["sales", "profit", "orders", "ads", "quantity", "transfer", "internalAds", "mediaAds", "promo"].forEach((field) => {
         current[field] = row[field] === null || current[field] === null || field === 'orders' && (!ordersComplete || row[field] == null) ? null : (current[field] || 0) + (row[field] || 0);
       });
+      current.missing = [...new Set([...(current.missing || []), ...(row.missing || [])])];
+      current.missingCostsCount = (current.missingCostsCount || 0) + (row.missingCostsCount || 0);
       periods.set(key, current);
     });
     return [...periods.values()].map((row) => ({
@@ -455,16 +459,22 @@
     if (!output) return;
     const margin = profitMargin(derived), before = profitMargin(previous);
     output.textContent = margin == null ? '—' : fmtRate.format(margin);
+    const gauge = document.getElementById('profitabilityGauge');
+    const tone = margin == null ? 'unknown' : margin < 0 ? 'loss' : 'profit';
+    gauge.setAttribute('data-tone',tone); output.setAttribute('data-tone',tone);
     const arc = document.getElementById('profitabilityArc'), marker = document.getElementById('profitabilityMarker');
-    const drawn = Math.max(0, Math.min(100, margin || 0));
+    // The semicircle shows magnitude; sign, loss color and copy retain meaning.
+    // Unknown has neither a marker nor a filled tick and is never drawn as zero.
+    const drawn = Math.min(100, Math.abs(margin ?? 0));
     arc.style.strokeDashoffset = String(100 - drawn);
+    arc.style.opacity = margin == null ? '0' : '1';
     const angle = Math.PI - drawn / 100 * Math.PI;
     marker.setAttribute('cx',String(160+120*Math.cos(angle))); marker.setAttribute('cy',String(154-120*Math.sin(angle)));
     marker.setAttribute('visibility', margin == null ? 'hidden' : 'visible');
-    document.querySelectorAll?.('[data-gauge-tick]').forEach(tick=>tick.classList.toggle('is-filled',Number(tick.dataset.gaugeTick)<=drawn/100*40));
+    document.querySelectorAll?.('[data-gauge-tick]').forEach(tick=>tick.classList.toggle('is-filled',margin != null && drawn > 0 && Number(tick.dataset.gaugeTick)<=drawn/100*40));
     document.getElementById('profitabilityGauge').setAttribute('aria-label', margin == null ? 'Рентабельность: недостаточно данных' : `Рентабельность: ${fmtRate.format(margin)}% чистой прибыли от продаж`);
     document.getElementById('profitabilityCaption').textContent = margin == null ? 'Заполните недостающие данные' : margin < 0 ? 'Магазин работает в убыток' : 'Прибыль на каждый рубль продаж';
-    document.getElementById('profitabilityNote').textContent = margin == null ? 'Для расчёта нужны продажи и чистая прибыль.' : `${fmtRate.format(margin)} коп. чистой прибыли с 1 ₽ продаж.`;
+    document.getElementById('profitabilityNote').textContent = margin == null ? 'Для расчёта нужны продажи и чистая прибыль.' : `${fmtRate.format(Math.abs(margin))} коп. ${margin < 0 ? 'убытка' : 'чистой прибыли'} с 1 ₽ продаж.`;
     const delta = document.getElementById('profitabilityDelta');
     delta.textContent = margin == null || before == null ? '' : `${margin >= before ? '+' : '−'}${fmtRate.format(Math.abs(margin-before))} п.п.`;
     delta.classList.toggle('is-negative', margin != null && before != null && margin < before);
@@ -669,19 +679,28 @@
     };
   }
 
-  function trendBarColors(canvas, rows, color) {
+  function trendBarColors(canvas, rows, color, metricKey) {
     const context = canvas.getContext?.('2d');
-    let inactive = `${color}35`;
-    if (context?.createPattern) {
-      const tile = document.createElement('canvas'); tile.width = tile.height = 8;
-      const pen = tile.getContext?.('2d');
-      if (pen) { pen.fillStyle=`${color}0d`;pen.fillRect(0,0,8,8);pen.strokeStyle=`${color}45`;pen.lineWidth=1.2;pen.beginPath();pen.moveTo(-2,6);pen.lineTo(6,-2);pen.moveTo(2,10);pen.lineTo(10,2);pen.stroke();inactive=context.createPattern(tile,'repeat') || inactive; }
-    }
+    const patterns = new Map();
+    const pattern = tint => {
+      if (patterns.has(tint)) return patterns.get(tint);
+      let inactive = `${tint}35`;
+      if (context?.createPattern) {
+        const tile = document.createElement('canvas'); tile.width = tile.height = 8;
+        const pen = tile.getContext?.('2d');
+        if (pen) { pen.fillStyle=`${tint}0d`;pen.fillRect(0,0,8,8);pen.strokeStyle=`${tint}45`;pen.lineWidth=1.2;pen.beginPath();pen.moveTo(-2,6);pen.lineTo(6,-2);pen.moveTo(2,10);pen.lineTo(10,2);pen.stroke();inactive=context.createPattern(tile,'repeat') || inactive; }
+      }
+      patterns.set(tint,inactive); return inactive;
+    };
+    const lossColor = getTrendMetric(metricKey).lossColor;
     const selected = document.getElementById?.('periodSelect')?.value;
     const match = rows.findIndex(row=>`${row.year}-${row.month}`===selected);
     const active = match >= 0 ? match : rows.length - 1;
     const range = new Set(window.WBRange?.selectedMonths?.() || []);
-    return rows.map((row,i)=>window.WBTrend ? inactive : (range.size ? range.has(`${row.year}-${row.month}`) : i===active)?color:inactive);
+    return rows.map((row,i)=>{
+      const tint = lossColor && trendMetricValue(row,metricKey) < 0 ? lossColor : color;
+      return !window.WBTrend && (range.size ? range.has(`${row.year}-${row.month}`) : i===active) ? tint : pattern(tint);
+    });
   }
   function renderTrend(canvas, rows, metricKey, marketplace) {
     renderKpiSparklines(document.getElementById?.('kpiRow'), rows);
@@ -709,13 +728,13 @@
         labels: rows.map((r) => `${MONTH_NAMES[r.month].slice(0, 3)} ${String(r.year).slice(-2)}`),
         datasets: [{
           label: metric.label, data: values, sellerMetric: metricKey,
-          borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? trendBarColors(canvas,rows,metric.color) : `${metric.color}14`,
+          borderColor: metric.color, backgroundColor: window.WBShell?.chartStyle === 'bar' ? trendBarColors(canvas,rows,metric.color,metricKey) : `${metric.color}14`,
           sellerRows: rows, sellerMarketplace: marketplace,
           borderWidth: window.WBShell?.chartStyle === 'bar' ? 0 : 2.5,
           pointRadius: singlePoint ? 5 : values.map((value, index) => value != null
             && values[index - 1] == null && values[index + 1] == null ? 4 : 0),
-          pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: metric.color,
-          pointBackgroundColor: metric.color,
+          pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: values.map(value=>metric.lossColor && value < 0 ? metric.lossColor : metric.color),
+          pointBackgroundColor: values.map(value=>metric.lossColor && value < 0 ? metric.lossColor : metric.color),
           pointHoverRadius: 5, pointHitRadius: 14, tension: .38,
           fill: true, spanGaps: false, borderRadius:window.WBTrend?99:7, borderSkipped:false, maxBarThickness:30, barPercentage:.66, categoryPercentage:1,
         }],
@@ -933,7 +952,8 @@
       chart.data.datasets.forEach(ds=>{
         if(ds.sellerMetric){
           const color=getTrendMetric(ds.sellerMetric).color;
-          ds.borderColor=color;ds.backgroundColor=chart.config.type==='bar'?trendBarColors(chart.canvas,ds.sellerRows || [],color):`${color}14`;ds.pointBorderColor=color;ds.pointBackgroundColor=color;
+          const metric=getTrendMetric(ds.sellerMetric),points=(ds.sellerRows || []).map(row=>metric.lossColor && trendMetricValue(row,ds.sellerMetric)<0?metric.lossColor:color);
+          ds.borderColor=color;ds.backgroundColor=chart.config.type==='bar'?trendBarColors(chart.canvas,ds.sellerRows || [],color,ds.sellerMetric):`${color}14`;ds.pointBorderColor=points;ds.pointBackgroundColor=points;
         }
       });
       chart.update('none');

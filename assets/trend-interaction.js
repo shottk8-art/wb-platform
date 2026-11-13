@@ -33,11 +33,20 @@
     };
     const summary = metric.unit === '%' ? periodRate() : total(values);
     const known = values.filter(v=>v!=null);
+    const unavailable = rows.map((row,index)=>values[index]==null ? index : -1).filter(index=>index>=0);
+    const unavailableReason = row => {
+      if (metricKey === 'profit' || metricKey === 'profitability') {
+        if (row.missingCostsCount > 0) return `Не заполнена себестоимость: ${row.missingCostsCount} арт.`;
+        if (row.missing?.length) return [...new Set(row.missing)].join('. ');
+        return metricKey === 'profitability' ? 'Для расчёта нужны чистая прибыль и положительная сумма продаж.' : 'Не хватает данных для расчёта чистой прибыли.';
+      }
+      return metric.unit === '%' ? 'Нет суммы заказов или продаж либо рекламных расходов для расчёта.' : 'Данные за месяц не получены.';
+    };
     const average = metric.unit === '%' ? summary : known.length ? known.reduce((a,b)=>a+b,0)/known.length : null;
     let initial = rows.findIndex(row=>key(row)===selected);
     if(initial<0) initial = values.findLastIndex(v=>v!=null);
     if(initial<0 && rows.length) initial=rows.length-1;
-    return { rows, values, initial, summary, average, metric, metricKey,
+    return { rows, values, initial, summary, average, metric, metricKey, unavailable,
       detail(index) {
         const row=rows[index]; if(!row)return null;
         const date=new Date(Number(row.year),Number(row.month)-2,1);
@@ -50,7 +59,7 @@
         const inverse=['internalAds','mediaAds','drrOrders','drrSales'].includes(metricKey);
         const sentiment=delta==null || delta===0 || metricKey==='promo' ? 'neutral' : (delta>0)!==inverse ? 'up' : 'down';
         const secondary=metricKey==='quantity' ? numeric(row.sales) : numeric(row.quantity);
-        return { index, month:`${months[Number(row.month)]} ${row.year}`, value, secondary,
+        return { index, month:`${months[Number(row.month)]} ${row.year}`, value, secondary, note:value==null?unavailableReason(row):'',
           secondaryLabel:metricKey==='quantity'?'Сумма продаж':'Выкупили',secondaryUnit:metricKey==='quantity'?'₽':'шт.',
           comparisonLabel:partial?'Месяц не закрыт':'К пред. месяцу',delta,sentiment,
           deltaText:delta==null?'—':`${delta>0?'+':delta<0?'−':''}${rate.format(Math.abs(delta))}${metric.unit==='%'?' п.п.':'%'}` };
@@ -70,7 +79,7 @@
     const canvas=chart.canvas,parent=canvas.parentElement;
     if(!parent)return null;
     const root=document.createElement('div');root.className='trend-interaction';
-    root.innerHTML='<div class="trend-average" hidden><span></span></div><div class="trend-highlight" hidden><i class="trend-highlight-cap"></i></div><div class="trend-months" role="group" aria-label="Месяцы графика: используйте стрелки"></div><div class="trend-tooltip" aria-hidden="true" hidden><p class="trend-tooltip-month"></p><dl><div><dt class="trend-tooltip-metric"></dt><dd data-tip-value></dd></div><div><dt class="trend-tooltip-secondary"></dt><dd data-tip-secondary></dd></div><div><dt class="trend-tooltip-comparison"></dt><dd data-tip-delta></dd></div></dl></div>';
+    root.innerHTML='<div class="trend-average" hidden><span></span></div><div class="trend-highlight" hidden><i class="trend-highlight-cap"></i></div><div class="trend-months" role="group" aria-label="Месяцы графика: используйте стрелки"></div><div class="trend-tooltip" aria-hidden="true" hidden><p class="trend-tooltip-month"></p><dl><div><dt class="trend-tooltip-metric"></dt><dd data-tip-value></dd></div><div><dt class="trend-tooltip-secondary"></dt><dd data-tip-secondary></dd></div><div><dt class="trend-tooltip-comparison"></dt><dd data-tip-delta></dd></div></dl><p class="trend-tooltip-note" hidden></p></div>';
     const summary=document.createElement('span');summary.className='trend-period-summary';
     const heading=canvas.closest('#secTrend, .daily-chart-card')?.querySelector('.section-head, .daily-chart-heading');
     heading?.append(summary);
@@ -124,6 +133,7 @@
     const pitch=(area.right-area.left)/Math.max(model.rows.length,1);
     const isBar=chart.config.type==='bar',width=isBar?Math.min(30,pitch*.66):10;
     mark.hidden=y==null;
+    state.root.style.setProperty('--trend-color',detail.value<0 && model.metric.lossColor || model.metric.color);
     mark.classList.toggle('is-point',!isBar);mark.classList.toggle('is-negative',detail.value<0);
     if(y!=null){
       // Only an isolated overlay changes height; chart/page layout never moves.
@@ -150,6 +160,8 @@
     state.tip.querySelector('.trend-tooltip-metric').textContent=state.model.metric.label;
     state.tip.querySelector('.trend-tooltip-secondary').textContent=detail.secondaryLabel;
     state.tip.querySelector('.trend-tooltip-comparison').textContent=detail.comparisonLabel;
+    const note=state.tip.querySelector('.trend-tooltip-note');
+    note.textContent=detail.note || '';note.hidden=!detail.note;
     state.values[2].dataset.sentiment=detail.sentiment;
     numbers(state,detail,!snap&&!first);
     state.root.classList.toggle('is-instant',snap||first||reduced());
@@ -193,16 +205,18 @@
       if(state.frame)cancelAnimationFrame(state.frame);state.frame=0;state.visual=[null,null,null];state.active=-1;
       state.plot.replaceChildren();state.buttons=rows.map((row,i)=>{
         const button=document.createElement('button');button.type='button';button.className='trend-month';button.dataset.trendIndex=String(i);
-        const detail=state.model.detail(i);button.setAttribute('aria-label',`${detail.month}: ${state.model.metric.label} ${format(detail.value,state.model.metric.unit)}; ${detail.secondaryLabel} ${format(detail.secondary,detail.secondaryUnit)}; ${detail.comparisonLabel} ${detail.deltaText}`);
+        const detail=state.model.detail(i);button.setAttribute('aria-label',`${detail.month}: ${state.model.metric.label} ${format(detail.value,state.model.metric.unit)}; ${detail.note || ''} ${detail.secondaryLabel} ${format(detail.secondary,detail.secondaryUnit)}; ${detail.comparisonLabel} ${detail.deltaText}`);
         const label=document.createElement('span');label.dataset.month=custom?String(custom.labels[i]):months[Number(row.month)].slice(0,3);label.textContent=custom?String(custom.labels[i]):`${label.dataset.month} ${String(row.year).slice(-2)}`;button.append(label);state.plot.append(button);return button;
       });
       state.plot.setAttribute('aria-label',custom?.axisLabel || 'Месяцы графика: используйте стрелки');
       state.geometry='';
     }
-    if(!custom)state.model.metric.color=window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace).color;
+    if(!custom)Object.assign(state.model.metric,window.WBDashboard.getTrendMetric(ds.sellerMetric,ds.sellerMarketplace));
     state.root.style.setProperty('--trend-color',state.model.metric.color);
     state.summary.textContent=custom?.summaryText ?? `${format(state.model.summary,state.model.metric.unit,true)} ${state.model.metric.unit==='%'?'за период':`за ${rows.length} мес.`}`;
+    if(!custom && state.model.unavailable.length)state.summary.textContent+=` · нет расчёта: ${state.model.unavailable.length} мес.`;
     state.summary.title=custom?.summaryTitle ?? `${state.model.metric.label}: ${format(state.model.summary,state.model.metric.unit)}. ${state.model.detail(0).month} — ${state.model.detail(rows.length-1).month}. Неизвестные месячные суммы не подменяются нулём.`;
+    if(!custom && state.model.unavailable.length)state.summary.title+=' '+state.model.unavailable.map(i=>{const d=state.model.detail(i);return `${d.month}: ${d.note}`;}).join(' ');
     if(changed || force || geometry!==state.geometry){
       state.geometry=geometry;
       Object.assign(state.plot.style,{left:`${area.left}px`,top:`${area.top}px`,width:`${area.right-area.left}px`,height:`${area.bottom-area.top}px`,gridTemplateColumns:`repeat(${rows.length},minmax(0,1fr))`});

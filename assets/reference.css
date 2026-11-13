@@ -107,6 +107,7 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .trend-average>span{position:absolute;right:0;top:-21px;padding:1px 6px;border-radius:5px;background:var(--violet-bg);color:var(--violet);font-size:11px;font-weight:600;white-space:nowrap}
 .corbel .trend-tooltip{position:absolute;left:0;top:0;z-index:4;min-width:200px;max-width:calc(100% - 8px);width:max-content;padding:10px 12px;border-radius:12px;background:#161b30;color:#f3f5fb;box-shadow:0 28px 70px -22px #161b3066,0 2px 8px #161b3014;font-size:12px;line-height:1.4;pointer-events:none;transition:transform .55s var(--trend-ease),opacity .2s;will-change:transform}
 .corbel .trend-tooltip-month{margin:0 0 7px;font-weight:600;line-height:1.4}
+.corbel .trend-tooltip-note{max-width:28ch;margin:8px 0 0;color:#b8bdce;white-space:normal;overflow-wrap:anywhere}
 .corbel .trend-tooltip dl{display:grid;gap:4px;margin:0}
 .corbel .trend-tooltip dl>div{display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:18px;align-items:baseline}
 .corbel .trend-tooltip dt{color:#b8bdce;font-weight:400;min-width:0}
@@ -115,6 +116,7 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .trend-tooltip dd[data-sentiment="down"]{color:#ff9ea2}
 :root[data-theme="dark"] .corbel .trend-tooltip{background:#e9ecf7;color:#161b30;box-shadow:0 28px 70px -22px #0009,0 2px 8px #0002}
 :root[data-theme="dark"] .corbel .trend-tooltip dt{color:#515974}
+:root[data-theme="dark"] .corbel .trend-tooltip-note{color:#515974}
 :root[data-theme="dark"] .corbel .trend-tooltip dd[data-sentiment="up"]{color:#08775a}
 :root[data-theme="dark"] .corbel .trend-tooltip dd[data-sentiment="down"]{color:#c22d34}
 .corbel .trend-interaction.is-instant :is(.trend-tooltip,.trend-highlight,.trend-average){transition:none}
@@ -143,6 +145,10 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .gauge-ticks line{stroke:var(--line-strong);stroke-width:2.2;stroke-linecap:round;transition:stroke .6s}
 .corbel .gauge-ticks line.is-filled{stroke:var(--accent)}
 .corbel #profitabilityMarker{fill:var(--accent);stroke:var(--surface);stroke-width:4}
+.corbel #profitabilityGauge[data-tone="loss"] .gauge-arc{stroke:var(--bad)}
+.corbel #profitabilityGauge[data-tone="loss"] .gauge-ticks line.is-filled{stroke:var(--bad)}
+.corbel #profitabilityGauge[data-tone="loss"] #profitabilityMarker{fill:var(--bad)}
+.corbel #profitabilityValue[data-tone="loss"]{color:var(--bad)}
 .corbel .gauge-number{position:absolute;top:54%;left:0;right:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 7px;line-height:1;text-align:center}
 .corbel .gauge-number strong{font-family:var(--font-display);font-size:38px;font-weight:600;letter-spacing:-.04em}
 .corbel .gauge-number small{width:100%;font-size:11px;color:var(--ink-mute);margin-top:7px;line-height:1.2}

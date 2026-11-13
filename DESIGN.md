@@ -178,6 +178,19 @@ Corbel — закреплённый пользователем визуальн�
 
 ## Colors
 
+### Signed profitability and unavailable months — 13 November 2026
+
+Preserve the Corbel gauge and travelling chart highlight. A loss retains its signed
+percentage and uses the current theme's `bad` color for the value, arc, ticks,
+marker and selected profit/profitability point or bar. The semicircle represents
+absolute magnitude (visually capped at 100); its caption explicitly says loss per
+ruble of sales. Unknown values have no filled arc, ticks or marker. Known zero
+remains distinct. Monthly gaps remain gaps; the compact chart summary counts them
+and hovering, tapping or focusing a month explains the unavailable calculation.
+API history carries only missing-cost counts and calculation reasons, without
+extra catalogue reads or article lists. Preserve financial formulas, cost matching,
+comparison sentiment, actual source availability and all shop/account permissions.
+
 Frontmatter сохраняет значения из corbel.css, включая альфу. Префиксы light- / dark- обозначают две реализации одного семантического свойства. Начальная тема — light. Компонентные токены без суффикса описывают светлый вариант; snippets sidecar наследуют текущие CSS-переменные. Синтезированные tonalRamp в sidecar служат только образцами панели документации, не палитрой приложения.
 
 ### Primary

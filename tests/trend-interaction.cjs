@@ -11,7 +11,7 @@ class Element {
   }
   set textContent(value){writes++;this._text=value;}
   get textContent(){return this._text;}
-  set innerHTML(value){this.html=value;this.selectors=new Map();for(const name of ['.trend-months','.trend-highlight','.trend-highlight-cap','.trend-tooltip','.trend-average','.trend-tooltip-month','.trend-tooltip-metric','.trend-tooltip-secondary','.trend-tooltip-comparison','[data-tip-value]','[data-tip-secondary]','[data-tip-delta]'])this.selectors.set(name,new Element());this.selectors.get('.trend-average').selectors=new Map([['span',new Element()]]);this.selectors.get('.trend-tooltip').selectors=this.selectors;}
+  set innerHTML(value){this.html=value;this.selectors=new Map();for(const name of ['.trend-months','.trend-highlight','.trend-highlight-cap','.trend-tooltip','.trend-average','.trend-tooltip-month','.trend-tooltip-metric','.trend-tooltip-secondary','.trend-tooltip-comparison','.trend-tooltip-note','[data-tip-value]','[data-tip-secondary]','[data-tip-delta]'])this.selectors.set(name,new Element());this.selectors.get('.trend-average').selectors=new Map([['span',new Element()]]);this.selectors.get('.trend-tooltip').selectors=this.selectors;}
   querySelector(selector){return this.selectors?.get(selector)||null;}
   append(child){this.children.push(child);child.parentElement=this;}
   replaceChildren(){this.children=[];}
@@ -29,6 +29,7 @@ parent.append(canvas);canvas.closest=()=>({querySelector:()=>heading});
 const selected={value:'2026-9'};
 const document={hidden:false,events:{},createElement:tag=>new Element(tag),getElementById:()=>selected,addEventListener(name,handler){this.events[name]=handler;}};
 const metrics={sales:{label:'Сумма продаж',unit:'₽',color:'#2a45cc'},quantity:{label:'Выкупили',unit:'шт.',color:'#aabbcc'},drrOrders:{label:'ДРР (заказа)',unit:'%',color:'#2a45cc'},drrSales:{label:'ДРР (выкупа)',unit:'%',color:'#2a45cc'},internalAds:{label:'Внутренняя реклама',unit:'₽',color:'#2a45cc'},promo:{label:'Промобонусы',unit:'₽',color:'#2a45cc'}};
+metrics.profit={label:'Чистая прибыль',unit:'₽',color:'#2b7a64',lossColor:'#b0412b'};
 const window={matchMedia:()=>({matches:reduce,addEventListener(){}}),WBDashboard:{getTrendMetric:key=>({...metrics[key]})}};
 vm.runInNewContext(fs.readFileSync('assets/trend-interaction.js','utf8'),{window,document,Intl,Date,Map,Set,WeakMap,Number,Math,performance:{now:()=>clock},requestAnimationFrame:cb=>{frames.set(++rafId,cb);return rafId;},cancelAnimationFrame:id=>frames.delete(id)});
 const {model,numeric,plugin}=window.WBTrend;
@@ -101,6 +102,20 @@ chart.data.datasets[0]={...chart.data.datasets[0],sellerMetric:'sales'};series[1
 assert.equal(clean(value()),'350₽','new render refreshes even when the source array was reused');
 metrics.sales.color='#7088f0';plugin.afterUpdate(chart);assert.equal(root.style['--trend-color'],'#7088f0');
 assert.equal(plot.children[1].attrs['aria-pressed'],'true','theme refresh preserves selected month');
+chart.data.datasets[0]={sellerRows:[{...series[0],profit:null,missingCostsCount:5},{...series[1],profit:-10}],sellerMetric:'profit'};
+plugin.afterUpdate(chart);
+assert.equal(root.style['--trend-color'],'#b0412b','selected loss is never green');
+plot.events.pointermove({target:plot.children[0]});
+assert.equal(mark.hidden,true,'unknown stays a gap');
+assert.match(root.querySelector('.trend-tooltip-note').textContent,/себестоимость.*5 арт/);
+assert.equal(root.querySelector('.trend-tooltip-note').hidden,false);
+assert.match(heading.children[0].textContent,/нет расчёта: 1 мес/);
+assert.match(plot.children[0].attrs['aria-label'],/себестоимость.*5 арт/);
+plot.events.pointermove({target:plot.children[1]});
+assert.equal(root.querySelector('.trend-tooltip-note').hidden,true,'known month clears old note');
+assert.equal(root.style['--trend-color'],'#b0412b');
+metrics.profit.lossColor='#f08c78';plugin.afterUpdate(chart);
+assert.equal(root.style['--trend-color'],'#f08c78','dark theme updates negative highlights');
 chart.data.datasets[0].sellerRows=[];plugin.afterUpdate(chart);assert.equal(root.hidden,true);assert.equal(heading.children[0].textContent,'');
 chart.canvas=null; // Chart.js clears the canvas before its afterDestroy hook.
 assert.doesNotThrow(()=>plugin.afterDestroy(chart));assert.ok(root.removed);assert.ok(heading.children[0].removed);assert.equal(frames.size,0);

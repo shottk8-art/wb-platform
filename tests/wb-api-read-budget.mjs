@@ -18,6 +18,13 @@ const admin={rpc(){throw new Error('Warm chart must not rebuild finance aggregat
 const history=await readCabinetTrend(admin,PILOT_SHOP_ID);
 assert.equal(history.length,12);assert.equal(queries,4,'all 12 chart points share catalogue/settings reads');
 assert.equal(history[0].profit,5000);
+assert.equal(history[0].missingCostsCount,0);
+price='0.00';
+const incomplete=await readCabinetTrend(admin,PILOT_SHOP_ID);
+assert.equal(incomplete[0].profit,null);
+assert.equal(incomplete[0].missingCostsCount,1);
+assert.deepEqual(incomplete[0].missing,['Не заполнена себестоимость']);
+assert.equal('missingCosts' in incomplete[0],false,'chart transfers a count, not the full catalogue');
 price='0.70';tax=5;
 assert.equal((await readCabinetTrend(admin,PILOT_SHOP_ID))[0].profit,2500,'cached finance must not freeze current cost prices or tax');
 const status=await readCabinetStatus(admin,PILOT_SHOP_ID);
