@@ -9,6 +9,7 @@ import { readDaily } from './daily.ts';
 import { readUnit } from './unit.ts';
 import { stocksAction, processStocks } from './stocks.ts';
 import { readMediaHistoryResponse } from './media.ts';
+import {deferRequest,retrySeconds} from './rate-limit.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -26,7 +27,7 @@ async function wbFetch(token: string, url: string, body?: unknown) {
   } catch { throw new ApiError(502, "Не удалось связаться с WB. Попробуйте позже"); }
   if (!response.ok) {
     // Never return or log upstream bodies: they can contain credentials / PII.
-    const retry = Number(response.headers.get("X-Ratelimit-Retry") || response.headers.get("Retry-After")) || 63;
+    const retry = retrySeconds(response.headers);
     await response.body?.cancel();
     throw upstreamError(response.status, retry);
   }
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
         const failures = Number(job.failure_count || 0) + (limited ? 0 : 1);
         const retryable = limited || (!(e instanceof ApiError && e.status === 400) && failures < 5);
         const seconds = limited ? e.retryAfter : Math.min(3600, 120 * 2 ** failures);
-        await admin.from('wb_api_connections').update({ next_request_at: new Date(Date.now() + seconds * 1000).toISOString() }).eq('shop_id', job.shop_id);
+        await deferRequest(admin,job.shop_id,seconds,limited);
         await admin.from('wb_api_preview_jobs').update({ status: retryable ? 'loading' : 'error', failure_count: failures, error_message: message, updated_at: new Date().toISOString() }).eq('id', jobId).eq('lease_token', lease);
         return json({ processed: false, retry_after: retryable ? seconds : 0 });
       } finally {

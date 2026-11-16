@@ -1,6 +1,7 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
 import { articleKey, costCatalogue } from './articles.ts';
+import {deferRequest} from './rate-limit.ts';
 import { campaignDebits, campaignStats } from './article-ads.ts';
 import { privateShopAllowed } from './daily-access.ts';
 import { MEDIA_ESTIMATE_NOTE, mediaCampaignSelection, mediaCampaignEvidence, mediaIntervalAmount, mediaCampaignDailyAmount, mediaResponseDiagnostic, mediaSource, mediaFinancialSource, isMediaDeduction } from './media.ts';
@@ -69,7 +70,8 @@ export function adsSnapshot(response: any, from: string, to: string, collectDail
 
 async function commit(admin: any, job: any, summary: any, status = 'loading', privateShop = false) {
   if(status==='complete' && privateShop && summary.api_sources?.article_ads?.status!=='downloaded'){
-    summary.pilot.stage='article_ads_debits';status='loading';
+    const prepared=summary.api_sources?.article_ads;
+    summary.pilot.stage=prepared?.version===1&&prepared.date_from===job.date_from&&prepared.date_to===job.date_to?'article_ads_stats':'article_ads_debits';status='loading';
   }
   const { error } = await admin.from('wb_api_preview_jobs').update({ summary, status, failure_count: 0, error_message: null, updated_at: new Date().toISOString() }).eq('id', job.id).eq('shop_id', job.shop_id);
   if (error) throw new ApiError(500, 'Не удалось сохранить загрузку источника');
@@ -84,6 +86,7 @@ export async function processCabinetSource(admin: any, job: any, wbFetch: any) {
     // Only Media/upstream failures get a clearly labelled temporary zero; DB
     // persistence errors and failures in finance/orders/internal ads still fail.
     if(!['media_list','media_stats'].includes(job.summary?.pilot?.stage) || !(error instanceof ApiError) || ![400,403,429,502].includes(error.status))throw error;
+    if(error.status===429)await deferRequest(admin,job.shop_id,Math.max(63,error.retryAfter));
     const summary=structuredClone(job.summary);summary.api_sources ||= {};
     const media=summary.api_sources.media ||= {};
     Object.assign(media,{status:'estimated',amount:'0.00',estimated:true,date_from:job.date_from,date_to:job.date_to,
@@ -140,6 +143,11 @@ async function processCabinetSourceStrict(admin: any, job: any, wbFetch: any) {
     if(source.offset===source.campaigns.length){source.status='downloaded';source.fetched_at=new Date().toISOString();pilot.stage='done';}
     await commit(admin,job,summary,pilot.stage==='done'?'complete':'loading',privateShop);
   } else if (pilot.stage === 'orders') {
+    // Inventory demand uses this endpoint too. Coordinate its burst=1 slot
+    // without serializing stock quantities behind a full finance backfill.
+    const {data:analyticsWait,error:analyticsError}=await admin.rpc('wb_api_claim_analytics',{p_shop_id:job.shop_id});
+    if(analyticsError)throw new ApiError(500,'Не удалось проверить лимит аналитики WB');
+    if(Number(analyticsWait)>0)return {retry_after:Number(analyticsWait)};
     let response;
     try { response = await wbFetch(token, 'https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
       selectedPeriod: { start: job.date_from, end: job.date_to }, nmIds: [], brandNames: [], subjectIds: [], tagIds: [], skipDeletedNm: false, limit: 1000, offset: pilot.orders_offset || 0,
@@ -162,6 +170,9 @@ async function processCabinetSourceStrict(admin: any, job: any, wbFetch: any) {
     catch (e) { if (e instanceof ApiError && /Нет доступа/.test(e.message)) throw new ApiError(400, 'Для рекламных затрат включите категорию «Продвижение» в персональном ключе'); throw e; }
     summary.api_sources ||= {};
     summary.api_sources.internal_ads = adsSnapshot(response, job.date_from, job.date_to, privateShop);
+    // Reduce the SAME response once for SKU attribution. A second /upd read
+    // wastes quota and can disagree with the monthly amount in an open month.
+    if(privateShop)summary.api_sources.article_ads=campaignDebits(response,job.date_from,job.date_to);
     summary.api_sources.media = financialMedia || { status: 'loading', date_from: job.date_from, date_to: job.date_to, amount: null, campaign_ids: [], list_offset: 0 };
     pilot.stage = financialMedia ? 'done' : 'media_list';
     await commit(admin, job, summary, financialMedia ? 'complete' : 'loading', privateShop);

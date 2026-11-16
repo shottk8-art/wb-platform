@@ -10,6 +10,7 @@ import { authorizeShop } from '../supabase/functions/wb-api/access.ts';
 import { authorizeDaily,DAILY_USER_ID } from '../supabase/functions/wb-api/daily-access.ts';
 const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import { readDaily } from '../supabase/functions/wb-api/daily.ts';
+import {deferRequest,retrySeconds} from '../supabase/functions/wb-api/rate-limit.ts';
 
 let assertions = 0;
 const check = (fn) => { fn(); assertions++; };
@@ -62,7 +63,7 @@ check(() => assert.equal(upstreamError(429, 120).retryAfter, 120));
 
 // Exercise the real handler with mocked Supabase/WB boundaries. No credentials,
 // no real API calls, and no mutations of the user's shops.
-const core = { ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, authorizeShop, authorizeDaily,readDaily,cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
+const core = { deferRequest,retrySeconds,ApiError, FINANCE_FIELDS, PILOT_USER_ID, PILOT_SHOP_ID, authorizeShop, authorizeDaily,readDaily,cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, monthSettings, keyInfo, pageCursor, sanitizeRows, summarize, upstreamError, validateKey, validatePeriod, validateShopId, processPage };
 const source = readFileSync(new URL('../supabase/functions/wb-api/index.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
 let handler, authenticatedId = PILOT_USER_ID, owner = true, claimWait = 0, upstreamStatus = 204, upstreamRows = null;
 let dbWrites = [], outbound = [], leaseAccepted = true, upstreamRetry = null, rpcCalls=[];
@@ -166,7 +167,8 @@ job.status = 'loading';
 upstreamStatus = 429;
 upstreamRetry = '43109';
 assert.equal((await worker()).body.retry_after, 43109); assertions++;
-assert.ok(Date.parse(dbWrites.findLast((item) => item.table === 'wb_api_connections').values.next_request_at) > Date.now() + 43100 * 1000); assertions++;
+assert.equal(rpcCalls.findLast(c=>c.name==='wb_api_defer_request').args.p_seconds,43109); assertions++;
+assert.equal(rpcCalls.findLast(c=>c.name==='wb_api_defer_request').args.p_limited,true); assertions++;
 assert.ok(!JSON.stringify(completed.body).includes(storedKey)); assertions++;
 // A brand new month has no media source and never calls WB from the browser.
 const beforeCabinet = outbound.length;

@@ -1,7 +1,11 @@
 import { ApiError, validateKey } from './core.ts';
 import { authorizeDaily, privateShopAllowed } from './daily-access.ts';
+import {deferRequest,retrySeconds} from './rate-limit.ts';
 
 export const STOCK_INTERVAL = 30 * 60 * 1000;
+// WB: /sales-funnel/products is updated once every two hours. Stock quantities
+// retain their independent 30-minute cycle. Cache only a complete exact period.
+const DEMAND_INTERVAL = 2 * 60 * 60 * 1000;
 const PAGE = 10000, MAX_ROWS = 250000;
 const COLUMNS = 'snapshot,fetched_at,stage,next_run_at,error_message,alert_days,target_days,updated_at';
 const txt = (v: unknown) => String(v ?? '').trim().slice(0, 300);
@@ -42,6 +46,17 @@ export function mergeStockRows(old: any[], page: any[]) {
 export function demandPeriod(now = new Date()) {
   const today = new Date(new Date(now.getTime()+3*3600000).toISOString().slice(0,10)+'T00:00:00Z');
   return { from: new Date(+today-28*86400000).toISOString().slice(0,10), to: new Date(+today-86400000).toISOString().slice(0,10), days: 28 };
+}
+function reusableDemand(snapshot:any,now=Date.now()) {
+  const period=demandPeriod(new Date(now)),demand=snapshot?.demand;
+  const age=now-Date.parse(demand?.checked_at);
+  if(snapshot?.version!==1||demand?.from!==period.from||demand?.to!==period.to||demand?.days!==period.days
+    ||!Number.isFinite(age)||age<0||age>=DEMAND_INTERVAL||!Array.isArray(snapshot.catalogue))return false;
+  const seen=new Set();
+  return snapshot.catalogue.every((p:any)=>{
+    if(!/^[1-9]\d*$/.test(p.nm_id)||seen.has(p.nm_id)||!Number.isSafeInteger(p.orders)||p.orders<0)return false;
+    seen.add(p.nm_id);return true;
+  });
 }
 export function demandPage(response: any, period: any) {
   const products = response?.data?.products;
@@ -126,7 +141,7 @@ export async function stockFetch(token:string,url:string,body:any) {
   try {r=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(25000),redirect:'error'});}
   catch {throw new ApiError(502,'WB временно не отвечает. Обновление остатков будет повторено');}
   if(!r.ok) {
-    const retry=Math.max(60,Number(r.headers.get('X-Ratelimit-Retry')||r.headers.get('Retry-After'))||60);await r.body?.cancel();
+    const retry=retrySeconds(r.headers,60);await r.body?.cancel();
     if(r.status===429)throw new ApiError(429,'WB ограничил частоту обновления остатков',retry);
     if(r.status===401||r.status===403)throw new ApiError(400,'WB не разрешил загрузку остатков. Проверьте срок ключа и категорию «Аналитика» в настройках API');
     if(r.status===402)throw new ApiError(400,'WB требует оплату доступа к этому методу API');
@@ -142,16 +157,29 @@ export async function processStocks(admin:any,state:any,fetcher=stockFetch) {
     if(error)throw new ApiError(500,'Не удалось сохранить обновление остатков');
   };
   try {
+    // Stock and monthly workers share the same seller credential. A long WB
+    // Retry must also protect demand reads made by the inventory worker.
+    const {data:wait,error:claimError}=await admin.rpc('wb_api_claim_analytics',{p_shop_id:state.shop_id});
+    if(claimError)throw new ApiError(500,'Не удалось проверить время ожидания WB');
+    if(Number(wait)>0){await save({next_run_at:new Date(Date.now()+Number(wait)*1000).toISOString()});return {processed:false,retry_after:Number(wait)};}
     const {data:key,error}=await admin.rpc('wb_api_read_key',{p_shop_id:state.shop_id});
     if(error||!key)throw new ApiError(400,'Подключите API магазина в настройках');
     const {token}=validateKey(String(key));
     const pending=structuredClone(state.pending||{}),offset=state.page_offset||0;
+    const publish=async()=>{
+      const snapshot={version:1,rows:pending.rows||[],catalogue:pending.catalogue,demand:pending.demand,wb_checked_at:pending.wb_checked_at,seller_checked_at:pending.seller_checked_at};
+      inventoryView(snapshot,{alert_days:state.alert_days,target_days:state.target_days});
+      await save({snapshot,fetched_at:pending.wb_checked_at,stage:'idle',pending:{},page_offset:0,failure_count:0,error_message:null,next_run_at:new Date(Date.parse(pending.wb_checked_at)+STOCK_INTERVAL).toISOString()});
+    };
     if(state.stage==='wb'||state.stage==='seller') {
       const kind=state.stage,raw=await fetcher(token,`https://seller-analytics-api.wildberries.ru/api/analytics/v1/stocks-report/${kind==='wb'?'wb':'seller'}-warehouses`,{limit:PAGE,offset});
       const page=stockPage(raw,kind);pending.rows=mergeStockRows(pending.rows||[],page);
       pending[`${kind}_checked_at`] ||= new Date().toISOString();
       if(page.length===PAGE)await save({pending,page_offset:offset+PAGE,failure_count:0,error_message:null,next_run_at:new Date(Date.now()+60000).toISOString()});
-      else await save({pending,stage:kind==='wb'?'seller':'demand',page_offset:0,failure_count:0,error_message:null,next_run_at:new Date(Date.now()+60000).toISOString()});
+      else if(kind==='seller'&&reusableDemand(state.snapshot)){
+        pending.catalogue=state.snapshot.catalogue;pending.demand=state.snapshot.demand;
+        await publish(); // Do not reset checked_at: a cache hit never extends TTL.
+      } else await save({pending,stage:kind==='wb'?'seller':'demand',page_offset:0,failure_count:0,error_message:null,next_run_at:new Date(Date.now()+60000).toISOString()});
     } else if(state.stage==='demand') {
       pending.demand ||= {...demandPeriod(),checked_at:new Date().toISOString()};
       const raw=await fetcher(token,'https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products',{selectedPeriod:{start:pending.demand.from,end:pending.demand.to},skipDeletedNm:true,limit:1000,offset});
@@ -160,16 +188,13 @@ export async function processStocks(admin:any,state:any,fetcher=stockFetch) {
       pending.catalogue=[...catalogue,...page];
       if(pending.catalogue.length>100000)throw new ApiError(400,'Слишком большой каталог для тестового раздела');
       if(page.length===1000)await save({pending,page_offset:offset+1000,failure_count:0,error_message:null,next_run_at:new Date(Date.now()+60000).toISOString()});
-      else {
-        const snapshot={version:1,rows:pending.rows||[],catalogue:pending.catalogue,demand:pending.demand,wb_checked_at:pending.wb_checked_at,seller_checked_at:pending.seller_checked_at};
-        inventoryView(snapshot,{alert_days:state.alert_days,target_days:state.target_days}); // Validate safe totals before atomic publication.
-        await save({snapshot,fetched_at:pending.wb_checked_at,stage:'idle',pending:{},page_offset:0,failure_count:0,error_message:null,next_run_at:new Date(Date.parse(pending.wb_checked_at)+STOCK_INTERVAL).toISOString()});
-      }
+      else await publish();
     } else throw new ApiError(400,'Некорректный этап загрузки остатков');
     return {processed:true};
   } catch(e) {
     const limited=e instanceof ApiError&&e.status===429,failures=Number(state.failure_count||0)+(limited?0:1);
     const terminal=e instanceof ApiError&&e.status===400 || failures>=3;
+    if(limited)await deferRequest(admin,state.shop_id,(e as ApiError).retryAfter);
     // A failed/incomplete snapshot never replaces the last complete inventory.
     await save({...(terminal?{stage:'idle',pending:{},page_offset:0}:{}),failure_count:failures,
       error_message:e instanceof ApiError?e.message:'Не удалось обновить остатки. Повторим загрузку',

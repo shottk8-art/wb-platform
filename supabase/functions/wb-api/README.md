@@ -38,8 +38,9 @@ snapshot until ready. Pure cabinet/trend reads never call WB. Trend uses stored
 finance aggregates and shared catalogue reads, not raw operation scans.
 
 Profit uses actual retrieved financial values, live cost prices/tax, money-funded
-advertising and manual operating/external promotion expenses. Missing costs or
-sources stay unknown, not zero. Bonus advertising is reference-only. Advertising
+advertising and manual operating/external promotion expenses. Missing costs and
+non-Media sources stay unknown. Per the owner's policy, unavailable Media uses
+a labelled temporary zero with a six-hour source-only retry. Bonus advertising is reference-only. Advertising
 already included in financial deductions is not deducted twice. API ingestion
 inserts new SKU costs without replacing existing costs or names; it never writes
 monthly_reports/sku_sales/uploads or changes Ozon imports. API data is not public.
@@ -145,6 +146,38 @@ exact totals and atomic rollback), `wb-api-read-budget.mjs` (four queries for
 twelve months, no raw reads), `file-read-budget.cjs` (1105 products and one
 trend RPC), `import-lazy-budget.cjs` (one shared first-import library load),
 and `wb-api-compact-ingestion.sql` (rollback-only database checks).
+
+## Upstream request budget (reviewed 2026-11-16)
+
+Official live docs: [request limits](https://dev.wildberries.ru/docs/openapi/api-information),
+[analytics](https://dev.wildberries.ru/docs/openapi/analytics),
+[advertising](https://dev.wildberries.ru/docs/openapi/promotion),
+[finance](https://dev.wildberries.ru/docs/openapi/documents-and-accounting).
+
+- `/sales-funnel/products` updates once every two hours. Inventory reuses only
+  its own complete exact 28-day demand/catalogue for less than two hours. Moscow
+  date rollover, stale/future timestamps, malformed or partial data require a
+  fresh read. Reuse never changes demand.checked_at. Stock quantities keep their
+  independent 30-minute refresh, including pagination and atomic publication.
+- Monthly/daily and private SKU advertising reduce one `/adv/v1/upd` response.
+  Legacy ads-only backfills still fetch once when campaign attribution is absent.
+  Statistics remain batched by up to 50 campaigns for a <=31-day period.
+- Private `wb_api_claim_analytics` coordinates a 21-second, burst=1 slot across
+  inventory and monthly analytics; finance's 63-second cadence stays separate.
+  Ordinary finance backfills cannot starve stock requests. Actual WB 429 delays
+  persist in `upstream_blocked_until` and block both workers. Updates use
+  GREATEST, so concurrent shorter failures never erase a longer Retry. A Media
+  estimate also persists Retry before advancing. Reset is never used as Retry.
+- Closed ready months are reused; hourly history reconciliation is not an hourly
+  re-download. Current-month history advances daily and explicit Refresh remains
+  available. Saved cabinet/trend/unit/daily/status reads never contact WB.
+- Finance keeps 10,000-row durable pages because the previous larger pages hit
+  the runtime CPU limit. WB's final 204 is still requested even after a short
+  page; stop conditions and rrdId follow the official contract.
+
+`tests/wb-api-request-budget.mjs` runs real worker paths with counted mock WB
+calls; `tests/wb-api-request-budget.sql` checks private cooldowns/slots/isolation
+inside rollback. No full history or credentials are fetched for audit alone.
 
 ## WB Media expense-first selection
 
