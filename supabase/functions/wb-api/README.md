@@ -158,7 +158,9 @@ Official live docs: [request limits](https://dev.wildberries.ru/docs/openapi/api
   its own complete exact 28-day demand/catalogue for less than two hours. Moscow
   date rollover, stale/future timestamps, malformed or partial data require a
   fresh read. Reuse never changes demand.checked_at. Stock quantities keep their
-  independent 30-minute refresh, including pagination and atomic publication.
+  independent daily refresh, including pagination and atomic publication.
+  This daily interval was selected by the owner on 2026-11-16; explicit Refresh
+  remains available with the existing 30-minute minimum and WB cooldowns.
 - Monthly/daily and private SKU advertising reduce one `/adv/v1/upd` response.
   Legacy ads-only backfills still fetch once when campaign attribution is absent.
   Statistics remain batched by up to 50 campaigns for a <=31-day period.

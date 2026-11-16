@@ -63,7 +63,7 @@
     if(inv){
       el('stockTotal').textContent=number(inv.totals.quantity);el('stockLow').textContent=number(inv.products.filter(attention).length);el('stockOut').textContent=number(inv.totals.out);el('stockWarehouses').textContent=number(inv.totals.warehouses);
       const old=el('stockWarehouse').value;el('stockWarehouse').innerHTML='<option value="all">Все склады</option>'+inv.warehouses.map(w=>`<option value="${safe(w.id)}">${safe(w.name)}${w.kind==='seller'?' · продавец':''}</option>`).join('');el('stockWarehouse').value=inv.warehouses.some(w=>w.id===old)?old:'all';
-      status(`Получено ${date(result.fetched_at)}${result.status==='loading'?' · обновляем на сервере':' · автообновление каждые 30 минут'}`);
+      status(`Получено ${date(result.fetched_at)}${result.status==='loading'?' · обновляем на сервере':' · автообновление раз в сутки'}`);
       if(inv.demand)el('stockDemandPeriod').textContent=`Период спроса: ${inv.demand.from} — ${inv.demand.to}, ${inv.demand.days} полных дней по московскому времени.`;
       table();
     }else status(result.status==='not_connected'?'Подключите API Wildberries в настройках магазина.':result.status==='error'?'Не удалось загрузить остатки. Обновление будет повторено автоматически.':'Собираем остатки по всем складам и спрос по товарам. Можно закрыть страницу — загрузка продолжится на сервере.');

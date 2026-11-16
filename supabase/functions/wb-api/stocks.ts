@@ -2,9 +2,9 @@ import { ApiError, validateKey } from './core.ts';
 import { authorizeDaily, privateShopAllowed } from './daily-access.ts';
 import {deferRequest,retrySeconds} from './rate-limit.ts';
 
-export const STOCK_INTERVAL = 30 * 60 * 1000;
+export const STOCK_INTERVAL = 24 * 60 * 60 * 1000;
 // WB: /sales-funnel/products is updated once every two hours. Stock quantities
-// retain their independent 30-minute cycle. Cache only a complete exact period.
+// retain their independent daily cycle. Cache only a complete exact period.
 const DEMAND_INTERVAL = 2 * 60 * 60 * 1000;
 const PAGE = 10000, MAX_ROWS = 250000;
 const COLUMNS = 'snapshot,fetched_at,stage,next_run_at,error_message,alert_days,target_days,updated_at';
