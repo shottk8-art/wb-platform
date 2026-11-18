@@ -24,14 +24,16 @@
   for(const id of ['promoFrom','promoTo']){el(id).max=today();const d=today();el(id).min=new Date(Date.UTC(+d.slice(0,4),+d.slice(5,7)-12,1)).toISOString().slice(0,10);}
   defaults();
   function controls(){
+    el('promoRangeToggle').disabled=busy||writing;
     el('promoAccessRetry').disabled=busy||writing;
     for(const id of ['promoFrom','promoTo','promoShow','promoPrevious','promoCurrent','promoRefresh'])el(id).disabled=busy||writing;
     if(result?.status==='needs_catalog')el('promoRefresh').disabled=true;
     for(const id of ['promoNameSave','promoInvite'])el(id).disabled=busy||writing;
     el('promoRefresh').hidden=el('promoManagement').hidden=el('promoCabinetLink').hidden=!owner;
     el('promoMain').setAttribute('aria-busy',String(busy));
+    window.WBPromoRange?.sync();
   }
-  function clear(){stopCounter();counterTargets=[];result=null;page=0;clearTimeout(timer);el('promoRows').replaceChildren();el('promoMatching').textContent='';el('promoPagination').hidden=true;el('promoEmpty').hidden=false;el('promoEmpty').textContent='Загружаем статистику…';
+  function clear(){window.WBPromoRange?.close(false);stopCounter();counterTargets=[];result=null;page=0;clearTimeout(timer);el('promoRows').replaceChildren();el('promoMatching').textContent='';el('promoPagination').hidden=true;el('promoEmpty').hidden=false;el('promoEmpty').textContent='Загружаем статистику…';
     for(const id of ['promoCount','promoUnits','promoSales','promoNet']){el(id).textContent='—';el(id).title='';}}
   async function request(action,payload={}){
     const session=await window.WBAuth.getSession();
@@ -71,6 +73,7 @@
     if(!userId||busy||writing)return;
     if(!el('promoPeriodForm').reportValidity())return;
     const from=el('promoFrom').value,to=el('promoTo').value;
+    const rangeError=window.WBPromoRange?.validate(from,to);if(rangeError){status('promoStatus',rangeError,true);return;}
     if(from>to){status('promoStatus','Начало периода должно быть не позже окончания',true);return;}
     const ticket=++epoch;busy=true;if(reset)clear();controls();status('promoStatus',refresh?'Запускаем обновление…':'Читаем статистику…');
     try{

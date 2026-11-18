@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
   <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
   <link rel="stylesheet" href="/assets/reference.css?v=20261113-profitability">
-  <link rel="stylesheet" href="/assets/promocodes.css?v=20261118-catalog2">
+  <link rel="stylesheet" href="/assets/promocodes.css?v=20261118-range3">
   <script src="/assets/corbel.js?v=20261019-icon1"></script>
   <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 </head>
@@ -33,8 +33,8 @@
     <main id="promoMain" hidden>
       <div class="promo-heading"><div><h1>Статистика по промокодам</h1><p class="promo-muted">Выкупы и возвраты из финансовых отчётов Wildberries</p></div><button type="button" id="promoRefresh" hidden>Обновить из WB</button></div>
       <form id="promoPeriodForm" class="promo-period">
-        <label>Начало периода<input id="promoFrom" type="date" required></label>
-        <label>Конец периода<input id="promoTo" type="date" required></label>
+        <input id="promoFrom" type="hidden"><input id="promoTo" type="hidden">
+        <div class="promo-period-field"><span id="promoPeriodLabel">Период</span><button type="button" id="promoRangeToggle" class="promo-range-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="promoRangePopover" aria-labelledby="promoPeriodLabel promoRangeValue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5m9-5v5m-13 3.5h17"/></svg><span id="promoRangeValue">Выбрать даты</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div>
         <button type="submit" class="primary" id="promoShow">Показать</button>
         <div class="promo-shortcuts"><button type="button" id="promoPrevious">Прошлый месяц</button><button type="button" id="promoCurrent">Текущий месяц</button></div>
       </form>
@@ -64,6 +64,7 @@
   <script src="/assets/config.js"></script>
   <script src="/assets/supabaseClient.js"></script>
   <script src="/assets/auth.js"></script>
-  <script src="/assets/promocodes.js?v=20261118-catalog2"></script>
+  <script src="/assets/promocodes.js?v=20261118-range3"></script>
+  <script src="/assets/promo-range.js?v=20261118-range3"></script>
 </body>
 </html>

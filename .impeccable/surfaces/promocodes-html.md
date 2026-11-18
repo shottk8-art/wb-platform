@@ -2,7 +2,7 @@
 version: 1
 slug: "promocodes-html"
 primary_target: "promocodes.html"
-related_targets: ["assets/promocodes.css", "assets/promocodes.js"]
+related_targets: ["assets/promocodes.css", "assets/promocodes.js", "assets/promo-range.js"]
 ---
 
 # TOPLASH — статистика по промокодам
@@ -38,9 +38,9 @@ No surface-specific palette or separate theme store is introduced.
 Instrument Sans remains the working stack, Bricolage Grotesque the heading/number
 stack, with existing Manrope Cyrillic coverage. Local sizing is an extension:
 page title 26px desktop / 22px mobile, metric 27px desktop / 24px below 1100px,
-table 13px and mobile date input 16px. Figures use tabular numerals. Below 760px,
-statistics become 2×2, labelled date fields retain two columns, Show spans the
-row, search/sort stack, and table rows become labelled two-column cards with
+table 13px. Figures use tabular numerals. The unified range trigger and «Показать»
+share a matching 44px height and baseline; at ≤520px Show stacks below the trigger.
+Below 760px, statistics become 2×2, search/sort stack, and table rows become labelled two-column cards with
 identity spanning both columns. Management stacks; long names, codes and IDs wrap.
 
 ## Access and data meaning
@@ -72,8 +72,24 @@ identity spanning both columns. Management stacks; long names, codes and IDs wra
 
 ## Periods, local interaction and states
 
-Allow arbitrary inclusive dates within the rolling 12-month window, with previous
-and current month shortcuts. Search locally by name/code/ID; show code separately.
+The bounded picker extension in [promo-range.js](../../assets/promo-range.js)
+replaces the two visible native date fields with one range trigger and a dialog.
+The parent inspected live Corbel Analytics date-preset interactions this turn;
+the extension retains the accepted platform tokens, typography and both themes.
+Use native automatic popover behavior with a fallback when unsupported, two
+calendar months on desktop and one on mobile. Fit available height with internal
+scrolling and sticky actions.
+
+Selection and manual entry update a local draft. Apply commits the range and
+submits once; Cancel, Escape and outside dismissal make no query. Manual
+`DD.MM.YYYY` entry autoformats eight numeric digits while retaining the caret,
+so phone numeric keyboards need no literal dot key. Invalid dates disable Apply.
+Presets cover 7 days, 30 days, current month and previous month. Month navigation
+and roving keyboard focus support arrows, Home/End and PageUp/PageDown. Arbitrary
+inclusive ranges retain the existing rolling 12-month min/max bounds and canonical
+ISO `YYYY-MM-DD` values. Finance, server behavior and permissions are unchanged.
+
+Search locally by name/code/ID; show code separately.
 Sort by buyout value, units, net or name; paginate locally in pages of 50.
 «Промокодов в списке» counts catalogue rows. Summary totals cover only the allowed
 catalogue over the full period; matching count/pages follow search. Table money
@@ -105,27 +121,39 @@ historical backfill shares its quota; retain aggregates, never raw orders. UI
 reads use prepared server aggregates without new WB reads; owner preparation/
 refresh schedules quota-controlled work only with a catalogue. Per parent handoff,
 October/November are prepared and the backend plus private code column are
-migrated/deployed; frontend publication awaits the parent. No live checks here.
+migrated/deployed. The prior feature was published at `d14ae444`; publication of
+this datepicker UI update awaits the parent. No live checks here.
 Never commit real IDs, campaign names, codes, revenue or usernames in this brief.
 
 ## Evidence and review limits
 
-Current synthetic catalogue captures are supplied by the parent, not reopened in
-this update. Previously inspected access/error captures still apply unchanged.
+The parent opened the final picker captures below with synthetic fixture data;
+they were not reopened here. Catalogue captures remain prior feature evidence,
+not current picker evidence. Earlier access/error captures still apply unchanged.
 
 | Evidence | Scope |
 | --- | --- |
+| [Range toolbar](../review/promo-range-toolbar-final.png), [picker light](../review/promo-range-desktop-light-final.png), [dark](../review/promo-range-desktop-dark-final.png) | 1488×918; aligned trigger/Show and desktop dialog |
+| [Picker mobile light](../review/promo-range-mobile-light-final.png) | 390×844 viewport crop |
+| [Picker mobile dark](../review/promo-range-mobile-dark-320-final.png) | 320×640 viewport crop |
 | [Desktop light](../review/promocodes-catalog-desktop-light.png), [dark](../review/promocodes-catalog-desktop-dark.png) | 2081×1079; catalogue extension in both themes |
 | [Mobile light](../review/promocodes-catalog-mobile-light.png), [dark](../review/promocodes-catalog-mobile-dark.png) | 390×1400 viewport crops, not full-page evidence |
 | [Owner management](../review/promocodes-catalog-management-mobile.png) | Partial 390×1000 crop: prefilled code and start of access section, not the whole form |
 | [Initial error](../review/promocodes-initial-error.png), [retry recovery](../review/promocodes-retry-recovered.png) | Visible error/retry outside the hidden main, then recovered content |
 
-Latest parent handoff: 84 distinct automatic executables passed (87 executions
-included three duplicate runs), including targeted server privacy, zero rows,
-empty catalogue and code bounds. No reruns here. Fresh reviewer verdict is
-**SHIP for the whole bounded catalogue extension**, with no material fixes;
-the prior visual pass found no material layout issues. Actual invitee Telegram
-login, physical-phone behavior and complete motion fidelity remain unverified.
+Parent reports four targeted suites passed: [promo-range.cjs](../../tests/promo-range.cjs),
+`promocodes-ui.cjs`, `promocodes-routes.mjs` and `wb-promocodes.mjs`. The earlier
+84 distinct passing executables (87 executions including three duplicate runs)
+remain prior catalogue evidence and were not rerun for this change. No tests ran here.
+
+The picker reviewer's only P2 concerned numeric keyboards lacking literal dots.
+Autoformat corrected it; the parent verified actual raw-digit browser entry and
+the helper test. Final follow-up: **P2 resolved; SHIP for the whole bounded
+datepicker change**, with no material issues remaining. That verdict uses source,
+prior captures and reported checks; no recapture was required. The earlier
+catalogue SHIP remains scoped to that extension. Actual invitee Telegram login,
+physical-phone behavior, the live authenticated production picker and complete
+motion fidelity remain unverified. Publication is still pending with the parent.
 
 ## Preexisting drift and scope
 
