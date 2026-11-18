@@ -4,6 +4,7 @@
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
   const integer=v=>Number(v).toLocaleString('ru-RU',{maximumFractionDigits:0});
+  const historicalIds=r=>Array.isArray(r.historical_ids)?r.historical_ids:[];
   const metricMoney=v=>Math.abs(v)>=1000000?Number(v).toLocaleString('ru-RU',{notation:'compact',maximumFractionDigits:1})+' ₽':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:0})+' ₽';
   const date=v=>v?new Date(v).toLocaleString('ru-RU',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):'—';
   const today=()=>new Date(Date.now()+10800000).toISOString().slice(0,10);
@@ -47,12 +48,12 @@
   function table(){
     if(result?.status!=='ready')return;
     const query=el('promoSearch').value.trim().toLowerCase(),sort=el('promoSort').value;
-    const rows=result.rows.filter(r=>!query||(r.name+' '+(r.code||'')+' '+r.promo_id).toLowerCase().includes(query));
+    const rows=result.rows.filter(r=>!query||[r.name,r.code||'',r.promo_id,...historicalIds(r)].join(' ').toLowerCase().includes(query));
     rows.sort(sort==='name'?(a,b)=>(a.name||a.promo_id).localeCompare(b.name||b.promo_id,'ru'):(a,b)=>Number(b[sort==='quantity'?'sold_qty':sort==='net'?'net_amount':'sold_amount'])-Number(a[sort==='quantity'?'sold_qty':sort==='net'?'net_amount':'sold_amount'])||a.promo_id.localeCompare(b.promo_id));
     const pages=Math.max(1,Math.ceil(rows.length/50));page=Math.min(page,pages-1);
     el('promoMatching').textContent=integer(rows.length);
-    el('promoRows').innerHTML=rows.slice(page*50,page*50+50).map(r=>`<tr><td>${owner?`<button type="button" class="promo-edit" data-promo-edit="${safe(r.promo_id)}" aria-label="Изменить промокод: ${safe(r.name||r.promo_id)}">${safe(r.name||'Указать название')}</button>`:`<span class="promo-promo-name">${safe(r.name||'Промокод без названия')}</span>`}${r.code?`<span class="promo-promo-id">Код: ${safe(r.code)}</span>`:''}<span class="promo-promo-id">ID: ${safe(r.promo_id)}</span></td><td data-label="Выкуплено, шт.">${integer(r.sold_qty)}</td><td data-label="Сумма выкупов, ₽" class="promo-amount">${money(r.sold_amount)}</td><td data-label="Возвраты" class="promo-return">${integer(r.returned_qty)} шт.<br>${money(r.returned_amount)} ₽</td><td data-label="Итог, ₽" class="promo-amount">${money(r.net_amount)}</td></tr>`).join('');
-    el('promoEmpty').hidden=rows.length>0;el('promoEmpty').textContent=query?'По этому названию, промокоду или ID ничего не найдено.':'В сохранённом списке пока нет промокодов.';
+    el('promoRows').innerHTML=rows.slice(page*50,page*50+50).map(r=>`<tr><td>${owner?`<button type="button" class="promo-edit" data-promo-edit="${safe(r.promo_id)}" aria-label="Изменить промокод: ${safe(r.name||r.promo_id)}">${safe(r.name||'Указать название')}</button>`:`<span class="promo-promo-name">${safe(r.name||'Промокод без названия')}</span>`}${r.code?`<span class="promo-promo-id">Код: ${safe(r.code)}</span>`:''}<span class="promo-promo-id">ID: ${safe(r.promo_id)}</span>${historicalIds(r).map(id=>`<span class="promo-promo-id">ID в ранних отчётах: ${safe(id)}</span>`).join('')}</td><td data-label="Выкуплено, шт.">${integer(r.sold_qty)}</td><td data-label="Сумма выкупов, ₽" class="promo-amount">${money(r.sold_amount)}</td><td data-label="Возвраты" class="promo-return">${integer(r.returned_qty)} шт.<br>${money(r.returned_amount)} ₽</td><td data-label="Итог, ₽" class="promo-amount">${money(r.net_amount)}</td></tr>`).join('');
+    el('promoEmpty').hidden=rows.length>0;el('promoEmpty').textContent=query?'В отслеживаемом списке совпадений нет. Поиск учитывает текущие ID и ID из ранних отчётов. Другие промокоды добавляет владелец.':'В сохранённом списке пока нет промокодов.';
     el('promoPagination').hidden=rows.length<=50;el('promoPageInfo').textContent=`${page+1} из ${pages}`;el('promoPageBack').disabled=page===0;el('promoPageNext').disabled=page===pages-1;
   }
   function render(){

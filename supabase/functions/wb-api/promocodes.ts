@@ -107,6 +107,10 @@ export async function readPromocodes(admin:any,p:any){
     if(canonical.has(alias.alias_id)&&canonical.get(alias.alias_id)!==alias.promo_id)throw new ApiError(500,'Неоднозначные ID промокодов. Обратитесь к владельцу магазина');
     canonical.set(alias.alias_id,alias.promo_id);
   }
+  // Expose only verified aliases of saved cards so a financial-report ID can
+  // find its campaign without adding unrelated promotions to the catalogue.
+  const historical=new Map<string,string[]>([...catalog.keys()].map(id=>[id,[]]));
+  for(const [id,promo] of canonical)if(id!==promo)historical.get(promo)!.push(id);
   const cached=new Map<string,any>();
   function collect(period:any){
     const key=period.dateFrom+':'+period.dateTo;if(cached.has(key))return cached.get(key);
@@ -123,7 +127,7 @@ export async function readPromocodes(admin:any,p:any){
       const old=rows.get(id);
       old.sold_qty+=b.sold_qty;old.returned_qty+=b.returned_qty;old.sold_amount+=cents(b.sold_amount);old.returned_amount+=cents(b.returned_amount);}
   }
-  const result=[...rows.values()].map(r=>({...r,name:catalog.get(r.promo_id).name,code:catalog.get(r.promo_id).code||'',net_qty:r.sold_qty-r.returned_qty,
+  const result=[...rows.values()].map(r=>({...r,name:catalog.get(r.promo_id).name,code:catalog.get(r.promo_id).code||'',historical_ids:historical.get(r.promo_id),net_qty:r.sold_qty-r.returned_qty,
     net_amount:rub(r.sold_amount-r.returned_amount),sold_amount:rub(r.sold_amount),returned_amount:rub(r.returned_amount)}));
     const ready=!missing.length;
     const metrics=ready?{active_codes:result.filter(r=>r.sold_qty>0).length,sold_qty:result.reduce((n,r)=>n+r.sold_qty,0),sold_amount:rub(result.reduce((n,r)=>n+cents(r.sold_amount),0n)),net_amount:rub(result.reduce((n,r)=>n+cents(r.net_amount),0n))}:null;

@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../assets/promocodes.js'),'utf8');
 const owner='bbb002c4-cd7a-490d-b9c0-72aed5424261';
 const tick=()=>new Promise(r=>setImmediate(r));
-const response=(isOwner=false,status='ready')=>({owner:isOwner,status,missing_months:status==='ready'?[]:['2026-10'],fetched_at:'2026-11-18T07:00:00Z',rows:status==='ready'?[{promo_id:'10000000-0000-4000-8000-000000000001',name:'Promo <unsafe>',code:'SAVE20',sold_qty:2,returned_qty:1,sold_amount:'200.50',returned_amount:'100.25',net_amount:'100.25'}]:[]});
+const response=(isOwner=false,status='ready')=>({owner:isOwner,status,missing_months:status==='ready'?[]:['2026-10'],fetched_at:'2026-11-18T07:00:00Z',rows:status==='ready'?[{promo_id:'10000000-0000-4000-8000-000000000001',historical_ids:['20000000-0000-4000-8000-000000000002'],name:'Promo <unsafe>',code:'SAVE20',sold_qty:2,returned_qty:1,sold_amount:'200.50',returned_amount:'100.25',net_amount:'100.25'}]:[]});
 function fixture(id='viewer'){
  const els=new Map(),events={},requests=[];let session={user:{id,user_metadata:{}},access_token:'synthetic'},timer;
  const el=id=>{if(!els.has(id))els.set(id,{value:'',hidden:false,dataset:{},events:{},textContent:'',innerHTML:'',setAttribute(){},addEventListener(k,f){this.events[k]=f},replaceChildren(){this.innerHTML='';},append(){},focus(){},reportValidity(){return true}});return els.get(id)};
@@ -20,6 +20,13 @@ function fixture(id='viewer'){
   assert.match(f.el('promoRows').innerHTML,/Promo &lt;unsafe&gt;/);assert.doesNotMatch(f.el('promoRows').innerHTML,/data-promo-edit/);assert.equal(f.el('promoUnits').textContent,'2');
   f.el('promoSearch').value='missing';f.el('promoSearch').events.input();assert.equal(f.el('promoEmpty').hidden,false);assert.equal(f.el('promoUnits').textContent,'2','search does not change period totals');
   f.el('promoSearch').value='save20';f.el('promoSearch').events.input();assert.equal(f.el('promoEmpty').hidden,true,'the code distinguishes promos sharing a generic name');assert.match(f.el('promoRows').innerHTML,/Код: SAVE20/);
+  f.el('promoSearch').value='  20000000-0000-4000-8000-000000000002  ';f.el('promoSearch').events.input();
+  assert.equal(f.el('promoEmpty').hidden,true,'ID copied from an older financial report must find the same saved campaign');
+  assert.match(f.el('promoRows').innerHTML,/ID в ранних отчётах: 20000000-0000-4000-8000-000000000002/);
+  assert.equal(f.el('promoMatching').textContent,'1','old and current IDs cannot produce duplicate campaign rows');
+  assert.equal(f.el('promoUnits').textContent,'2','historical search cannot change period totals');
+  f.el('promoSearch').value='30000000-0000-4000-8000-000000000003';f.el('promoSearch').events.input();
+  assert.equal(f.el('promoEmpty').hidden,false);assert.match(f.el('promoEmpty').textContent,/отслеживаемом списке/,'empty search explains its catalogue boundary');
   assert.equal(f.requests.length,1,'search and sort are local');
  }
  {

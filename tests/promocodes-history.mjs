@@ -22,7 +22,7 @@ assert.equal(result.rows[0].sold_qty,5,'historical ID and current ID must both c
 assert.equal(result.rows[0].sold_amount,'500.00');
 assert.equal(result.rows[0].returned_qty,1);assert.equal(result.rows[0].net_amount,'400.00','historical returns use the same mapping');
 assert.equal(result.rows[0].promo_id,current);
-assert.ok(!JSON.stringify(result).includes(legacy),'only canonical IDs are exposed');
+assert.deepEqual(result.rows[0].historical_ids,[legacy],'verified historical IDs must be available to report-ID search');
 assert.ok(!JSON.stringify(result).includes(unrelated),'unverified IDs remain excluded');
 
 const snapshot=data.wb_promo_jobs[0].model.buckets;
@@ -34,10 +34,12 @@ data.wb_promo_jobs[0].model.buckets=snapshot;
 data.wb_promo_id_aliases[0].shop_id='another-shop';
 result=await readPromocodes(admin,period);
 assert.equal(result.rows[0].sold_qty,2,'another shop cannot supply a historical mapping');
+assert.deepEqual(result.rows[0].historical_ids,[],'another shop cannot supply searchable identifiers');
 data.wb_promo_id_aliases[0].shop_id=PROMO_SHOP;
 data.wb_promo_id_aliases[0].promo_id=unrelated;
 result=await readPromocodes(admin,period);
 assert.equal(result.rows[0].sold_qty,2,'orphan mappings never broaden the saved catalogue');
+assert.deepEqual(result.rows[0].historical_ids,[],'orphan identifiers are not exposed to search');
 data.wb_promo_id_aliases[0].promo_id=current;
 data.wb_promo_names.push({shop_id:PROMO_SHOP,promo_id:unrelated,name:'Saved campaign',code:'OTHER20'});
 data.wb_promo_id_aliases.push({shop_id:PROMO_SHOP,alias_id:legacy,promo_id:unrelated});
