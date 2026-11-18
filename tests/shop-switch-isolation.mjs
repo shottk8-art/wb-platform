@@ -20,7 +20,7 @@ function fixture() {
   el('profitabilityValue').textContent='profitability of toplash';
   for(const id of ['membersBody','costsBody','uploadsBody']) el(id).innerHTML='rows of toplash';
   let notify;
-  const state={console,shop:{id:'toplash'},session:{user:{id:'owner'}},activeView:'overview',overviewScope:'wildberries',reportMarketplace:'wildberries',
+  const state={sectionAllowed:()=>true,console,shop:{id:'toplash'},session:{user:{id:'owner'}},activeView:'overview',overviewScope:'wildberries',reportMarketplace:'wildberries',
     profitNotice:{reset(){el('profitNotice').hidden=true;}},clearProfitCostFilter(){el('profitCostFilter').hidden=true;},
     dashboardRequest:0,periodsRequest:0,shopChange:0,shopLoading:false,overviewPending:false,overviewLoadError:'',apiDisplayedPeriod:'toplash:wildberries:2026-10',periods:[],currentTrend:[],
     document:{getElementById:el},localStorage:{setItem(){}},

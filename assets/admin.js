@@ -38,5 +38,13 @@
     return data.signedUrl;
   }
 
-  window.WBAdmin = { isAdmin, getOverview, listQuestions, setQuestionStatus, getAttachmentUrl };
+  async function getSectionAccess(userId) {
+    const {data,error}=await sb().rpc('admin_user_section_access',{p_user_id:userId});
+    if(error)throw error;return data;
+  }
+  async function saveSectionAccess(userId,sections) {
+    const {data,error}=await sb().rpc('admin_save_section_access',{p_user_id:userId,p_sections:sections});
+    if(error)throw error;return data;
+  }
+  window.WBAdmin = { isAdmin, getOverview, listQuestions, setQuestionStatus, getAttachmentUrl, getSectionAccess, saveSectionAccess };
 })();

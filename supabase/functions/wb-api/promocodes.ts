@@ -66,6 +66,10 @@ export async function authorizePromo(admin:any,userId:string,shopId:string){
   if(error)throw new ApiError(500,'Не удалось проверить доступ');
   if(shop?.owner_id!==PROMO_OWNER)throw new ApiError(403,'Статистика промокодов недоступна');
   if(userId===PROMO_OWNER)return {owner:true};
+  const {data:override,error:overrideError}=await admin.from('user_section_access').select('allowed').eq('user_id',userId).eq('section','promocodes').maybeSingle();
+  if(overrideError)throw new ApiError(500,'Не удалось проверить доступ к разделу');
+  if(override?.allowed===false)throw new ApiError(403,'Доступ к промокодам закрыт администратором');
+  if(override?.allowed===true)return {owner:false};
   const {data:viewer,error:viewerError}=await admin.from('wb_promo_viewers').select('id').eq('shop_id',PROMO_SHOP).eq('user_id',userId).limit(1).maybeSingle();
   if(viewerError)throw new ApiError(500,'Не удалось проверить доступ');
   if(viewer)return {owner:false};

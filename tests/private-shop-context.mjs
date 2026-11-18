@@ -6,7 +6,7 @@ const start=app.indexOf('  function updateShareBox()'),end=app.indexOf('\n  }',s
 let bound={shopId:'old',allowed:false};const calls=[],nodes=new Map();
 const node=id=>{if(!nodes.has(id))nodes.set(id,{dataset:{},style:{}});return nodes.get(id)};
 const check=()=>{assert.equal(bound.shopId,'second');assert.equal(bound.allowed,true);calls.push(bound.shopId)};
-const ctx=vm.createContext({shop:{id:'second',name:'Second',slug:'second'},session:{user:{id:'Karl'}},activeView:'daily',reportMarketplace:'wildberries',
+const ctx=vm.createContext({sectionAllowed:()=>true,shop:{id:'second',name:'Second',slug:'second'},session:{user:{id:'Karl'}},activeView:'daily',reportMarketplace:'wildberries',
  document:{getElementById:node,querySelectorAll:()=>[]},location:{origin:'https://test.invalid'},isOwner:()=>true,apiCabinetAllowed:()=>true,
  setActiveView:()=>check(),updateOverviewSource(){},window:{WBApi:{setContext(next){bound=next}},WBApiCabinet:{setContext(){}},WBDaily:{setContext:next=>{if(next.shopId)check()}},WBStock:{setContext:next=>{if(next.shopId)check()}}}});
 vm.runInContext(app.slice(start,end)+'\nupdateShareBox();',ctx);

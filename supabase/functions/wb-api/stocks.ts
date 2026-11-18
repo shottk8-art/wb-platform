@@ -1,5 +1,6 @@
 import { ApiError, validateKey } from './core.ts';
-import { authorizeDaily, privateShopAllowed } from './daily-access.ts';
+import { privateShopAllowed } from './daily-access.ts';
+import {requireSections} from './sections.ts';
 import {deferRequest,retrySeconds} from './rate-limit.ts';
 
 export const STOCK_INTERVAL = 24 * 60 * 60 * 1000;
@@ -122,7 +123,8 @@ export async function readStocks(admin:any,shopId:string) {
     settings:{alert_days:s.alert_days,target_days:s.target_days},inventory:inventoryView(s.snapshot,{...s,excluded_products:tracking?.excluded_products||{}})};
 }
 export async function stocksAction(admin:any,userId:string,shopId:string,body:any) {
-  authorizeDaily(userId,shopId);
+  if(typeof shopId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shopId))throw new ApiError(403,'Магазин недоступен');
+  await requireSections(admin,userId,['stocks']);
   if(body.action==='stocks_refresh') {
     const {error}=await admin.rpc('wb_stock_enqueue',{p_shop_id:shopId});
     if(error)throw new ApiError(500,'Не удалось запустить обновление остатков');
@@ -151,7 +153,7 @@ export async function stockFetch(token:string,url:string,body:any) {
   try{return await r.json();}catch{throw new ApiError(502,'WB вернул нечитаемый отчёт об остатках');}
 }
 export async function processStocks(admin:any,state:any,fetcher=stockFetch) {
-  if(!await privateShopAllowed(admin,state.shop_id))throw new ApiError(403,'Доступ запрещён');
+  if(!await privateShopAllowed(admin,state.shop_id,'stocks'))throw new ApiError(403,'Доступ запрещён');
   const save=async(patch:any)=>{
     const {error}=await admin.from('wb_stock_snapshots').update({...patch,updated_at:new Date().toISOString()}).eq('shop_id',state.shop_id).eq('lease_token',state.lease_token);
     if(error)throw new ApiError(500,'Не удалось сохранить обновление остатков');

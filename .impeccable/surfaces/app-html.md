@@ -7,9 +7,12 @@ related_targets: ["assets/corbel.css","assets/corbel.js"]
 
 # Кабинет продавца — Corbel reference reconstruction
 
+Current permissions: [central section map, 18 November 2026](#central-section-map--18-november-2026).
+Older pilot gates and sidebar review evidence below retain their historical scope.
+
 12 November 2026, retired inventory: add a reversible “Не отслеживать / Вернуть в отслеживание” action in the selected product and an “Исключённые” segment, following Corbel Products status filtering. Excluded cards are omitted from monitoring totals and notifications; preserve their identity for recovery even after WB removes the card. Store these preferences on the server independently of API snapshots/connections. No financial/source-stock mutation or access expansion.
 
-12 November 2026, private inventory pilot: only the same immutable Karl/TOPLASH pair sees `#stocks`, its menu link and the header notification bell. Live Corbel Products table and bell panel were inspected before implementation. Use the established light/dark tokens, compact four-metric summary, searchable warehouse/status list, selected article's warehouse/size ledger and a nonmodal notification panel. Latest stock comes from both current WB and seller-warehouse endpoints; client transit is separate. Show fetched time, stale/error/loading states, an adjustable 14-day alert and 30-day target based on 28 complete Moscow days of orders. Unknown/zero demand has no invented forecast. Every filter and selection uses the loaded snapshot; shop/user/source changes clear stale UI immediately. Backend/DB must enforce the exact private gate; store one compact complete snapshot, never history or raw orders, and refresh through one-use server leases with WB limits. Ozon/financial calculations and other accounts remain unchanged.
+12 November 2026, private inventory pilot: only the same immutable platform-administrator/TOPLASH pair sees `#stocks`, its menu link and the header notification bell. Live Corbel Products table and bell panel were inspected before implementation. Use the established light/dark tokens, compact four-metric summary, searchable warehouse/status list, selected article's warehouse/size ledger and a nonmodal notification panel. Latest stock comes from both current WB and seller-warehouse endpoints; client transit is separate. Show fetched time, stale/error/loading states, an adjustable 14-day alert and 30-day target based on 28 complete Moscow days of orders. Unknown/zero demand has no invented forecast. Every filter and selection uses the loaded snapshot; shop/user/source changes clear stale UI immediately. Backend/DB must enforce the exact private gate; store one compact complete snapshot, never history or raw orders, and refresh through one-use server leases with WB limits. Ozon/financial calculations and other accounts remain unchanged.
 
 11 November 2026, mandatory owner rule: consult the live Corbel reference before implementing every UI element, animation or structural change. Entry: https://demo.codeandchill.store/corbel/#/customers ; inspect the relevant linked screen and actual interaction, not remembered screenshots. This applies across the WB platform. The current unit redesign borrows Customers' compact statistic row, counted segment filters, search/sort header and sortable financial columns; wide layouts keep the selected SKU's economics next to the list, narrow layouts provide a focused detail/back path. Preserve financial values, null semantics, source caches and the exact private TOPLASH gate.
 
@@ -256,3 +259,64 @@ sidebar extension**, with no material fixes. This does not certify the placehold
 main content or actual invited production session. Publication awaits the parent.
 The [promo brief](promocodes-html.md) retains the destination's separate
 catalogue, financial and access contract; global design artifacts remain unchanged.
+
+## Central section map — 18 November 2026
+
+**Mode: Operate; bounded code-led extension.** This dated permission update
+supersedes earlier exact-user/shop pilot and admin-only AI rules, including older
+inherited descriptions. The global Corbel visual system stays intact. The parent
+inspected live Settings/Profile + Team; no comp, assets, fonts or palette were added.
+
+[app.html](../../app.html) consumes the server-confirmed account map through
+[section-access.js](../../assets/section-access.js); the ten flags and default
+six ordinary sections are recorded in the [admin brief](admin-html.md).
+Daily/unit, Stocks and AI require explicit grants for other accounts. AI requires
+Overview; grants still require existing shop ownership/membership for shop data.
+Server endpoints and restrictive RLS enforce access without profile-metadata roles.
+
+Refresh `my_section_access` every 60 seconds while visible and on tab return.
+An unchanged map emits no change event and does not reload finance. Unknown or
+failed maps fail closed with recoverable «Обновить доступы» status; a late
+`INITIAL_SESSION` must not clear an already confirmed map for the same user.
+Actual map changes invalidate stale work, update section links, Settings tabs and
+the local finder, and choose an allowed main view even from a disallowed hash.
+Account-only opens its permitted profile; promo-only shows a clear standalone
+TOPLASH CTA without requiring a shop. Existing type, themes and motion are retained.
+
+[promo-navigation.js](../../assets/promo-navigation.js) now follows map changes:
+revoke/grant aborts the previous check and runs a fresh authenticated
+`promocodes_access` check when permitted. It makes no financial queries or WB
+calls. Selected-shop independence remains; the earlier claim that ordinary section
+changes never trigger a promo check is superseded for actual map changes.
+[reference.js](../../assets/reference.js), [reference.css](../../assets/reference.css),
+[daily-analytics.js](../../assets/daily-analytics.js) and [stocks.js](../../assets/stocks.js)
+retain the existing layouts while respecting the map.
+
+Shared financial reads support any permitted financial consumer; write authority
+stays separate. Overview-only may save manual operating/external-promotion expenses
+on an existing report via UPSERT, never create a report or alter its other fields.
+Reports alone cannot delete purchase prices, erase cost-upload history or overwrite
+manual expenses, including by deleting their report. Purchase-price editing requires Costs.
+Feature collection is eligible only on an existing shop with an entitled owner or
+bound member. Disabling optional analytics lets ongoing core financial sync finish
+without extra optional advertising calls. Financial formulas and shop isolation remain.
+
+Final actual-HTML/JS synthetic captures, all opened by the parent (local dimensions
+checked here; images not reopened):
+
+| Evidence | Scope |
+| --- | --- |
+| [Account-only](../review/section-access-account-only.png) | 1488×918; permitted main view |
+| [Promo-only dark](../review/section-access-promos-only.png), [light](../review/section-access-promos-only-light.png) | 1488×918; final standalone CTA |
+| [Promo-only mobile dark](../review/section-access-promos-mobile-dark-390.png), [light](../review/section-access-promos-mobile-light-320.png) | 390×844 / 320×640 |
+
+The [admin evidence](admin-html.md#evidence-and-limits-for-this-correction) records
+the parent's 92 offline passes, final targeted checks, real rollback SQL/RLS and
+690-row / 477-article regression, four applied migrations and zero lasting customer
+flag changes. Hypatia's final **SHIP / three findings resolved** is at fix-list
+scope after four corrected captures and two local suites, not broad surface approval.
+Prior evidence stays historical. Shared glow remains inherited baseline only.
+This pass read source and global context, used no browser/network/DB and reran no
+implementation suites. Physical phones and invited real accounts remain unverified;
+no paid WB/OpenAI calls. Global DESIGN, sidecar, config and code are preserved.
+Commit and deployment remain pending with the parent; no new published hash is claimed.

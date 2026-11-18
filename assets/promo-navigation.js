@@ -3,10 +3,11 @@
   'use strict';
   const shopId='853b81a0-e0e2-4195-bc80-1cdc362af946';
   function create({link,config,fetcher=root.fetch.bind(root)}){
-    let session=null,generation=0,pending=null,controller=null,checked=false;
+    let session=null,generation=0,pending=null,controller=null,checked=false,sectionAccess;
     link.hidden=true;
     function reset(){++generation;controller?.abort();controller=null;pending=null;checked=false;link.hidden=true;}
     function refresh(){
+      if(sectionAccess!==undefined&&(!sectionAccess?.allowed||sectionAccess.userId!==session?.user?.id)){link.hidden=true;return Promise.resolve(false);}
       if(pending)return pending;
       if(!session?.user?.id||!session.access_token){link.hidden=true;return Promise.resolve(false);}
       const ticket=++generation,userId=session.user.id,token=session.access_token;
@@ -35,7 +36,11 @@
       if(same&&(pending||checked))return pending||Promise.resolve(!link.hidden);
       reset();return refresh();
     }
-    return {setSession,refresh};
+    function setAccess(value){
+      sectionAccess=value?{userId:value.user_id,allowed:value.sections?.promocodes===true}:null;
+      reset();return refresh();
+    }
+    return {setSession,refresh,setAccess};
   }
   if(typeof module==='object'&&module.exports)module.exports={create};
   if(!root.document)return;
@@ -43,6 +48,8 @@
   const link=root.document.getElementById('promocodesLink');
   if(!link||!root.WBAuth||!root.supabaseClient?.auth)return;
   const navigation=create({link,config:root.WB_CONFIG});let sessionChanged=false;
+  if(root.WBAccess)navigation.setAccess(root.WBAccess.current());
+  root.document.addEventListener('wb:section-access',()=>navigation.setAccess(root.WBAccess?.current()||null));
   root.supabaseClient.auth.onAuthStateChange((event,session)=>{
     if(event!=='INITIAL_SESSION')sessionChanged=true;
     navigation.setSession(session);

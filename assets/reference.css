@@ -125,7 +125,7 @@ body.corbel{font-family:var(--font-sans);letter-spacing:0;font-weight:400;line-h
 .corbel .segmented-control.chart-style{background:var(--surface-2);padding:3px;border-radius:9px}
 .corbel .segmented-control.chart-style button{font-size:11px;min-height:26px;padding:0 10px}
 .corbel .profitability-card{display:flex;flex-direction:column;overflow:hidden}
-.corbel [data-shop-state="empty"] .app-view:not(#secAccount){display:none!important}
+.corbel [data-shop-state="empty"] .app-view:not(#secAccount):not(#secNoAccess){display:none!important}
 .corbel .empty-shop{max-width:640px;margin-block:24px;padding:24px}
 .corbel .empty-shop h2{font-size:20px;margin:0 0 12px}
 .corbel .empty-shop p{font-size:14px;line-height:1.6;color:var(--ink-soft);margin:0 0 20px}

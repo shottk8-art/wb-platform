@@ -11,7 +11,7 @@ const shop='853b81a0-e0e2-4195-bc80-1cdc362af946';
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 function fixture(state){
   const rpcCalls=[];let wait=0;
-  const admin={rpc:async(name,args)=>{rpcCalls.push({name,args});return {data:name==='wb_api_read_key'?token:['wb_api_claim_request','wb_api_claim_analytics'].includes(name)?wait:null,error:null};},from(table){
+  const admin={rpc:async(name,args)=>{if(name==='app_shop_section_enabled')return {data:true,error:null};rpcCalls.push({name,args});return {data:name==='wb_api_read_key'?token:['wb_api_claim_request','wb_api_claim_analytics'].includes(name)?wait:null,error:null};},from(table){
     if(table==='shops')return shopOwnerQuery(DAILY_USER_ID);
     let patch;const q={update(p){patch=p;return q;},eq(){return q;},then(a,b){Object.assign(state,patch);return Promise.resolve({error:null}).then(a,b);}};return q;
   }};

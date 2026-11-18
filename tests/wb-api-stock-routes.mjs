@@ -1,3 +1,4 @@
+import {requireSections,actionSections} from '../supabase/functions/wb-api/sections.ts';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
@@ -9,11 +10,11 @@ const DAILY_SHOP_ID='853b81a0-e0e2-4195-bc80-1cdc362af946';
 import {stocksAction,processStocks} from '../supabase/functions/wb-api/stocks.ts';
 let handler;const upstream=[];
 const second='63175e7a-5b26-425e-893f-68889b32f02f',foreign='00000000-0000-4000-8000-000000000001';
-let currentUser=DAILY_USER_ID;const scopedReads=[],privateReads=[];
-const admin={rpc:async name=>name==='wb_stock_accept_lease'?{data:[],error:null}:{data:null,error:null},from(table){const filters={};const q={select(){return q},eq(k,v){filters[k]=v;return q},maybeSingle:async()=>{scopedReads.push({table,filters});return {data:table==='shops'?{id:filters.id,owner_id:filters.id===foreign?'other-owner':DAILY_USER_ID}:table==='shop_members'&&currentUser==='member'?{user_id:'member'}:null,error:null}},order(){return q},limit(){return q},then(a,b){return Promise.resolve({data:[],error:null}).then(a,b)}};return q;}};
+let currentUser=DAILY_USER_ID;let permissionGranted=false;const scopedReads=[],privateReads=[];
+const admin={rpc:async(name,args)=>name==='app_section_allowed'?{data:permissionGranted,error:null}:name==='app_shop_section_enabled'?{data:[DAILY_SHOP_ID,second].includes(args.p_shop_id),error:null}:name==='wb_stock_accept_lease'?{data:[],error:null}:{data:null,error:null},from(table){const filters={};const q={select(){return q},eq(k,v){filters[k]=v;return q},maybeSingle:async()=>{scopedReads.push({table,filters});return {data:table==='shops'?{id:filters.id,owner_id:filters.id===foreign?'other-owner':DAILY_USER_ID}:table==='shop_members'&&currentUser==='member'?{user_id:'member'}:null,error:null}},order(){return q},limit(){return q},then(a,b){return Promise.resolve({data:[],error:null}).then(a,b)}};return q;}};
 const user={auth:{getUser:async()=>({data:{user:{id:currentUser}},error:null})}};
 const source=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
-const context=vm.createContext({...core,authorizeShop,authorizeDaily,stocksAction,processStocks,
+const context=vm.createContext({requireSections,actionSections,...core,authorizeShop,authorizeDaily,stocksAction,processStocks,
   readOzonDaily:async(a,shop)=>{privateReads.push(shop);return {marketplace:'ozon',shop}},readOzonUnit:async(a,shop)=>{privateReads.push(shop);return {marketplace:'ozon',shop}},readOzonMonths:async(a,shop)=>({months:['2026-10']}),readDaily:async(a,shop)=>{privateReads.push(shop);return {shop}},readUnit:async(a,shop)=>{privateReads.push(shop);return {shop}},cabinetPeriod:m=>({dateFrom:m+'-01',dateTo:m+'-28'}),
   Request,Response,AbortSignal,console,Set,createClient:(url,key,options)=>options?.global?user:admin,
   fetch:async(url,opts)=>{upstream.push(url);return new Response(JSON.stringify(url.includes('seller-info')?{sid:'seller',name:'Test'}:{}),{status:200,headers:{'Content-Type':'application/json'}})},
@@ -51,3 +52,9 @@ assert.equal((await handler(request({action:'daily_start',shop_id:second,month:'
 currentUser='member';
 for(const action of ['daily','unit','ozon_months'])assert.equal((await handler(request({action,shop_id:second,month:'2026-10',marketplace:'ozon'},{Authorization:'Bearer session'}))).status,403);
 console.log('Ozon routes PASS: account gate, scoped reads without WB connection, and no WB enqueue for manual Ozon.');
+
+currentUser='member';permissionGranted=true;
+for(const action of ['stocks','daily','unit'])assert.equal((await handler(request({action,shop_id:second,month:'2026-11'},{Authorization:'Bearer session'}))).status,200,'explicit grant opens the section for an existing member');
+currentUser='stranger';
+for(const action of ['stocks','daily','unit'])assert.equal((await handler(request({action,shop_id:second,month:'2026-11'},{Authorization:'Bearer session'}))).status,403,'section permission never grants membership');
+console.log('Granted section routes PASS: authorized member enabled; stranger with identical section grant remains denied.');

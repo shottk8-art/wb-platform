@@ -48,7 +48,7 @@ function query(table) {
 const source=readFileSync(new URL('../supabase/functions/analyze-results/index.ts',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
 vm.runInNewContext(stripTypeScriptTypes(source),{
   Deno:{serve(fn){handler=fn},env:{get:()=> 'fixture-only'}},
-  createClient:()=>({auth:{getUser:async()=>({data:{user:{id:username==='karlshott'?'platform-owner':'another-user',user_metadata:{telegram_username:spoofUsername?'karlshott':username}}}})},from:query,rpc:async(name)=>{assert.equal(name,'is_admin');return {data:username==='karlshott',error:null}}}),
+  createClient:()=>({auth:{getUser:async()=>({data:{user:{id:username==='karlshott'?'platform-owner':'another-user',user_metadata:{telegram_username:spoofUsername?'karlshott':username}}}})},from:query,rpc:async(name)=>{assert.equal(name,'app_section_allowed');return {data:username==='karlshott',error:null}}}),
   articleKey,costCatalogue,num,calculate,combine,readPages,apiMetrics,apiProducts,readCabinet,authorizeShop,
   crypto:{subtle:{digest:async(algorithm,bytes)=>{capturedInput=JSON.parse(new TextDecoder().decode(bytes));return crypto.subtle.digest(algorithm,bytes)}}},
   fetch:async(url,options)=>{assert.ok(mockAi,'External AI must not run without the local response fixture');assert.equal(url,'https://api.openai.com/v1/responses');paidRequests++;const input=JSON.parse(JSON.parse(options.body).input);assert.deepEqual(input,capturedInput);return new Response(JSON.stringify({output:[{content:[{type:'output_text',text:JSON.stringify({summary:'local fixture',health:'neutral',insights:[],actions:[],caveats:[]})}]}]}),{status:200})},

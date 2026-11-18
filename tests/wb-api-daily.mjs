@@ -81,7 +81,7 @@ const compact=aggregateDailyFinance(repeated,period,'50000');
 assert.ok(JSON.stringify(compact).length<35000,'daily storage grows with days/SKUs, not operations');
 assert.doesNotMatch(JSON.stringify(compact),/rrdId|saleDt|retailPriceWithDisc/,'never persist raw financial operations');
 const handler=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8');
-assert.ok(handler.indexOf('authorizeDaily(auth.user.id,shopId)')>handler.indexOf('await authorizeShop('));
+assert.ok(handler.indexOf('await requireSections(admin,auth.user.id,actionSections(body.action))')>handler.indexOf('await authorizeShop('));
 const reads=[];
 const reader={from(table){
   assert.notEqual(table,'wb_api_preview_rows','daily reading never reopens raw operations');

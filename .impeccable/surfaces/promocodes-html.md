@@ -7,6 +7,9 @@ related_targets: ["assets/promocodes.css", "assets/promocodes.js", "assets/promo
 
 # TOPLASH — статистика по промокодам
 
+Current permissions: [central override addendum, 18 November 2026](#central-promo-override--18-november-2026).
+Earlier menu, catalogue, picker and chart evidence keeps its historical review scope.
+
 18 November 2026. **Mode: Operate.** Ordinary code-led extension of the accepted
 Corbel platform; no approved comp, replacement visual world, new imagery or fonts.
 Charts reuse the platform's existing dependencies. This brief scopes the separate
@@ -275,3 +278,43 @@ Only this surface brief is updated in the comparison/chart documentation pass.
 Global DESIGN, sidecar, config, the main-app brief and unrelated work remain
 untouched. Tests, commit and publication belong to the parent task; this document
 supplies no separate publication authorization.
+
+## Central promo override — 18 November 2026
+
+Narrow code-led Operate permission update in the existing Corbel system. Current
+[authorizePromo](../../supabase/functions/wb-api/promocodes.ts) retains the fixed
+TOPLASH owner and owner-only catalogue/invitation/refresh actions. For other
+accounts, an explicit central `promocodes` override takes precedence: false denies,
+true grants standalone read-only promo statistics. Without an override, legacy
+explicit invitations and their verified bound-member activation remain valid.
+Ordinary membership alone grants nothing; a section grant creates no membership
+and exposes no other TOPLASH data. Editable profile metadata never authorizes it.
+This supersedes the earlier owner-or-invitee-only eligibility statement; the
+catalogue, periods, comparison math, chart behavior and financial meaning are preserved.
+
+The cabinet's [promo navigation](../../assets/promo-navigation.js) now also requires
+the confirmed section map and follows map changes immediately: hide/abort on
+revocation, fresh server check on grant, with session/generation guards. The strict
+`allowed === true` and fixed-shop check remain; unknown/error stays hidden and
+recoverable through map retry/tab return. Access checks read no financial models
+and make no WB calls. Actual map changes supersede the earlier no-refetch claim;
+ordinary selected-shop changes still do not control access. A promo-only account
+gets a clear standalone CTA in the cabinet, without needing a shop.
+
+See [final cabinet captures](app-html.md#central-section-map--18-november-2026)
+for desktop dark/light and 390×844 dark / 320×640 light promo-only states, all
+parent-opened actual-HTML/JS synthetic evidence. The [admin brief](admin-html.md#evidence-and-limits-for-this-correction)
+records four applied migrations, zero lasting customer flag changes, 92 offline
+executables, final targeted checks, rollback SQL/RLS and the 690-row / 477-article
+regression. Hypatia's **SHIP / three findings resolved at fix-list scope** followed
+source + 11 captures, then four corrected captures and two rerun local suites.
+It is not broad promo/cabinet surface approval; earlier scoped verdicts remain historical.
+
+This documentation pass read actual source, PRODUCT/DESIGN and the document
+reference; local artifact presence/dimensions were checked without reopening images.
+No browser/network/DB or implementation test rerun. Physical phones and invited
+real-account sessions remain unverified; no paid WB/OpenAI calls. Preserve existing
+type, themes and the global system; inherited shared glow is baseline only, with
+no repair. Only the three authorized surface briefs change; code, global DESIGN,
+sidecar and config are preserved. Commit/deployment remain pending with the parent;
+historical published hashes above do not identify a release of this correction.

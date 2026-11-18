@@ -112,7 +112,14 @@ async function processCabinetSourceStrict(admin: any, job: any, wbFetch: any) {
     await commit(admin, job, summary, 'complete', privateShop);
     return { retry_after: 0 };
   }
-  if(String(job.summary?.pilot?.stage).startsWith('article_ads_') && !privateShop)throw new ApiError(403,'Доступ запрещён');
+  if(String(job.summary?.pilot?.stage).startsWith('article_ads_') && !privateShop){
+    if(!job.summary?.pilot?.finance_complete)throw new ApiError(403,'Доступ запрещён');
+    // Revoking optional analytics must not strand an otherwise complete
+    // financial sync or cause more advertising requests after revocation.
+    const summary=structuredClone(job.summary);summary.pilot.stage='done';
+    summary.api_sources ||= {};summary.api_sources.article_ads={status:'disabled'};
+    await commit(admin,job,summary,'complete',false);return {retry_after:0};
+  }
   const { data: wait, error: claimError } = await admin.rpc('wb_api_claim_request', { p_shop_id: job.shop_id, p_kind: 'finance' });
   if (claimError) throw new ApiError(500, 'Не удалось начать загрузку');
   if (Number(wait) > 0) return { retry_after: Number(wait) };

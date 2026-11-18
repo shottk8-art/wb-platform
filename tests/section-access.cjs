@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict');
+const {create,keys}=require('../assets/section-access.js');
+const all=Object.fromEntries(keys.map(k=>[k,true]));
+const session=id=>({user:{id}}),dto=(id,sections=all)=>({user_id:id,is_admin:false,sections});
+(async()=>{
+ const requests=[];let changes=0;
+ const a=create({read:()=>new Promise((resolve,reject)=>requests.push({resolve,reject})),onChange:()=>changes++});
+ assert.equal(a.allowed('A','overview'),false);
+ const one=a.load(session('A'));await Promise.resolve();
+ const two=a.load(session('B'));await Promise.resolve();
+ requests[0].resolve(dto('A'));await one;assert.equal(a.allowed('A','overview'),false);
+ requests[1].resolve(dto('B'));await two;assert.equal(a.allowed('B','overview'),true);assert.equal(a.allowed('A','overview'),false);
+ const before=changes,poll=a.load(session('B'),true);await Promise.resolve();requests[2].resolve(dto('B'));await poll;
+ assert.equal(changes,before,'unchanged permissions do not reset charts or reload financial data');
+ const deny=a.load(session('B'),true);await Promise.resolve();requests[3].resolve(dto('B',{...all,overview:false}));await deny;
+ assert.equal(a.allowed('B','overview'),false);assert.equal(a.allowed('B','costs'),true);
+ const failed=a.load(session('B'),true);await Promise.resolve();requests[4].reject(Error('offline'));await assert.rejects(()=>failed,/offline/);assert.equal(a.allowed('B','costs'),false);
+ const wrong=a.load(session('B'));await Promise.resolve();requests[5].resolve(dto('A'));await assert.rejects(()=>wrong,/доступ/);assert.equal(a.current(),null);
+ const pending=a.load(session('B'));await Promise.resolve();a.clear();requests[6].resolve(dto('B'));await pending;assert.equal(a.current(),null);
+ const vm=require('node:vm'),fs=require('node:fs');let authEvent,reloads=0;
+ const window={document:{hidden:false,dispatchEvent(){},addEventListener(){}},location:{reload(){reloads++;}},supabaseClient:{rpc:async()=>({data:dto('C'),error:null}),auth:{onAuthStateChange(fn){authEvent=fn;}}}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../assets/section-access.js'),'utf8'),{window,setTimeout:()=>1,clearTimeout(){},CustomEvent:class{}});
+ await window.WBAccess.load(session('C'));authEvent('INITIAL_SESSION',session('C'));
+ assert.equal(window.WBAccess.allowed('C','overview'),true,'a late INITIAL_SESSION must not erase a completed entry read');
+ authEvent('SIGNED_IN',session('D'));assert.equal(reloads,1);assert.equal(window.WBAccess.current(),null);
+ authEvent('SIGNED_OUT',null);assert.equal(window.WBAccess.allowed('D','overview'),false);
+ console.log('Section access controller PASS: confirmed identity, stale/account/logout races, failure closed, denies and no unchanged-refresh reloads.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

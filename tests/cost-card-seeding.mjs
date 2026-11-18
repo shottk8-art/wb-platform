@@ -8,6 +8,7 @@ const calls=[];
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 const admin={
  async rpc(name,args){
+    if(name==='app_shop_section_enabled')return {data:false,error:null};
   if(name==='wb_api_claim_request')return {data:0};
   if(name==='wb_api_read_key')return {data:token};
   if(name==='seed_cost_cards') {

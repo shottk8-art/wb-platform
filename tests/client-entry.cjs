@@ -31,10 +31,10 @@ async function check(label, owned, memberships, expectedShop) {
     },
   };
   const state = {
-    window: { supabaseClient: client, WBAdmin: { isAdmin: async () => false }, WBOnboardingDraft: {clear: id=>cleared.push(id)}, WBClientStart: {
+    window: { WBAccess:{load:async()=>null},supabaseClient: client, WBAdmin: { isAdmin: async () => false }, WBOnboardingDraft: {clear: id=>cleared.push(id)}, WBClientStart: {
       firstShop: async (user, callbacks) => { onboarded.push({ user, callbacks }); return { shop: { id: 'created-only-by-onboarding' }, marketplace: 'wildberries' }; },
     } },
-    document: { getElementById: node }, session: null, shop: null, aiAllowed: false,
+    document: { getElementById: node },applySectionMenu(){},accessReady:false,session: null, shop: null, aiAllowed: false,
     Date, Map, Set, Promise, setTimeout,
   };
   vm.createContext(state);

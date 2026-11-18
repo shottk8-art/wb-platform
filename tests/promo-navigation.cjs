@@ -35,6 +35,17 @@ const tick=()=>new Promise(setImmediate);
   const offline=create({link,config,fetcher:()=>{throw Error('offline');}});
   await offline.setSession(session('offline'));assert.equal(link.hidden,true);
   await offline.refresh();assert.equal(link.hidden,true,'synchronous fetch errors remain retryable');
+  const synced=create({link,config,fetcher:async()=>{calls.push('sync');return allowed();}});
+  await synced.setAccess(null);await synced.setSession(session('managed'));assert.equal(link.hidden,true);
+  const syncBefore=calls.length;
+  await synced.setAccess({user_id:'managed',sections:{promocodes:true}});assert.equal(link.hidden,false);
+  await synced.setAccess({user_id:'managed',sections:{promocodes:false}});assert.equal(link.hidden,true);
+  await synced.refresh();assert.equal(calls.length,syncBefore+1,'revoked map stays hidden without an extra request');
+  await synced.setAccess({user_id:'different',sections:{promocodes:true}});assert.equal(link.hidden,true,'section maps are account-bound');
+  await synced.setAccess({user_id:'managed',sections:{promocodes:true}});assert.equal(link.hidden,false,'new grant rechecks its server entitlement immediately');
+  const blockedReply=deferred(),blocked=create({link,config,fetcher:()=>blockedReply.promise});
+  const inFlight=blocked.setSession(session('managed'));await tick();await blocked.setAccess({user_id:'managed',sections:{promocodes:false}});
+  blockedReply.resolve(allowed());await inFlight;assert.equal(link.hidden,true,'an old in-flight grant cannot restore a revoked shortcut');
 
   const bootstrap=deferred(),events={},bootCalls=[];let authChange;
   const root={document:{hidden:false,getElementById:()=>link,addEventListener:(name,fn)=>events[name]=fn},WB_CONFIG:config,

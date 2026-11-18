@@ -8,6 +8,7 @@ const owners=new Map([[first,DAILY_USER_ID],[second,DAILY_USER_ID],[foreign,'ano
 const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
 const models=new Map(),summaries=new Map();let upstream=0,keyReads=0;
 const admin={rpc:async(name,args)=>{
+ if(name==='app_shop_section_enabled')return {data:owners.get(args.p_shop_id)===DAILY_USER_ID,error:null};
  if(name==='wb_api_read_key'){keyReads++;return {data:token};}
  if(name==='wb_api_claim_request')return {data:0};
  if(name==='seed_cost_cards')return {data:null};
@@ -31,4 +32,7 @@ const before=[keyReads,upstream];
 await assert.rejects(()=>processCabinetSource(admin,{shop_id:foreign,summary:{pilot:{stage:'article_ads_debits'}}},async()=>{upstream++}),e=>e.status===403);
 await assert.rejects(()=>processStocks(admin,{shop_id:foreign},async()=>{upstream++}),e=>e.status===403);
 assert.deepEqual([keyReads,upstream],before,'another owner cannot trigger private WB calls or key reads');
+await processCabinetSource(admin,{id:foreign,shop_id:foreign,date_from:'2026-11-01',date_to:'2026-11-11',summary:{pilot:{stage:'article_ads_stats',finance_complete:true},api_sources:{internal_ads:{status:'downloaded'}}}},async()=>{upstream++;});
+assert.equal(summaries.get(foreign).status,'complete','revocation finishes the core sync without optional advertising');
+assert.deepEqual([keyReads,upstream],before);
 console.log('Private scope PASS: two independent owner shops, compact daily/unit finance, article advertising, no private collection for other accounts.');

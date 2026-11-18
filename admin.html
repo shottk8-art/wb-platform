@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3">
 <link rel="stylesheet" href="/assets/reference.css?v=20261019-center1">
+<link rel="stylesheet" href="/assets/admin-access.css?v=20261118-access1">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261019-shop1" defer></script>
@@ -46,6 +47,8 @@
 
   <main class="wrap" style="padding-top:24px; padding-bottom:60px;">
 
+    <nav class="admin-section-nav" aria-label="Разделы админки"><a href="#sectionAccess">Доступы</a><a href="#adminQuestions">Вопросы</a><a href="#adminUsers">Пользователи</a><a href="#adminShops">Магазины</a></nav>
+
     <section class="section">
       <div class="section-head"><h2>Обзор</h2></div>
       <div class="kpi-row">
@@ -64,7 +67,25 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section admin-access" id="sectionAccess" aria-labelledby="accessTitle">
+      <div class="section-head"><h2 id="accessTitle">Доступы к разделам</h2></div>
+      <p class="admin-access-intro">Выберите пользователя и откройте нужные разделы. Права действуют во всех его магазинах и не дают доступ к чужим.</p>
+      <div class="card admin-access-layout">
+        <aside class="access-people" aria-label="Выбор пользователя">
+          <label for="accessSearch">Найти пользователя</label><input id="accessSearch" type="search" placeholder="Имя, ник или email" autocomplete="off">
+          <div id="accessUsers" class="access-user-list"></div>
+          <p id="accessNoUsers" class="admin-access-muted" hidden>Ничего не найдено</p>
+        </aside>
+        <form id="accessForm" class="access-editor">
+          <div class="access-selected"><span id="accessAvatar" class="access-avatar" aria-hidden="true">—</span><div><h3 id="accessUserName">Выберите пользователя</h3><p id="accessUserContact" class="admin-access-muted"></p></div><span id="accessCount" class="access-count"></span></div>
+          <p id="accessLocked" class="admin-access-muted" hidden>У администратора всегда полный доступ. Эти права изменить нельзя.</p>
+          <fieldset id="accessFields" disabled><legend class="access-sr-only">Доступные разделы пользователя</legend><div id="accessSections"></div></fieldset>
+          <div class="access-actions"><button type="submit" id="accessSave" class="primary" disabled>Сохранить доступы</button><button type="button" id="accessCancel" disabled>Отменить изменения</button><span id="accessStatus" role="status" aria-live="polite"></span><button type="button" id="accessRetry" hidden>Повторить</button></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="section" id="adminQuestions">
       <div class="section-head"><h2>Вопросы от пользователей</h2></div>
       <div class="card">
         <div class="tablewrap">
@@ -76,7 +97,7 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="adminUsers">
       <div class="section-head"><h2>Пользователи</h2></div>
       <div class="card">
         <div class="tablewrap">
@@ -88,7 +109,7 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="adminShops">
       <div class="section-head"><h2>Магазины</h2></div>
       <div class="card">
         <div class="tablewrap">
@@ -107,7 +128,8 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js"></script>
-<script src="/assets/admin.js"></script>
+<script src="/assets/admin.js?v=20261118-access1"></script>
+<script src="/assets/admin-access.js?v=20261118-access1"></script>
 <script>
 (function () {
   const loading = document.getElementById("loadingScreen");
@@ -182,9 +204,14 @@
     let admin = false;
     try { admin = await window.WBAdmin.isAdmin(); } catch (e) {}
     if (!admin) { location.href = "/app.html"; return; }
+    window.supabaseClient.auth.onAuthStateChange((event,next)=>{
+      if(event!=='INITIAL_SESSION'&&next?.user?.id!==session.user.id){adminScreen.hidden=true;location.href='/index.html';}
+    });
 
     const overview = await window.WBAdmin.getOverview();
     usersById = new Map((overview.users || []).map((u) => [u.id, u]));
+    if(window.WBAdminAccess)window.WBAdminAccess.mount({users:overview.users||[],actorId:session.user.id});
+    else document.getElementById('accessStatus').textContent='Редактор доступов не загрузился. Обновите страницу.';
 
     document.getElementById("statUsers").textContent = (overview.users || []).length;
     document.getElementById("statShops").textContent = (overview.shops || []).length;

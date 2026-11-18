@@ -5,7 +5,7 @@
     if (!nav || !title) return;
     const icon = document.createElement('span'); icon.className = 'section-icon'; icon.setAttribute('aria-hidden','true'); title.prepend(icon);
     const syncIcon = () => {
-      const source = nav.querySelector('a.active .icon');
+      const source = nav.querySelector('a.active .icon') || nav.querySelector('a[data-view="account"] .icon');
       if (source) icon.replaceChildren(source.cloneNode(true));
     };
     new MutationObserver(syncIcon).observe(nav,{attributes:true,subtree:true,attributeFilter:['class']}); syncIcon();

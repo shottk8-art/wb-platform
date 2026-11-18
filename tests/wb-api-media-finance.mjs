@@ -34,7 +34,7 @@ for(const shopId of shopIds) {
   assert.equal(trend[0].profit,810);
   // No WB requests, decrypted key or financial restart for a media-only repair.
   const pending=structuredClone(job);pending.status='loading';pending.summary.pilot.stage='media_stats';
-  const workerAdmin={rpc(){throw new Error('No key/quota read is needed');},from(table){if(table==='shops')return shopOwnerQuery();assert.equal(table,'wb_api_preview_jobs');const q={update(value){Object.assign(pending,value);return q;},eq(){return q;},then(resolve,reject){return Promise.resolve({error:null}).then(resolve,reject);}};return q;}};
+  const workerAdmin={rpc(name){if(name==='app_shop_section_enabled')return {data:false,error:null};throw new Error('No key/quota read is needed');},from(table){if(table==='shops')return shopOwnerQuery();assert.equal(table,'wb_api_preview_jobs');const q={update(value){Object.assign(pending,value);return q;},eq(){return q;},then(resolve,reject){return Promise.resolve({error:null}).then(resolve,reject);}};return q;}};
   await processCabinetSource(workerAdmin,pending,()=>{throw new Error('Financial evidence must avoid more WB requests');});
   assert.equal(pending.status,'complete');
   assert.equal(pending.summary.api_sources.media.amount,'70.00');

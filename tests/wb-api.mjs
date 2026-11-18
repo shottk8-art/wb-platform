@@ -1,3 +1,4 @@
+import {requireSections,actionSections} from '../supabase/functions/wb-api/sections.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
@@ -97,12 +98,14 @@ const chain = (table) => {
   return obj;
 };
 const sandbox = {
-  ...core, Response, Request, AbortSignal, Set, Date, BigInt, structuredClone,
+  requireSections,actionSections,...core, Response, Request, AbortSignal, Set, Date, BigInt, structuredClone,
   Deno: { env: { get: () => 'mock' }, serve: (fn) => { handler = fn; } },
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: authenticatedId ? { id: authenticatedId, user_metadata: { telegram_username: 'karlshott' } } : null }, error: null }) },
     from: chain,
     rpc: async (name, args) => {
+      if(name==='app_shop_section_enabled')return {data:false,error:null};
+      if(name==='app_section_allowed')return {data:['overview','settings','reports'].includes(args.p_section),error:null};
       rpcCalls.push({name,args});
       if(name==='wb_api_commit_finance_page') {
         Object.assign(job,{cursor_id:args.p_cursor,summary:args.p_summary,finance_model:args.p_model,row_count:args.p_model.row_count,status:args.p_status});

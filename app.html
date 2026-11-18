@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/assets/wb-api.css?v=20261113-media2">
 <link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
 <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
-<link rel="stylesheet" href="/assets/reference.css?v=20261113-profitability">
+<link rel="stylesheet" href="/assets/reference.css?v=20261118-access1">
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
@@ -25,7 +25,7 @@
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 <script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
-<script src="/assets/reference.js?v=20261111-daily1" defer></script>
+<script src="/assets/reference.js?v=20261118-access1" defer></script>
 <link rel="stylesheet" href="/assets/unit-economics.css?v=20261111-unitlayout1">
 <link rel="stylesheet" href="/assets/stocks.css?v=20261112-stocks1">
 </head>
@@ -170,6 +170,9 @@
       <button class="primary" type="button" id="emptyShopCreateBtn"><svg class="icon" aria-hidden="true"><use href="#icon-plus"/></svg> Новый магазин</button>
     </section>
 
+    <section class="section app-view" id="secNoAccess" data-view="noaccess">
+      <div class="card" style="padding:24px"><h2 id="accessEmptyTitle">Доступ к разделам не открыт</h2><p id="accessEmptyText">Попросите администратора открыть нужные разделы, затем обновите доступы.</p><a id="accessPromoLink" href="/promocodes.html" hidden>Открыть статистику промокодов TOPLASH</a><p><button type="button" id="accessReload" class="ghost" style="min-height:44px">Обновить доступы</button></p><p id="accessLoadStatus" role="status" aria-live="polite"></p></div>
+    </section>
     <section class="section app-view" id="secAccount" data-view="account">
       <nav class="settings-tabs" aria-label="Разделы настроек"><a href="#account" data-open-view="account" aria-current="page">Профиль</a><a href="#settings" data-open-view="settings">Магазин</a><a href="#team" data-open-view="team">Команда</a></nav>
       <div class="card profile-grid">
@@ -677,13 +680,14 @@
 <script src="/assets/config.js"></script>
 <script src="/assets/supabaseClient.js"></script>
 <script src="/assets/auth.js?v=20261022-rename1"></script>
+<script src="/assets/section-access.js?v=20261118-access1"></script>
 <script src="/assets/shop-name.js?v=20261022-rename1"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
 <script src="/assets/ozon-model.js?v=20261112-ozon1"></script>
 <script src="/assets/parse.js?v=20261112-ozon1"></script>
 <script src="/assets/upload.js?v=20261112-ozon1"></script>
-<script src="/assets/daily-analytics.js?v=20261113-media2"></script>
+<script src="/assets/daily-analytics.js?v=20261118-access1"></script>
 <script src="/assets/unit-economics.js?v=20261113-media2"></script>
 <script src="/assets/trend-interaction.js?v=20261113-media2"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
@@ -694,8 +698,8 @@
 <script src="/assets/analysis.js?v=20261012-api-ai1"></script>
 <script src="/assets/wb-api.js?v=20261022-rename1"></script>
 <script src="/assets/wb-api-cabinet.js?v=20261113-media2"></script>
-<script src="/assets/stocks.js?v=20261116-daily1"></script>
-<script src="/assets/promo-navigation.js?v=20261118-menu1"></script>
+<script src="/assets/stocks.js?v=20261118-access1"></script>
+<script src="/assets/promo-navigation.js?v=20261118-access1"></script>
 <script>
 (function () {
   let shop = null;
@@ -710,7 +714,8 @@
   let shopLoading = false;
   let overviewPending = false;
   let overviewLoadError = '';
-  let aiAllowed = false;
+  let aiAllowed = false, accessReady = false;
+  const sectionAllowed=key=>window.WBAccess?.allowed(session?.user?.id,key)===true;
   let trendMetric = "sales";
   let currentTrend = [];
   let profitCostFilter = null;
@@ -741,6 +746,7 @@
   }
 
   const VIEW_META = {
+    noaccess: {title:"Рабочее пространство",subtitle:"Доступные вам разделы платформы"},
     overview: { title: "Обзор", subtitle: "Главные показатели магазина за выбранный месяц", period: true },
     daily: { title: "Углублённая аналитика", subtitle: "Ежедневная прибыль и сравнение периодов" },
     stocks: { title: "Остатки", subtitle: "Наличие по складам и рекомендации по пополнению" },
@@ -761,7 +767,7 @@
     rename:(id,name)=>window.WBAuth.renameShop(id,name),onSaved:applyShopRename,
   });
   function apiCabinetAllowed() {
-    return !!(shop && session && window.WBApi?.connected);
+    return !!(shop && session && sectionAllowed('overview') && window.WBApi?.connected);
   }
 
   const loading = document.getElementById("loadingScreen");
@@ -771,7 +777,8 @@
     if (view === 'api') view = 'overview'; // Existing bookmarks open the regular overview.
     if (view === 'daily' && !window.WBDaily?.allowed(session?.user?.id,shop?.id)) view = 'overview';
     if (view === 'stocks' && !window.WBStock?.allowed(session?.user?.id,shop?.id)) view = 'overview';
-    if (!VIEW_META[view]) view = "overview";
+    if (!VIEW_META[view]) view = 'overview';
+    if(view!=='noaccess'&&!sectionAllowed(view))view=Object.keys(VIEW_META).find(key=>key!=='noaccess'&&sectionAllowed(key)&&(!['daily','stocks'].includes(key)||!!shop))||'noaccess';
     if (updateHash && window.WBShell?.motion && view !== activeView) {
       window.WBShell.motion.navigate(() => {
         setActiveView(view, false);
@@ -782,7 +789,7 @@
     activeView = view;
     window.WBDaily?.setContext({userId:session?.user?.id,shopId:shop?.id,active:view==='daily'});
     window.WBStock?.setContext({userId:session?.user?.id,shopId:shop?.id,active:view==='stocks'});
-    document.getElementById('emptyShopNotice').hidden = !!shop || view === 'account';
+    document.getElementById('emptyShopNotice').hidden = !!shop || (view === 'account' || view === 'noaccess');
     const meta = VIEW_META[view];
     document.querySelectorAll(".app-view").forEach((section) => {
       section.classList.toggle("is-active", section.dataset.view === view);
@@ -954,7 +961,7 @@
     }
     // Bind requests before setActiveView can open private analytics.
     const owner = isOwner();
-    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: true, manage: owner });
+    window.WBApi.setContext({ shopId: shop.id, name: shop.name, allowed: ['overview','daily','stocks','settings','reports'].some(sectionAllowed), manage: owner&&sectionAllowed('settings') });
     window.WBApiCabinet.setContext({ shopId: shop.id, allowed: apiCabinetAllowed() });
     const marketplace = reportMarketplace;
     const marketplaceName = marketplace === "ozon" ? "Ozon" : "Wildberries";
@@ -1008,6 +1015,7 @@
   window.WBApiCabinet.subscribeStatus(updateOverviewLoadStatus);
 
   async function refreshMembers() {
+    if(!sectionAllowed('team')){document.getElementById('membersBody').replaceChildren();document.getElementById('secMembers').hidden=true;return;}
     const selectedShopId = shop?.id, generation = shopChange;
     if (!selectedShopId) return;
     const owner = isOwner();
@@ -1051,7 +1059,7 @@
   }
 
   async function refreshPeriods(selectYear, selectMonth) {
-    if (!shop) return false;
+    if (!shop||!sectionAllowed('overview')) return false;
     // Period reads have their own revision: rendering KPIs must not cancel
     // the newer period list started by a concurrent API status notification.
     const request = ++periodsRequest, generation = shopChange;
@@ -1156,6 +1164,7 @@
   }
 
   async function reloadOverview() {
+    if(!sectionAllowed('overview'))return;
     const request = ++dashboardRequest;
     beginOverviewLoad();
     try {
@@ -1222,7 +1231,7 @@
   }
 
   async function renderCurrentPeriod(reset = false) {
-    if (!shop) return;
+    if (!shop||!sectionAllowed('overview')) return;
     if (reset) beginOverviewLoad();
     const selectedShop = { ...shop };
     window.WBAnalysis.reset();
@@ -1377,6 +1386,7 @@
   }
 
   async function refreshUploadsLog() {
+    if(!sectionAllowed('reports')){document.getElementById('uploadsBody').replaceChildren();return;}
     const selectedShopId = shop?.id, generation = shopChange;
     if (!selectedShopId) return;
     const uploads = await window.WBUpload.listUploads(selectedShopId);
@@ -1446,6 +1456,7 @@
   }
 
   async function refreshCostsTable() {
+    if(!sectionAllowed('costs')){document.getElementById('costsBody').replaceChildren();return;}
     const selectedShopId = shop?.id, marketplace = reportMarketplace, generation = shopChange;
     if (!selectedShopId) return;
     const costs = await window.WBUpload.listCosts(selectedShopId, marketplace);
@@ -1530,11 +1541,36 @@
     await refreshUploadsLog();
   }
 
+  function applySectionMenu(){
+    aiAllowed=sectionAllowed('ai')&&sectionAllowed('overview');
+    for(const link of document.querySelectorAll('.side-menu [data-view], [data-open-view]'))link.hidden=!sectionAllowed(link.dataset.view||link.dataset.openView);
+    document.getElementById('newShopBtn').hidden=!sectionAllowed('settings');
+    document.getElementById('adminLink').hidden=window.WBAccess?.current()?.is_admin!==true;
+    document.getElementById('secAiAnalysis').hidden=!aiAllowed;
+    document.getElementById('accessPromoLink').hidden=!sectionAllowed('promocodes');
+    document.getElementById('accessEmptyTitle').textContent=sectionAllowed('promocodes')?'Вам доступна статистика промокодов':'Доступ к разделам не открыт';
+    document.getElementById('accessEmptyText').textContent=sectionAllowed('promocodes')?'Откройте статистику TOPLASH по ссылке ниже или через меню.':'Попросите администратора открыть нужные разделы, затем обновите доступы.';
+    if(!window.WBAccess?.current()){document.getElementById('accessEmptyTitle').textContent='Не удалось проверить доступы';document.getElementById('accessEmptyText').textContent='Проверьте соединение и обновите доступы. Данные появятся после проверки.';}
+  }
+  document.addEventListener('wb:section-access',()=>{
+    if(!accessReady)return;
+    ++shopChange;++dashboardRequest;++periodsRequest;
+    applySectionMenu();window.WBAnalysis.reset();
+    if(!sectionAllowed('overview')){beginOverviewLoad();currentTrend=[];}
+    updateShareBox();setActiveView(activeView==='noaccess'?'overview':activeView,false);
+    Promise.allSettled([refreshMembers(),refreshCostsTable(),refreshUploadsLog()]);
+    if(sectionAllowed('overview'))reloadOverview();
+  });
+  document.getElementById('accessReload').addEventListener('click',async()=>{
+    const button=document.getElementById('accessReload'),status=document.getElementById('accessLoadStatus');button.disabled=true;status.textContent='Проверяем доступы…';
+    try{await window.WBAccess.load(session,true);status.textContent='Доступы обновлены';}catch{status.textContent='Не удалось проверить доступы. Проверьте соединение и попробуйте ещё раз.';}finally{button.disabled=false;}
+  });
   async function init() {
     session = await window.WBAuth.waitForSession(4000);
     if (!session) { location.href = "/index.html"; return; }
     const meta = session.user.user_metadata || {};
-    aiAllowed = await window.WBAdmin.isAdmin().catch(() => false);
+    if(window.WBAccess)await window.WBAccess.load(session).catch(()=>{});
+    accessReady=true;applySectionMenu();
     document.getElementById("secAiAnalysis").hidden = !aiAllowed;
     document.getElementById("userEmail").textContent = meta.full_name || (meta.telegram_username ? "@" + meta.telegram_username : session.user.email);
 
@@ -1570,7 +1606,7 @@
     const initialView = location.hash.replace(/^#/, "");
     setActiveView(VIEW_META[initialView] ? initialView : "overview", false);
 
-    document.getElementById("adminLink").hidden = !aiAllowed;
+    document.getElementById("adminLink").hidden = window.WBAccess?.current()?.is_admin!==true;
 
     document.getElementById("signOutBtn").addEventListener("click", () => window.WBAuth.signOut());
     document.getElementById("adminLink").addEventListener("click", () => { location.href = "/admin.html"; });

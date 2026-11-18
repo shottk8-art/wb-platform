@@ -8,6 +8,7 @@ const job = {id:'test-job',shop_id:'test-shop',cursor_id:'0',row_count:0,status:
 let rawWrites = 0, commits = 0, fail = false;
 const admin = {
   async rpc(name,args) {
+    if(name==='app_shop_section_enabled')return {data:false,error:null};
     if(name==='wb_api_read_key') return {data:key};
     if(name==='wb_api_claim_request') return {data:0};
     if(name==='wb_api_finance_read_model') return {data:job.finance_model};

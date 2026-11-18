@@ -1,3 +1,4 @@
+import {requireSections,actionSections} from '../supabase/functions/wb-api/sections.ts';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
@@ -10,7 +11,7 @@ const admin={rpc:async name=>{if(name==='wb_promo_accept_lease')workerAccepts++;
  tables.push(table);
  const result=()=>({data:table==='shops'?[{owner_id:PROMO_OWNER}]:table==='wb_promo_viewers'&&filters.user_id==='viewer'?[{id:'invited'}]:[],error:null});
  const q={select(){return q},eq(k,v){filters[k]=v;return q},gte(){return q},lte(){return q},order(){return q},limit(){return q},maybeSingle:async()=>{const r=result();return {...r,data:r.data[0]||null}},then:(a,b)=>Promise.resolve(result()).then(a,b)};return q;}};
-const context=vm.createContext({...core,promoAction,processPromoPage,authorizeShop,Request,Response,AbortSignal,Set,console,
+const context=vm.createContext({requireSections,actionSections,...core,promoAction,processPromoPage,authorizeShop,Request,Response,AbortSignal,Set,console,
  Deno:{env:{get:()=>''},serve:fn=>handler=fn},createClient:(_url,_key,opts)=>opts?.global?{auth:{getUser:async()=>({data:{user:{id:userId,user_metadata:{telegram_username:'karlshott'}}}})}}:admin});
 const source=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
 vm.runInContext(stripTypeScriptTypes(source),context);

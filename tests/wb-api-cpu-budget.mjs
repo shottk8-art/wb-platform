@@ -17,6 +17,7 @@ let job={id:'cpu-budget',shop_id:PILOT_SHOP_ID,date_from:'2026-09-01',date_to:'2
   summary:{pilot:{stage:'finance',finance_period:'weekly'}}};
 const admin={from(table){assert.equal(table,'shops');return shopOwnerQuery('bbb002c4-cd7a-490d-b9c0-72aed5424261');},
   async rpc(name,args){
+    if(name==='app_shop_section_enabled')return {data:true,error:null};
     if(name==='wb_api_read_key')return {data:token};
     if(name==='wb_api_commit_finance_page'){
       assert.equal(args.p_expected_cursor,job.cursor_id);

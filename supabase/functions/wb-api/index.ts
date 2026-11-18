@@ -2,9 +2,9 @@ import {readOzonDaily,readOzonUnit,readOzonMonths} from './ozon.ts';
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { ApiError, upstreamError, validateKey, validatePeriod, validateShopId } from "./core.ts";
 import { authorizeShop } from './access.ts';
+import {requireSections,actionSections} from './sections.ts';
 import { processPage } from './process.ts';
 import { cabinetPeriod, processCabinetSource, readCabinet, readCabinetTrend, readCabinetStatus, monthSettings } from './cabinet.ts';
-import { authorizeDaily } from './daily-access.ts';
 import { readDaily } from './daily.ts';
 import { readUnit } from './unit.ts';
 import { stocksAction, processStocks } from './stocks.ts';
@@ -129,8 +129,9 @@ Deno.serve(async (req) => {
     if(typeof body.action==='string'&&body.action.startsWith('promocodes_'))return json(await promoAction(admin,auth.user.id,shopId,body));
     await authorizeShop(admin,shopId,auth.user.id,body.action);
     if(['stocks','stocks_refresh','stocks_settings','stocks_tracking'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
+    await requireSections(admin,auth.user.id,actionSections(body.action));
     if(['daily','daily_start','unit','ozon_months'].includes(body.action)) {
-      authorizeDaily(auth.user.id,shopId);
+      // The section grant is checked above; shop membership is still mandatory.
       if(body.marketplace && !['wildberries','ozon'].includes(body.marketplace))throw new ApiError(400,'Неизвестная площадка');
       if(body.action==='ozon_months')return json(await readOzonMonths(admin,shopId));
       if(body.marketplace==='ozon'){

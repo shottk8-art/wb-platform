@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
     const client = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
     const { data: auth, error: authError } = await client.auth.getUser();
     if (authError || !auth.user) return json({ error: "Не авторизован" }, 401);
-    const {data:isAdmin,error:roleError}=await client.rpc('is_admin');
-    if (roleError || isAdmin!==true) return json({ error: "AI-анализ доступен только владельцу платформы" }, 403);
+    const {data:allowed,error:roleError}=await client.rpc('app_section_allowed',{p_section:'ai'});
+    if (roleError || allowed!==true) return json({ error: "Доступ к ИИ-анализу закрыт администратором" }, 403);
 
     const body = await req.json();
     const shopId = typeof body.shop_id === "string" ? body.shop_id : "";

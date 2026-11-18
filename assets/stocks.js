@@ -2,7 +2,7 @@
   'use strict';
   const el=id=>document.getElementById(id);
   if(!el('secStocks'))return;
-  const allowed=(user,shop)=>user==='bbb002c4-cd7a-490d-b9c0-72aed5424261'&&typeof shop==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shop);
+  const allowed=(user,shop)=>(window.WBAccess?window.WBAccess.allowed(user,'stocks'):user==='bbb002c4-cd7a-490d-b9c0-72aed5424261')&&typeof shop==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shop);
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const number=(v,d=0)=>v==null?'—':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:d});
   const dailyCount=v=>v!=null&&v>0&&v<0.1?'< 0,1':number(v,1);
@@ -82,8 +82,8 @@
   function openProduct(id){if(!enabled())return;segment='all';el('stockSearch').value='';el('stockWarehouse').value='all';selected=id;focusPending=true;closeNotifications();document.dispatchEvent(new CustomEvent('wb-open-stocks'));table();if(active&&focusPending){focusPending=false;requestAnimationFrame(focusDetail);}}
   function setContext(next){
     if(!subscribed){window.WBApi?.subscribe(sourceChanged);subscribed=true;}
-    const changed=context?.shopId!==next.shopId||context?.userId!==next.userId;
-    context=next;active=next.active===true&&enabled();
+    const permissionAllowed=allowed(next.userId,next.shopId),changed=context?.shopId!==next.shopId||context?.userId!==next.userId||context?.permissionAllowed!==permissionAllowed;
+    context={...next,permissionAllowed};active=next.active===true&&enabled();
     if(changed){epoch++;reset();}
     const on=enabled();el('stocksLink').hidden=el('stockBell').hidden=el('secStocks').hidden=!on;
     if(!on){clearTimeout(timer);controls();return;}
