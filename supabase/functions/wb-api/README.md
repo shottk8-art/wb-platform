@@ -218,3 +218,13 @@ no client grants and a composite shop/catalogue FK. No WB refetch, raw order
 storage or financial-model rewrite is required for the correction.
 `node tests/promocodes-history.mjs` exercises the real reader; the corresponding
 SQL test checks private access and referential integrity inside rollback.
+
+Promo invitations for an already bound member of TOPLASH activate immediately,
+even when the Telegram session predates the invitation. New grants resolve only
+the owner-managed membership in this exact shop. A pending legacy grant can
+also activate on the next authorized promo read for that member's signed user ID.
+This requires an explicit pending invitation, never reassigns a bound recipient,
+and never changes shop membership. Unknown users retain the signed Telegram
+login flow; editable profile metadata is not an identity source.
+`node tests/promocodes-invitations.mjs` covers both invitation orders, revocation
+and shop/recipient isolation.

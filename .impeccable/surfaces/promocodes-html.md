@@ -49,6 +49,10 @@ identity spanning both columns. Management stacks; long names, codes and IDs wra
   against the server-verified Telegram username. A typed username or copied login
   link is not proof of identity. Grants confer access only to promo statistics;
   they never create shop membership or expose other shop data.
+  An existing, bound TOPLASH member need not restart a Telegram session after
+  invitation: the owner-managed same-shop member record can activate that explicit
+  grant immediately or on its next promo read. A revoked invitation or one bound
+  to another account is never recreated or reassigned by this resolution.
 - Only the owner manages catalogue names/codes/IDs, grants/revocation and WB refresh. Viewers read
   promo data only; owner controls and the cabinet link are hidden for them.
   The server enforces these boundaries independently of the UI.

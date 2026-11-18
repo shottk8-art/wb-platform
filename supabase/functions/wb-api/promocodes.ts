@@ -60,8 +60,18 @@ export async function authorizePromo(admin:any,userId:string,shopId:string){
   if(userId===PROMO_OWNER)return {owner:true};
   const {data:viewer,error:viewerError}=await admin.from('wb_promo_viewers').select('id').eq('shop_id',PROMO_SHOP).eq('user_id',userId).limit(1).maybeSingle();
   if(viewerError)throw new ApiError(500,'Не удалось проверить доступ');
-  if(!viewer)throw new ApiError(403,'Доступ не выдан. Попросите владельца TOPLASH добавить ваш ник Telegram');
-  return {owner:false};
+  if(viewer)return {owner:false};
+  // An owner-managed member can already be signed in when invited. Resolve
+  // only explicit pending grants in this shop; never trust profile metadata.
+  const {data:members,error:memberError}=await admin.from('shop_members').select('telegram_username').eq('shop_id',PROMO_SHOP).eq('user_id',userId);
+  if(memberError)throw new ApiError(500,'Не удалось проверить участника магазина');
+  const usernames=(members||[]).map((m:any)=>m.telegram_username).filter(Boolean);
+  if(usernames.length){
+    const {data:activated,error:activationError}=await admin.from('wb_promo_viewers').update({user_id:userId}).eq('shop_id',PROMO_SHOP).in('telegram_username',usernames).is('user_id',null).select('id');
+    if(activationError)throw new ApiError(500,'Не удалось активировать доступ к промокодам');
+    if(activated?.length)return {owner:false};
+  }
+  throw new ApiError(403,'Доступ не выдан. Попросите владельца TOPLASH добавить ваш ник Telegram');
 }
 export async function readPromocodes(admin:any,p:any){
   const ranges=periods(p),start=ranges[0].from,finish=ranges.at(-1)!.from;
@@ -114,7 +124,9 @@ export async function promoAction(admin:any,userId:string,shopId:string,body:any
   }
   if(body.action==='promocodes_invite'){
     const username=lower(body.username).replace(/^@/,'');if(!/^[a-z][a-z0-9_]{4,31}$/.test(username))throw new ApiError(400,'Введите корректный ник Telegram без ссылки');
-    const {error}=await admin.from('wb_promo_viewers').insert({shop_id:PROMO_SHOP,telegram_username:username});
+    const {data:member,error:memberError}=await admin.from('shop_members').select('user_id').eq('shop_id',PROMO_SHOP).eq('telegram_username',username).maybeSingle();
+    if(memberError)throw new ApiError(500,'Не удалось проверить участника магазина');
+    const {error}=await admin.from('wb_promo_viewers').insert({shop_id:PROMO_SHOP,telegram_username:username,user_id:member?.user_id||null});
     if(error)throw new ApiError(error.code==='23505'?409:500,error.code==='23505'?'Этот пользователь уже приглашён':'Не удалось добавить доступ');return {saved:true};
   }
   if(body.action==='promocodes_revoke'){
