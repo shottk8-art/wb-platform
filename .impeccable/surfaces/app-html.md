@@ -205,3 +205,54 @@ explicit explanations; narrow ratio labels were then changed to horizontal rows.
 UI regressions cover segment counts and matching selection, sort directions,
 zero vs unknown expenses, empty results, narrow detail/back focus and no
 interaction requests. These local captures are not physical-device evidence.
+
+## TOPLASH promo menu extension — 18 November 2026
+
+Bounded Operate extension of the main `/app` cabinet, not a redesign. Invited
+accounts lacked the shortcut because its old client gate required the owner
+account and selected TOPLASH shop. [app.html](../../app.html) now loads
+`assets/promo-navigation.js?v=20261118-menu1`; the ordinary anchor reads
+«Статистика по промокодам TOPLASH» and links to `/promocodes.html`, without
+`data-view` routing or owner/view/selected-shop visibility overrides.
+
+The [account-level controller](../../assets/promo-navigation.js) requests
+authenticated `promocodes_access` for fixed TOPLASH and requires strict
+`allowed === true` plus the matching shop. The server retains `authorizePromo`;
+its access action returns only `allowed`, `owner` and `shop_id`, without reading
+financial models or calling WB. Only the owner or explicitly invited accounts
+qualify. Ordinary membership alone grants nothing; feature-only viewers need no
+ordinary TOPLASH membership. Selecting another shop does not change this access.
+
+Keep the link hidden while checking, denied or offline; recheck on tab return.
+Sign-out, account or token replacement clears visibility, aborts the old request
+and advances a generation guard against late responses. Duplicate initial auth
+events share one check. Shop dropdown and ordinary section changes neither hide
+the shortcut nor trigger another promo-access request. Existing Corbel styles,
+fonts, icons and motion remain unchanged, with no new CSS or visual assets.
+
+The parent inspected live Corbel Customers navigation/focus this turn and opened
+the settled captures below. These are **sidebar-only local fixtures** using the
+actual app markup, shared CSS/motion and controller with synthetic transport.
+Their placeholder main content is unshipped and supplies no full-app verification.
+
+| Evidence | Scope |
+| --- | --- |
+| [Desktop light](../review/promo-menu-desktop-light.png), [dark](../review/promo-menu-desktop-dark.png) | 1488×918; sidebar only |
+| [Mobile light](../review/promo-menu-mobile-light.png), [dark](../review/promo-menu-mobile-dark-320.png) | 390×844 / 320×640; sidebar only |
+
+Parent reports browser checks of destination navigation, keyboard access, shop/
+section independence, invited and owner access, denied/revoked/logout states and
+no overflow. Reported passing suites: `promo-navigation.cjs`,
+`promocodes-routes.mjs`, `promocodes-invitations.mjs`, `wb-promocodes.mjs`,
+`promocodes-history.mjs` and `promocodes-ui.cjs`. No tests or browser checks were
+rerun by this documentation pass. Parent confirmed two active production invitees;
+no identities are recorded. Actual invited production login and physical-phone
+behavior remain unverified.
+
+The initial review could not inspect artifacts under an ambiguous no-tools
+instruction and covered reported facts only. Its replacement independently read
+all scoped source files and opened all four PNGs, returning **SHIP for this
+sidebar extension**, with no material fixes. This does not certify the placeholder
+main content or actual invited production session. Publication awaits the parent.
+The [promo brief](promocodes-html.md) retains the destination's separate
+catalogue, financial and access contract; global design artifacts remain unchanged.

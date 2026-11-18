@@ -116,6 +116,7 @@ export async function readPromocodes(admin:any,p:any){
 }
 export async function promoAction(admin:any,userId:string,shopId:string,body:any){
   const access=await authorizePromo(admin,userId,shopId);
+  if(body.action==='promocodes_access')return {allowed:true,owner:access.owner,shop_id:PROMO_SHOP};
   const owners=['promocodes_start','promocodes_name','promocodes_viewers','promocodes_invite','promocodes_revoke'];
   if(owners.includes(body.action)&&!access.owner)throw new ApiError(403,'Действие доступно только владельцу');
   if(body.action==='promocodes_viewers'){

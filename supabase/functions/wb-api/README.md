@@ -228,3 +228,11 @@ and never changes shop membership. Unknown users retain the signed Telegram
 login flow; editable profile metadata is not an identity source.
 `node tests/promocodes-invitations.mjs` covers both invitation orders, revocation
 and shop/recipient isolation.
+
+The main `/app` navigation discovers the same grant through `promocodes_access`.
+This authenticated action returns only `allowed`, `owner` and the fixed promo
+shop ID; it never reads report models or requests WB. The account-level shortcut
+remains visible when another shop is selected and labels its TOPLASH scope.
+Client visibility stays hidden until a positive server reply, rechecks when the
+tab returns, and clears on sign-out/account replacement. This visibility is not
+authorization; the standalone page still checks every request on the server.

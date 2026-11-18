@@ -43,6 +43,31 @@ share a matching 44px height and baseline; at ≤520px Show stacks below the tri
 Below 760px, statistics become 2×2, search/sort stack, and table rows become labelled two-column cards with
 identity spanning both columns. Management stacks; long names, codes and IDs wrap.
 
+## Main-app menu entry — 18 November 2026
+
+The main `/app` sidebar now exposes «Статистика по промокодам TOPLASH» as a normal
+`/promocodes.html` link through `assets/promo-navigation.js?v=20261118-menu1`.
+This bounded extension replaces the old owner-account/selected-TOPLASH client
+gate with authenticated, account-level `promocodes_access`: strict `allowed === true`
+and fixed TOPLASH identity are required. Existing `authorizePromo` still admits
+only the owner or explicit invitees; membership alone grants no promo access, and
+feature-only invitees need no ordinary TOPLASH membership. The access DTO contains
+only `allowed`, `owner`, `shop_id`; it reads no financial models and makes no WB call.
+
+The link stays hidden during checking, denial or offline failure; tab return
+rechecks access. Sign-out/account/token replacement clears it, with abort and
+generation guards rejecting late old-session responses; initial auth events are
+deduplicated. Selected-shop and ordinary-view changes do not hide or refetch it.
+Corbel styles, fonts, icons and motion are unchanged. See the
+[main-app menu evidence](app-html.md#toplash-promo-menu-extension--18-november-2026)
+for the parent's current sidebar-only synthetic captures and six passing suites;
+placeholder main content is not full-app verification. Actual invited production
+login and physical phones remain unverified. The replacement independent reviewer
+inspected current sources and all four sidebar captures and returned **SHIP for
+this sidebar extension**, with no material fixes. Earlier catalogue/picker verdicts
+remain separate and do not imply full-app approval.
+Menu publication remains pending with the parent.
+
 ## Access and data meaning
 
 - TOPLASH only. Telegram login precedes access; feature invitations activate
@@ -172,6 +197,6 @@ replacement. Preserve those global artifacts; the promo page uses the scoped
 table behavior above. The existing hook `dark-glow` finding belongs to the shared
 legacy base, not new promo CSS. No detector rerun, ignore or repair was performed.
 
-Only this surface brief is updated. Global DESIGN, sidecar, config and other
-files remain untouched by this pass. Tests, commit and publication belong to the
+Only this and the main-app surface brief are updated in this menu documentation
+pass. Global DESIGN, sidecar, config and other files remain untouched. Tests, commit and publication belong to the
 parent task; this document supplies no separate publication authorization.

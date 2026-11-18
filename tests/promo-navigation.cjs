@@ -1,0 +1,53 @@
+const assert=require('node:assert/strict');
+const {create}=require('../assets/promo-navigation.js');
+const {readFileSync}=require('node:fs');
+const vm=require('node:vm');
+const config={SUPABASE_URL:'https://fixture.invalid',SUPABASE_ANON_KEY:'public-test'};
+const shop='853b81a0-e0e2-4195-bc80-1cdc362af946';
+const session=id=>({user:{id,user_metadata:{telegram_username:'karlshott'}},access_token:'synthetic-'+id});
+const response=(status,body)=>({ok:status===200,status,json:async()=>body});
+const allowed=()=>response(200,{allowed:true,owner:false,shop_id:shop});
+const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
+const tick=()=>new Promise(setImmediate);
+(async()=>{
+  let reply=allowed(),calls=[];const link={hidden:false};
+  const nav=create({link,config,fetcher:async(url,options)=>{calls.push({url,options});return reply;}});
+  assert.equal(link.hidden,true,'hidden until server confirms entitlement');
+  assert.equal(await nav.setSession(session('invited')),true);assert.equal(link.hidden,false);
+  assert.deepEqual(JSON.parse(calls[0].options.body),{action:'promocodes_access',shop_id:shop});
+  assert.equal(calls[0].options.cache,'no-store');
+  await nav.setSession(session('invited'));assert.equal(calls.length,1,'session duplicates never refetch history or permissions');
+  reply=response(403,{error:'denied'});await nav.refresh();assert.equal(link.hidden,true,'revoked access hides on recheck');
+  reply=allowed();await nav.refresh();assert.equal(link.hidden,false,'a newly granted invitation appears');
+  reply=response(200,{allowed:true,shop_id:'other-shop'});await nav.refresh();assert.equal(link.hidden,true);
+  reply=response(200,{allowed:'true',shop_id:shop});await nav.refresh();assert.equal(link.hidden,true);
+  await nav.setSession(null);assert.equal(link.hidden,true);
+  const count=calls.length;await nav.refresh();assert.equal(calls.length,count,'signed-out users cause no permission read');
+
+  const requests=[];const racing=create({link,config,fetcher:(_url,options)=>{const d=deferred();requests.push({...d,options});return d.promise;}});
+  const old=racing.setSession(session('old'));await tick();
+  const current=racing.setSession(session('current'));await tick();
+  assert.equal(requests[0].options.signal.aborted,true);
+  requests[1].resolve(response(403,{}));await current;
+  requests[0].resolve(allowed());await old;assert.equal(link.hidden,true,'a late grant cannot cross account boundaries');
+  const signingOut=racing.refresh();await tick();await racing.setSession(null);
+  requests[2].resolve(allowed());await signingOut;assert.equal(link.hidden,true,'sign-out cancels late visibility');
+  const offline=create({link,config,fetcher:()=>{throw Error('offline');}});
+  await offline.setSession(session('offline'));assert.equal(link.hidden,true);
+  await offline.refresh();assert.equal(link.hidden,true,'synchronous fetch errors remain retryable');
+
+  const bootstrap=deferred(),events={},bootCalls=[];let authChange;
+  const root={document:{hidden:false,getElementById:()=>link,addEventListener:(name,fn)=>events[name]=fn},WB_CONFIG:config,
+    WBAuth:{waitForSession:()=>bootstrap.promise},supabaseClient:{auth:{onAuthStateChange:fn=>authChange=fn}},
+    fetch:async(_url,options)=>{bootCalls.push(options.headers.Authorization);return allowed();}};
+  vm.runInNewContext(readFileSync(require.resolve('../assets/promo-navigation.js'),'utf8'),{window:root,AbortController,setTimeout,clearTimeout});
+  authChange('SIGNED_IN',session('fresh'));await tick();
+  bootstrap.resolve(session('stale'));await tick();
+  assert.deepEqual(bootCalls,['Bearer synthetic-fresh'],'late bootstrap cannot replace a newer signed-in user');
+  events.click({target:{closest:()=>true}});assert.equal(link.hidden,true);
+  events.visibilitychange();await tick();assert.equal(link.hidden,true);
+  const html=readFileSync(require.resolve('../app.html'),'utf8');
+  assert.match(html,/<script src="\/assets\/promo-navigation\.js\?/,'main app loads the access controller');
+  assert.doesNotMatch(html,/getElementById\(['"]promocodesLink['"]\)\.hidden\s*=/,'view/shop switches cannot restore the owner-only gate');
+  console.log('Promo menu PASS: server-entitled invitees, no financial fetches, denied/revoked/offline states, session races, logout and main-app wiring.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
