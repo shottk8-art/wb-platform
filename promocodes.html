@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#dfe4f4">
+  <title>Статистика по промокодам — TOPLASH</title>
+  <link rel="icon" data-app-favicon href="/assets/icons/icon-light.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
+  <link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
+  <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
+  <link rel="stylesheet" href="/assets/reference.css?v=20261113-profitability">
+  <link rel="stylesheet" href="/assets/promocodes.css?v=20261118-catalog2">
+  <script src="/assets/corbel.js?v=20261019-icon1"></script>
+  <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
+</head>
+<body class="corbel promo-page">
+  <a class="promo-skip" href="#promoMain">К статистике</a>
+  <div class="promo-shell">
+    <header class="promo-header">
+      <a class="promo-brand" href="/promocodes.html" aria-label="TOPLASH — статистика промокодов"><img src="/assets/icons/icon.svg" alt="" width="32" height="32"><span>TOPLASH<span class="promo-muted">Wildberries</span></span></a>
+      <div class="promo-account"><a href="/app.html" id="promoCabinetLink" hidden>В кабинет</a><button type="button" class="promo-theme" data-theme-toggle aria-label="Включить тёмную тему"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path data-moon d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/><g data-sun hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g></svg></button><span id="promoIdentity" class="promo-muted"></span><button type="button" id="promoSignOut" hidden>Выйти</button></div>
+    </header>
+    <section id="promoLogin" class="promo-login promo-panel" hidden>
+      <h1>Статистика по промокодам</h1>
+      <p>Войдите через Telegram. Доступ к статистике TOPLASH выдаёт владелец магазина.</p>
+      <div id="promoTelegram"></div>
+      <p class="promo-status" id="promoAuthStatus" role="status" aria-live="polite"></p>
+    </section>
+    <p id="promoAccessStatus" class="promo-status" role="status" aria-live="polite">Проверяем доступ…</p>
+    <button type="button" id="promoAccessRetry" hidden>Попробовать ещё раз</button>
+    <main id="promoMain" hidden>
+      <div class="promo-heading"><div><h1>Статистика по промокодам</h1><p class="promo-muted">Выкупы и возвраты из финансовых отчётов Wildberries</p></div><button type="button" id="promoRefresh" hidden>Обновить из WB</button></div>
+      <form id="promoPeriodForm" class="promo-period">
+        <label>Начало периода<input id="promoFrom" type="date" required></label>
+        <label>Конец периода<input id="promoTo" type="date" required></label>
+        <button type="submit" class="primary" id="promoShow">Показать</button>
+        <div class="promo-shortcuts"><button type="button" id="promoPrevious">Прошлый месяц</button><button type="button" id="promoCurrent">Текущий месяц</button></div>
+      </form>
+      <p class="promo-status" id="promoStatus" role="status" aria-live="polite"></p>
+      <section class="promo-stats promo-panel" aria-label="Итоги за выбранный период">
+        <div><span>Промокодов в списке</span><strong id="promoCount">—</strong></div>
+        <div><span>Выкуплено товаров</span><strong id="promoUnits">—</strong></div>
+        <div><span>Сумма выкупов</span><strong id="promoSales">—</strong></div>
+        <div><span>После возвратов</span><strong id="promoNet">—</strong></div>
+      </section>
+      <section class="promo-panel promo-table-panel" aria-labelledby="promoTableTitle">
+        <div class="promo-table-tools"><h2 id="promoTableTitle">Промокоды <span id="promoMatching" class="promo-count"></span></h2><div class="promo-list-tools"><label>Поиск<input type="search" id="promoSearch" placeholder="Название, промокод или ID"></label><label>Сортировка<select id="promoSort"><option value="sales">По сумме выкупов</option><option value="quantity">По количеству</option><option value="net">По сумме после возвратов</option><option value="name">По названию</option></select></label></div></div>
+        <table class="promo-table"><caption class="promo-visually-hidden">Продажи по промокодам TOPLASH за выбранные даты</caption><thead><tr><th scope="col">Промо и ID</th><th scope="col">Выкуплено, шт.</th><th scope="col">Сумма выкупов, ₽</th><th scope="col">Возвраты</th><th scope="col">Итог, ₽</th></tr></thead><tbody id="promoRows"></tbody></table>
+        <p id="promoEmpty" class="promo-empty">Выберите период, чтобы посмотреть статистику.</p>
+        <div id="promoPagination" class="promo-pagination" hidden><span id="promoPageInfo"></span><div><button type="button" id="promoPageBack">Назад</button><button type="button" id="promoPageNext">Далее</button></div></div>
+      </section>
+      <details class="promo-explanation"><summary>Как считаются показатели</summary><p>Здесь показаны выкупленные товары, отражённые в финансовых отчётах, а не все оформленные заказы. Даты — по операции в финансовом отчёте. Сумма выкупов — цена продавца с согласованной скидкой, включая скидку по промокоду, умноженная на количество товаров. Это не сумма к перечислению и не чистая прибыль.</p><p>Возвраты показаны отдельно. Итог — сумма выкупов за вычетом суммы возвратов выбранного периода. Сегодняшние операции появятся, когда Wildberries включит их в отчёт.</p><p>Учитываются только ID из сохранённого списка промокодов. Названия и коды сохранены из кабинета WB; новые ID добавляет владелец. Одинаковые названия у разных ID не объединяются. Если отчёт за период загружен полностью, отсутствие операций по выбранному ID показано нулём.</p></details>
+      <details id="promoManagement" class="promo-panel promo-management" hidden><summary>Названия промо и доступ</summary>
+        <div class="promo-management-grid"><section aria-labelledby="promoNamesTitle"><h2 id="promoNamesTitle">Промокоды в статистике</h2><p class="promo-muted">В статистику входят только ID из этого списка. Для нового промокода укажите ID из карточки WB и название. Нажмите название в таблице, чтобы изменить его.</p><form id="promoNameForm"><label>ID промокода<input id="promoNameId" required placeholder="ID из карточки WB" maxlength="36"></label><label>Название<input id="promoName" required maxlength="120" placeholder="Например, название акции или блогера"></label><label>Промокод (необязательно)<input id="promoCode" maxlength="64" placeholder="Например, SAVE20" autocapitalize="none" autocomplete="off"></label><button type="submit" id="promoNameSave">Сохранить промокод</button></form></section>
+        <section aria-labelledby="promoAccessTitle"><h2 id="promoAccessTitle">Доступ только к промокодам</h2><p class="promo-muted">Остальные показатели магазина этому пользователю недоступны. Приглашение активируется после его входа через Telegram.</p><form id="promoInviteForm"><label>Ник в Telegram<input id="promoUsername" required placeholder="@username" maxlength="33" autocapitalize="none" autocomplete="off"></label><button type="submit" id="promoInvite">Добавить</button></form><button type="button" id="promoCopyLink" class="promo-copy-link">Скопировать ссылку для входа</button><ul id="promoViewers" class="promo-viewers"></ul></section></div>
+        <p id="promoManageStatus" class="promo-status" role="status" aria-live="polite"></p>
+      </details>
+    </main>
+    <footer class="promo-footer">Панель продавца · TOPLASH</footer>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/assets/config.js"></script>
+  <script src="/assets/supabaseClient.js"></script>
+  <script src="/assets/auth.js"></script>
+  <script src="/assets/promocodes.js?v=20261118-catalog2"></script>
+</body>
+</html>

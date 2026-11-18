@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+import * as core from '../supabase/functions/wb-api/core.ts';
+import {authorizeShop} from '../supabase/functions/wb-api/access.ts';
+import {promoAction,processPromoPage,PROMO_SHOP,PROMO_OWNER} from '../supabase/functions/wb-api/promocodes.ts';
+let handler,userId='viewer';let workerAccepts=0;
+const admin={rpc:async name=>{if(name==='wb_promo_accept_lease')workerAccepts++;return {data:[],error:null}},from(table){const filters={};
+ const result=()=>({data:table==='shops'?[{owner_id:PROMO_OWNER}]:table==='wb_promo_viewers'&&filters.user_id==='viewer'?[{id:'invited'}]:[],error:null});
+ const q={select(){return q},eq(k,v){filters[k]=v;return q},gte(){return q},lte(){return q},order(){return q},limit(){return q},maybeSingle:async()=>{const r=result();return {...r,data:r.data[0]||null}},then:(a,b)=>Promise.resolve(result()).then(a,b)};return q;}};
+const context=vm.createContext({...core,promoAction,processPromoPage,authorizeShop,Request,Response,AbortSignal,Set,console,
+ Deno:{env:{get:()=>''},serve:fn=>handler=fn},createClient:(_url,_key,opts)=>opts?.global?{auth:{getUser:async()=>({data:{user:{id:userId,user_metadata:{telegram_username:'karlshott'}}}})}}:admin});
+const source=readFileSync(new URL('../supabase/functions/wb-api/index.ts',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');
+vm.runInContext(stripTypeScriptTypes(source),context);
+const call=async(action,extra={},headers={Authorization:'Bearer synthetic'})=>handler(new Request('https://fixture.invalid',{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify({action,shop_id:PROMO_SHOP,from:'2026-10-01',to:'2026-10-31',...extra})}));
+assert.equal((await call('promocodes_read',{},{})).status,401);
+let r=await call('promocodes_read');assert.equal(r.status,200);assert.equal((await r.json()).owner,false);
+for(const action of ['promocodes_start','promocodes_name','promocodes_invite','promocodes_viewers','promocodes_revoke','cabinet','cabinet_trend','status','stocks','daily','unit','check','connect','disconnect'])assert.equal((await call(action)).status,403,action+' must not widen access');
+assert.equal((await call('promocodes_read',{shop_id:'63175e7a-5b26-425e-893f-68889b32f02f'})).status,403);
+userId='outsider';assert.equal((await call('promocodes_read')).status,403);
+userId=PROMO_OWNER;assert.equal((await call('promocodes_read')).status,200);
+const lease='10000000-0000-4000-8000-000000000001';
+assert.equal((await call('',{job_id:lease},{'X-WB-Promo-Lease':lease})).status,403);assert.equal(workerAccepts,1);
+assert.equal((await call('',{job_id:lease},{'X-WB-Promo-Lease':lease,Origin:'https://wb-platform.netlify.app'})).status,403);assert.equal(workerAccepts,1,'browser origin cannot even ask for a worker lease');
+console.log('Promo routes PASS: actual authenticated handler, signed-user ID over editable metadata, feature-only viewer access, all shop endpoints forbidden, exact shop and service-only worker.');

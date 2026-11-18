@@ -68,7 +68,7 @@ export function upstreamError(status: number, retryAfter: number) {
   if (status === 400) return new ApiError(502, "WB отклонил параметры отчёта. Попробуйте другой период");
   return new ApiError(502, "WB временно недоступен. Попробуйте позже");
 }
-export function sanitizeRows(rows: unknown) {
+export function sanitizeRows(rows: unknown, includePromo=false) {
   if (!Array.isArray(rows)) throw new ApiError(502, "WB вернул неожиданный формат отчёта");
   const unique = new Map<string, Record<string, unknown>>();
   for (const row of rows) {
@@ -79,6 +79,7 @@ export function sanitizeRows(rows: unknown) {
     if (row.currency && row.currency !== "RUB" && row.currency !== "руб") throw new ApiError(502, "В тесте поддерживаются только отчёты в рублях");
     const safe: Record<string, unknown> = {};
     for (const key of FINANCE_FIELDS) if (key in row) safe[key] = row[key];
+    if(includePromo && 'uuidPromocode' in row)safe.uuidPromocode=row.uuidPromocode;
     safe.rrdId = String(id);
     unique.set(String(id), safe);
   }

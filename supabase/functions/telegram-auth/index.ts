@@ -115,6 +115,12 @@ Deno.serve(async (req) => {
           .update({ user_id: data.user.id })
           .eq("telegram_username", username)
           .is("user_id", null);
+        // A promo-only invitation never grants ordinary shop membership.
+        // Bind only the username in this cryptographically verified payload;
+        // editable auth.user_metadata is not an authorization source.
+        const {error:promoInviteError}=await admin.from('wb_promo_viewers')
+          .update({user_id:data.user.id}).eq('telegram_username',username).is('user_id',null);
+        if(promoInviteError)throw new Error('Не удалось активировать доступ к промокодам');
       } catch (_e) {
         // молча игнорируем — вход важнее
       }

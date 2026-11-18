@@ -76,6 +76,7 @@
         <a class="active" href="#overview" data-view="overview"><svg class="icon"><use href="#icon-dashboard"/></svg><span>Обзор</span></a>
         <a href="#daily" data-view="daily" id="dailyAnalyticsLink" hidden><svg class="icon"><use href="#icon-trend-up"/></svg><span>Углублённая аналитика</span></a>
         <a href="#stocks" data-view="stocks" id="stocksLink" hidden><svg class="icon"><use href="#icon-store"/></svg><span>Остатки</span></a>
+        <a href="/promocodes.html" id="promocodesLink" hidden><svg class="icon"><use href="#icon-trend-up"/></svg><span>Статистика по промокодам</span></a>
         <a href="#reports" data-view="reports"><svg class="icon"><use href="#icon-upload"/></svg><span>Отчёты</span></a>
         <a href="#costs" data-view="costs"><svg class="icon"><use href="#icon-store"/></svg><span>Себестоимость</span></a>
         <a href="#team" data-view="team"><svg class="icon"><use href="#icon-people"/></svg><span>Команда</span></a>
@@ -766,6 +767,7 @@
   const appScreen = document.getElementById("appScreen");
 
   function setActiveView(view, updateHash = true) {
+    document.getElementById('promocodesLink').hidden=!(shop?.id==='853b81a0-e0e2-4195-bc80-1cdc362af946'&&session?.user?.id==='bbb002c4-cd7a-490d-b9c0-72aed5424261');
     if (view === 'api') view = 'overview'; // Existing bookmarks open the regular overview.
     if (view === 'daily' && !window.WBDaily?.allowed(session?.user?.id,shop?.id)) view = 'overview';
     if (view === 'stocks' && !window.WBStock?.allowed(session?.user?.id,shop?.id)) view = 'overview';
@@ -1796,6 +1798,7 @@
       const generation = ++shopChange;
       ++dashboardRequest; ++periodsRequest;
       shop = null;
+      document.getElementById('promocodesLink').hidden=true;
       window.WBApi?.setContext({ shopId: selectedShopId, allowed: false });
       window.WBApiCabinet?.setContext({ shopId: selectedShopId, allowed: false });
       resetShopDisplay();

@@ -3,6 +3,7 @@ import { aggregateFinanceRows, mergeFinanceModels } from './cabinet.ts';
 import { aggregateDailyFinance, mergeDailyFinance } from './daily.ts';
 import { privateShopAllowed } from './daily-access.ts';
 import { aggregateUnitFinance, mergeUnitFinance } from './unit.ts';
+import {PROMO_SHOP,aggregatePromocodes,mergePromocodes} from './promocodes.ts';
 
 // One durable page per invocation. Cron, not the browser, owns continuation.
 export async function processPage(admin: any, job: any, shopId: string, wbFetch: any) {
@@ -18,9 +19,9 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     // Smaller durable pages retain the same cursor/money transaction while
     // leaving headroom below the observed ~2-second Edge CPU limit.
     dateFrom: job.date_from, dateTo: `${job.date_to}T23:59:59`, limit: 10000,
-    rrdId: Number(job.cursor_id), period: job.summary?.pilot?.finance_period || 'weekly', fields: FINANCE_FIELDS,
+    rrdId: Number(job.cursor_id), period: job.summary?.pilot?.finance_period || 'weekly', fields: shopId===PROMO_SHOP?[...FINANCE_FIELDS,'uuidPromocode']:FINANCE_FIELDS,
   });
-  const rows = sanitizeRows(response || []);
+  const rows = sanitizeRows(response || [],shopId===PROMO_SHOP);
   // Check the raw sequence: deduplication must not hide an out-of-order last row.
   const cursor = pageCursor(response || [], String(job.cursor_id));
   const freshRows = rows.filter((row) => BigInt(String(row.rrdId)) > BigInt(job.cursor_id));
@@ -42,6 +43,12 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
     previousModel = data;
   }
   const model = mergeFinanceModels(previousModel, aggregateFinanceRows(freshRows,cursor.toString()));
+  if(shopId===PROMO_SHOP){
+    // Optional promo coverage must never interrupt the established accounting.
+    // A malformed optional field leaves this feature unprepared, not false zero.
+    try{model.promocodes=mergePromocodes(previousModel?.promocodes,aggregatePromocodes(freshRows,cursor.toString(),{dateFrom:job.date_from,dateTo:job.date_to}));}
+    catch{model.promocodes={version:1,cursor_id:cursor.toString(),row_count:model.row_count,covered_rows:0,unallocated_rows:0,buckets:[]};}
+  }
   if(await privateShopAllowed(admin,shopId)) {
     model.daily=mergeDailyFinance(previousModel?.daily,
       aggregateDailyFinance(freshRows,{dateFrom:job.date_from,dateTo:job.date_to},cursor.toString()));

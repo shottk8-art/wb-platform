@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict';
+import {aggregatePromocodes,mergePromocodes,promoPeriod,authorizePromo,promoAction,readPromocodes,processPromoPage,PROMO_SHOP,PROMO_OWNER} from '../supabase/functions/wb-api/promocodes.ts';
+const id='10000000-0000-4000-8000-000000000001',from='2026-10-01',to='2026-10-31';
+const row=(rrdId=1,extra={})=>({rrdId,uuidPromocode:id,rrDate:'2026-10-15',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,retailPriceWithDisc:'100.25',...extra});
+const aggregate=rows=>aggregatePromocodes(rows,String(rows.at(-1)?.rrdId||0),{dateFrom:from,dateTo:to});
+let model=aggregate([row(),row(2,{sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1}),row(3,{sellerOperName:'Логистика',quantity:1}),row(4,{uuidPromocode:'',quantity:5})]);
+assert.equal(model.row_count,4);assert.equal(model.covered_rows,4);assert.equal(model.buckets.length,1);
+assert.equal(model.buckets[0].sold_qty,2);assert.equal(model.buckets[0].sold_amount,'200.50');assert.equal(model.buckets[0].returned_amount,'100.25');
+assert.equal(aggregate([row(1,{sellerPromoId:123,uuidPromocode:''})]).buckets.length,0,'loyalty sellerPromoId is never a promo-code ID');
+assert.equal(aggregate([{...row(),uuidPromocode:undefined}]).covered_rows,1);
+const missing=row();delete missing.uuidPromocode;assert.equal(aggregate([missing]).covered_rows,0,'omitted optional fields are not verified zero');
+assert.equal(aggregate([row(1,{rrDate:'2026-09-30'})]).unallocated_rows,1);
+assert.equal(aggregate([row(1,{rrDate:'2026-02-30'})]).unallocated_rows,1);
+for(const r of [row(1,{quantity:-1}),row(1,{retailPriceWithDisc:null}),row(1,{uuidPromocode:'bad'})])assert.throws(()=>aggregate([r]));
+const merged=mergePromocodes(aggregate([row()]),aggregate([row(2,{quantity:3})]));assert.equal(merged.buckets[0].sold_amount,'501.25');assert.equal(merged.row_count,2);
+assert.throws(()=>promoPeriod('2026-11-20','2026-11-19'));assert.throws(()=>promoPeriod('2024-01-01','2024-02-01'));
+
+const jobs=[{id:'complete',shop_id:PROMO_SHOP,date_from:from,date_to:to,status:'complete',row_count:4,cursor_id:'4',model,created_at:'2026-11-18',updated_at:'2026-11-18'}];
+const data={shops:[{id:PROMO_SHOP,owner_id:PROMO_OWNER}],wb_promo_viewers:[{id:'viewer',shop_id:PROMO_SHOP,user_id:'invited'}],wb_promo_names:[{shop_id:PROMO_SHOP,promo_id:id,name:'Campaign',code:'SAVE20'}],wb_api_preview_jobs:[],wb_promo_jobs:jobs};
+let calls=[],writes=[];
+const admin={rpc:async(name,args)=>{calls.push({name,args});return {data:0,error:null}},from(table){
+  const filters=[];let operation='read',payload;
+  const result=()=>{if(operation!=='read'){writes.push({table,operation,payload,filters});return {data:null,error:null};}
+    return {data:(data[table]||[]).filter(r=>filters.every(([k,v])=>r[k]===v)),error:null};};
+  const q={select(){return q},eq(k,v){filters.push([k,v]);return q},gte(){return q},lte(){return q},order(){return q},limit(){return q},insert(v){operation='insert';payload=v;return q},upsert(v){operation='upsert';payload=v;return q},delete(){operation='delete';return q},update(v){operation='update';payload=v;return q},
+    maybeSingle:async()=>{const r=result();return {...r,data:r.data?.[0]||null}},then:(a,b)=>Promise.resolve(result()).then(a,b)};return q;
+}};
+assert.equal((await authorizePromo(admin,PROMO_OWNER,PROMO_SHOP)).owner,true);assert.equal((await authorizePromo(admin,'invited',PROMO_SHOP)).owner,false);
+await assert.rejects(()=>authorizePromo(admin,'other',PROMO_SHOP),e=>e.status===403);await assert.rejects(()=>authorizePromo(admin,PROMO_OWNER,'other-shop'),e=>e.status===403);
+const body={from,to,action:'promocodes_read'};
+let result=await promoAction(admin,'invited',PROMO_SHOP,body);assert.equal(result.owner,false);assert.equal(result.status,'ready');assert.equal(result.rows[0].name,'Campaign');assert.equal(result.rows[0].net_amount,'100.25');
+assert.equal(result.rows[0].code,'SAVE20');
+const unlisted='20000000-0000-4000-8000-000000000002',zero='30000000-0000-4000-8000-000000000003';
+const extraModel=mergePromocodes(model,aggregate([row(5,{uuidPromocode:unlisted,quantity:99})]));
+data.wb_promo_jobs=[{...jobs[0],row_count:5,cursor_id:'5',model:extraModel}];
+data.wb_promo_names.push({shop_id:PROMO_SHOP,promo_id:zero,name:'Campaign',code:'OTHER20'});
+result=await promoAction(admin,'invited',PROMO_SHOP,body);
+assert.equal(result.rows.length,2,'all registered IDs remain distinct, including zero-operation promos');
+assert.equal(result.rows.find(r=>r.promo_id===id).sold_qty,2,'unlisted history cannot inflate catalogue totals');
+assert.equal(result.rows.find(r=>r.promo_id===zero).sold_amount,'0.00');assert.equal(result.catalog_count,2);
+assert.ok(!JSON.stringify(result).includes(unlisted),'unlisted financial IDs never reach viewers');
+data.wb_promo_names.pop();data.wb_promo_jobs=jobs;
+assert.equal(calls.length,0,'period reads never enqueue or decrypt/fetch WB');
+for(const action of ['promocodes_start','promocodes_name','promocodes_viewers','promocodes_invite','promocodes_revoke'])await assert.rejects(()=>promoAction(admin,'invited',PROMO_SHOP,{...body,action}),e=>e.status===403);
+assert.equal(writes.length,0,'restricted users cannot write');
+data.wb_promo_jobs=[{...jobs[0],model:{...model,covered_rows:0}}];
+result=await readPromocodes(admin,{dateFrom:from,dateTo:to});assert.equal(result.status,'needs_preparation');assert.deepEqual(result.rows,[]);
+data.wb_promo_jobs=[...jobs,{...jobs[0],id:'new',status:'loading'}];result=await readPromocodes(admin,{dateFrom:from,dateTo:to});assert.equal(result.status,'ready','a refresh preserves complete coverage');
+data.wb_promo_jobs=[];data.wb_api_preview_jobs=[{...jobs[0],id:'normal-finance'}];
+result=await readPromocodes(admin,{dateFrom:'2026-10-15',dateTo:'2026-10-15'});
+assert.equal(result.status,'ready','ordinary finance ingestion supplies the same prepared promo facts');assert.equal(result.rows[0].sold_amount,'200.50');
+result=await readPromocodes(admin,{dateFrom:'2026-10-16',dateTo:'2026-10-16'});assert.equal(result.rows.length,1);assert.equal(result.rows[0].sold_amount,'0.00','verified coverage with no matching operation is a real zero');
+assert.equal(calls.length,0);data.wb_api_preview_jobs=[];
+data.wb_promo_jobs=jobs;
+const savedCatalog=data.wb_promo_names;data.wb_promo_names=[];
+result=await promoAction(admin,PROMO_OWNER,PROMO_SHOP,{...body,action:'promocodes_start',refresh:true});
+assert.equal(result.status,'needs_catalog');assert.deepEqual(result.rows,[]);assert.equal(calls.length,0,'an empty catalogue neither exposes all history nor schedules WB');data.wb_promo_names=savedCatalog;
+await promoAction(admin,PROMO_OWNER,PROMO_SHOP,{action:'promocodes_invite',username:'@New_viewer'});assert.equal(writes.at(-1).table,'wb_promo_viewers');assert.equal(writes.at(-1).payload.telegram_username,'new_viewer');assert.ok(!writes.some(w=>w.table==='shop_members'));
+await promoAction(admin,PROMO_OWNER,PROMO_SHOP,{action:'promocodes_name',promo_id:id,name:'Summer <Campaign>'});assert.equal(writes.at(-1).payload.name,'Summer <Campaign>');
+assert.ok(!('code' in writes.at(-1).payload),'a legacy rename does not overwrite a verified code');
+await promoAction(admin,PROMO_OWNER,PROMO_SHOP,{action:'promocodes_name',promo_id:id,name:'Campaign',code:'CODE20'});assert.equal(writes.at(-1).payload.code,'CODE20');
+await assert.rejects(()=>promoAction(admin,PROMO_OWNER,PROMO_SHOP,{action:'promocodes_name',promo_id:id,name:'Campaign',code:'X'.repeat(65)}),e=>e.status===400);
+await assert.rejects(()=>promoAction(admin,PROMO_OWNER,PROMO_SHOP,{action:'promocodes_name',promo_id:id,name:' '}),e=>e.status===400);
+
+// Real worker seam: thin finance response, shared quota, atomic cursor/count.
+const token=`e30.${Buffer.from(JSON.stringify({acc:3,exp:4102444800})).toString('base64url')}.${'x'.repeat(100)}`;
+let wait=0,committed;
+const worker={rpc:async(name,args)=>{calls.push({name,args});if(name==='wb_api_read_key')return {data:token};if(name==='wb_api_claim_request')return {data:wait};if(name==='wb_promo_commit_page'){committed=args;return {data:true}}return {data:null}},from:admin.from};
+let upstream=0;const fetcher=async(_token,_url,p)=>{upstream++;assert.equal(p.limit,50000);assert.ok(!p.fields.includes('srid'));return [row()];};
+const job={id:'job',shop_id:PROMO_SHOP,date_from:from,date_to:to,cursor_id:'0',row_count:0,finance_period:'weekly',lease_token:'lease'};
+wait=63;await processPromoPage(worker,job,fetcher);assert.equal(upstream,0);wait=0;
+await processPromoPage(worker,job,fetcher);assert.equal(committed.p_model.row_count,1);assert.equal(committed.p_model.cursor_id,'1');assert.equal(committed.p_expected_cursor,'0');assert.equal(committed.p_complete,false);
+await processPromoPage(worker,{...job,cursor_id:'1',row_count:1,model:committed.p_model},async()=>null);assert.equal(committed.p_complete,true);
+assert.doesNotMatch(JSON.stringify(committed.p_model),/api_key|Bearer|rrdId|srid|orderUid|retailPriceWithDisc/);
+console.log('Promocodes PASS: exact seller-price units/returns, real uuid field, dated ranges, unknown coverage, owner/viewer isolation, no shop membership, thin quota-safe worker and atomic commits.');

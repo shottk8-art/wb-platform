@@ -10,6 +10,7 @@ import { readUnit } from './unit.ts';
 import { stocksAction, processStocks } from './stocks.ts';
 import { readMediaHistoryResponse } from './media.ts';
 import {deferRequest,retrySeconds} from './rate-limit.ts';
+import {processPromoPage,promoAction} from './promocodes.ts';
 
 const CONNECTION_COLUMNS = "seller_id,seller_name,expires_at,checked_at,next_request_at";
 const JOB_COLUMNS = "id,date_from,date_to,cursor_id,status,summary,row_count,error_message,updated_at";
@@ -57,6 +58,16 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return json({ error: "Метод не поддерживается" }, 405);
   try {
+    if(req.headers.has('X-WB-Promo-Lease')){
+      if(origin)throw new ApiError(403,'Доступ запрещён');
+      const lease=validateShopId(req.headers.get('X-WB-Promo-Lease')),raw=await req.text();if(raw.length>1000)throw new ApiError(400,'Некорректный запрос');
+      let body;try{body=JSON.parse(raw);}catch{throw new ApiError(400,'Некорректный запрос');}
+      const id=validateShopId(body?.job_id),admin=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+      const {data:jobs,error}=await admin.rpc('wb_promo_accept_lease',{p_job_id:id,p_lease:lease});
+      if(error||!jobs?.[0])throw new ApiError(403,'Доступ запрещён');
+      try{return json(await processPromoPage(admin,jobs[0],wbFetch));}
+      finally{await admin.from('wb_promo_jobs').update({lease_token:null,lease_until:null,lease_used_at:null}).eq('id',id).eq('lease_token',lease);}
+    }
     if(req.headers.has('X-WB-Stock-Lease')) {
       if(origin)throw new ApiError(403,'Доступ запрещён');
       const lease=validateShopId(req.headers.get('X-WB-Stock-Lease')),text=await req.text();
@@ -115,6 +126,7 @@ Deno.serve(async (req) => {
     if (!body || typeof body !== "object") throw new ApiError(400, "Некорректный запрос");
     const shopId = validateShopId(body.shop_id);
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    if(typeof body.action==='string'&&body.action.startsWith('promocodes_'))return json(await promoAction(admin,auth.user.id,shopId,body));
     await authorizeShop(admin,shopId,auth.user.id,body.action);
     if(['stocks','stocks_refresh','stocks_settings','stocks_tracking'].includes(body.action))return json(await stocksAction(admin,auth.user.id,shopId,body));
     if(['daily','daily_start','unit','ozon_months'].includes(body.action)) {
