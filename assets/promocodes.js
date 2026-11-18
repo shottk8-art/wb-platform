@@ -12,7 +12,7 @@
   function stopCounter(settle=false){if(counter!=null)cancelAnimationFrame(counter);counter=null;if(settle)counterTargets.forEach(([id,value,format])=>{el(id).textContent=format(value);});}
   function stats(){
     stopCounter();const sum=k=>result.rows.reduce((n,r)=>n+Number(r[k]),0);
-    counterTargets=[['promoCount',result.rows.length,integer],['promoUnits',sum('sold_qty'),integer],['promoSales',sum('sold_amount'),metricMoney],['promoNet',sum('net_amount'),metricMoney]];
+    counterTargets=[['promoCount',result.metrics?.active_codes??result.rows.filter(r=>r.sold_qty>0).length,integer],['promoUnits',sum('sold_qty'),integer],['promoSales',sum('sold_amount'),metricMoney],['promoNet',sum('net_amount'),metricMoney]];
     for(const [id,value] of counterTargets)el(id).title=id==='promoSales'||id==='promoNet'?money(value)+' ₽':integer(value);
     if(!window.requestAnimationFrame||document.hidden||window.matchMedia('(prefers-reduced-motion: reduce)').matches){stopCounter(true);return;}
     let start;const ticket=epoch;const frame=now=>{if(ticket!==epoch)return;start??=now;const t=Math.min(1,(now-start)/450),p=1-Math.pow(1-t,4);counterTargets.forEach(([id,value,format])=>{el(id).textContent=format(value*p);});if(t<1)counter=requestAnimationFrame(frame);else stopCounter(true);};counter=requestAnimationFrame(frame);
@@ -33,7 +33,7 @@
     el('promoMain').setAttribute('aria-busy',String(busy));
     window.WBPromoRange?.sync();
   }
-  function clear(){window.WBPromoRange?.close(false);stopCounter();counterTargets=[];result=null;page=0;clearTimeout(timer);el('promoRows').replaceChildren();el('promoMatching').textContent='';el('promoPagination').hidden=true;el('promoEmpty').hidden=false;el('promoEmpty').textContent='Загружаем статистику…';
+  function clear(){window.WBPromoRange?.close(false);window.WBPromoCharts?.clear();stopCounter();counterTargets=[];result=null;page=0;clearTimeout(timer);el('promoRows').replaceChildren();el('promoMatching').textContent='';el('promoPagination').hidden=true;el('promoEmpty').hidden=false;el('promoEmpty').textContent='Загружаем статистику…';
     for(const id of ['promoCount','promoUnits','promoSales','promoNet']){el(id).textContent='—';el(id).title='';}}
   async function request(action,payload={}){
     const session=await window.WBAuth.getSession();
@@ -58,17 +58,17 @@
   function render(){
     controls();if(!result)return;
     if(result.status==='ready'){
-      stats();table();
+      stats();window.WBPromoCharts?.render(result);table();
       status('promoStatus',`${result.refreshing?'Обновляем на сервере. Пока показан последний полный результат. ':''}Данные получены ${date(result.fetched_at)}.`);
     }else{
-      stopCounter();counterTargets=[];for(const id of ['promoCount','promoUnits','promoSales','promoNet']){el(id).textContent='—';el(id).title='';}el('promoPagination').hidden=true;el('promoMatching').textContent='';
+      window.WBPromoCharts?.clear();stopCounter();counterTargets=[];for(const id of ['promoCount','promoUnits','promoSales','promoNet']){el(id).textContent='—';el(id).title='';}el('promoPagination').hidden=true;el('promoMatching').textContent='';
       el('promoRows').replaceChildren();el('promoEmpty').hidden=false;
       const loading=result.status==='loading',needsCatalog=result.status==='needs_catalog';
       el('promoEmpty').textContent=needsCatalog?(owner?'Добавьте ID и название в разделе «Названия промо и доступ».':'Владелец TOPLASH ещё не добавил промокоды для отслеживания.'):loading?'Собираем статистику из финансовых отчётов WB. Страницу можно закрыть — загрузка продолжится на сервере.':owner?'Статистика за этот период ещё не подготовлена. Нажмите «Обновить из WB».':'Статистика за этот период ещё не подготовлена. Попросите владельца TOPLASH загрузить её.';
       status('promoStatus',needsCatalog?'Список промокодов пока не настроен.':result.error||`${loading?'Загружаются':'Нет полных данных за'}: ${(result.missing_months||[]).join(', ')}.`,!!result.error);
     }
   }
-  function schedule(){clearTimeout(timer);if(userId&&!document.hidden&&(result?.status==='loading'||result?.refreshing))timer=setTimeout(()=>load(false,false),30000);}
+  function schedule(){clearTimeout(timer);if(userId&&!document.hidden&&(result?.status==='loading'||result?.refreshing||result?.comparison?.status==='loading'||result?.comparison?.refreshing))timer=setTimeout(()=>load(false,false),30000);}
   async function load(refresh=false,reset=true){
     if(!userId||busy||writing)return;
     if(!el('promoPeriodForm').reportValidity())return;
@@ -78,7 +78,7 @@
     const ticket=++epoch;busy=true;if(reset)clear();controls();status('promoStatus',refresh?'Запускаем обновление…':'Читаем статистику…');
     try{
       let value=await request(refresh?'promocodes_start':'promocodes_read',{from,to,refresh});if(ticket!==epoch)return;
-      if(value.owner&&value.status==='needs_preparation'&&!refresh){value=await request('promocodes_start',{from,to});if(ticket!==epoch)return;}
+      if(value.owner&&(value.status==='needs_preparation'||value.comparison?.status==='needs_preparation')&&!refresh){value=await request('promocodes_start',{from,to});if(ticket!==epoch)return;}
       owner=!!value.owner;result=value;el('promoAccessStatus').hidden=true;el('promoAccessRetry').hidden=true;el('promoLogin').hidden=true;el('promoMain').hidden=false;render();
       if(owner&&!el('promoViewers').dataset.loaded)await viewers(ticket);
     }catch(error){if(ticket!==epoch)return;

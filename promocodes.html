@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
   <link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
   <link rel="stylesheet" href="/assets/reference.css?v=20261113-profitability">
-  <link rel="stylesheet" href="/assets/promocodes.css?v=20261118-range3">
+  <link rel="stylesheet" href="/assets/promocodes.css?v=20261118-trend4">
   <script src="/assets/corbel.js?v=20261019-icon1"></script>
   <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
 </head>
@@ -40,10 +40,17 @@
       </form>
       <p class="promo-status" id="promoStatus" role="status" aria-live="polite"></p>
       <section class="promo-stats promo-panel" aria-label="Итоги за выбранный период">
-        <div><span>Промокодов в списке</span><strong id="promoCount">—</strong></div>
-        <div><span>Выкуплено товаров</span><strong id="promoUnits">—</strong></div>
-        <div><span>Сумма выкупов</span><strong id="promoSales">—</strong></div>
-        <div><span>После возвратов</span><strong id="promoNet">—</strong></div>
+        <div><button type="button" class="promo-stat" data-promo-metric="active_codes" aria-pressed="false" aria-controls="promoTrend"><span class="promo-stat-name">Промокодов с выкупами</span><strong id="promoCount">—</strong><span class="promo-stat-change" id="promoCountDelta"></span></button></div>
+        <div><button type="button" class="promo-stat" data-promo-metric="sold_qty" aria-pressed="false" aria-controls="promoTrend"><span class="promo-stat-name">Выкуплено товаров</span><strong id="promoUnits">—</strong><span class="promo-stat-change" id="promoUnitsDelta"></span></button></div>
+        <div><button type="button" class="promo-stat" data-promo-metric="sold_amount" aria-pressed="true" aria-controls="promoTrend"><span class="promo-stat-name">Сумма выкупов</span><strong id="promoSales">—</strong><span class="promo-stat-change" id="promoSalesDelta"></span></button></div>
+        <div><button type="button" class="promo-stat" data-promo-metric="net_amount" aria-pressed="false" aria-controls="promoTrend"><span class="promo-stat-name">После возвратов</span><strong id="promoNet">—</strong><span class="promo-stat-change" id="promoNetDelta"></span></button></div>
+      </section>
+      <p class="promo-comparison" id="promoComparison"></p>
+      <section id="secTrend" class="promo-panel promo-chart-panel" aria-labelledby="promoTrendTitle" hidden>
+        <div class="section-head promo-chart-head"><h2 id="promoTrendTitle">Динамика промокодов</h2><label>Показатель<select id="promoTrendMetric"><option value="sold_amount">Сумма выкупов</option><option value="sold_qty">Выкуплено товаров</option><option value="net_amount">После возвратов</option><option value="active_codes">Промокодов с выкупами</option></select></label></div>
+        <p class="promo-muted promo-chart-caption" id="promoTrendPeriod"></p>
+        <div class="promo-chart-wrap"><canvas id="promoTrend" role="img" aria-describedby="promoTrendValues"></canvas></div>
+        <p id="promoTrendFallback" class="promo-status" hidden></p><p id="promoTrendValues" class="promo-visually-hidden"></p>
       </section>
       <section class="promo-panel promo-table-panel" aria-labelledby="promoTableTitle">
         <div class="promo-table-tools"><h2 id="promoTableTitle">Промокоды <span id="promoMatching" class="promo-count"></span></h2><div class="promo-list-tools"><label>Поиск<input type="search" id="promoSearch" placeholder="Название, промокод или ID"></label><label>Сортировка<select id="promoSort"><option value="sales">По сумме выкупов</option><option value="quantity">По количеству</option><option value="net">По сумме после возвратов</option><option value="name">По названию</option></select></label></div></div>
@@ -64,7 +71,11 @@
   <script src="/assets/config.js"></script>
   <script src="/assets/supabaseClient.js"></script>
   <script src="/assets/auth.js"></script>
-  <script src="/assets/promocodes.js?v=20261118-range3"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+  <script src="/assets/trend-interaction.js?v=20261113-media2"></script>
+  <script src="/assets/dashboard.js?v=20261113-media2"></script>
+  <script src="/assets/promo-charts.js?v=20261118-trend4"></script>
+  <script src="/assets/promocodes.js?v=20261118-trend4"></script>
   <script src="/assets/promo-range.js?v=20261118-range3"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-.promo-page{min-height:100vh;color:var(--ink);font-family:var(--font-sans);margin:0;padding:16px;background:var(--page)}
+.promo-page{height:auto;min-height:100vh;color:var(--ink);font-family:var(--font-sans);margin:0;padding:16px;background:var(--page)}
 .promo-shell{width:100%;max-width:1440px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:24px;min-height:calc(100vh - 32px);padding:0 28px}
 .promo-header{min-height:80px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line)}
 .promo-brand{display:flex;gap:12px;align-items:center;color:var(--ink);font-weight:600;text-decoration:none}.promo-brand img{display:block;flex:none}.promo-brand>span{display:grid;gap:2px}.promo-brand .promo-muted{font-size:12px;font-weight:400}
@@ -48,3 +48,15 @@
 @media(max-width:760px){.promo-period{grid-template-columns:minmax(0,1fr) auto}.promo-period>#promoShow{grid-column:auto}.promo-period .promo-shortcuts{grid-column:1/-1;justify-self:stretch}.promo-period .promo-shortcuts button{flex:1}}
 @media(max-width:600px){.promo-range-popover{padding:16px;max-width:calc(100vw - 24px)}.promo-range-calendars{grid-template-columns:1fr}.promo-range-calendars caption{display:none}.promo-range-fields input{font-size:16px}.promo-range-presets{display:grid;grid-template-columns:1fr 1fr;gap:6px}.promo-range-popover .promo-range-presets button{min-height:38px}.promo-range-calendars td{height:38px}.promo-range-popover .promo-range-day{height:36px;min-height:36px;line-height:36px}.promo-range-footer button{height:44px;min-height:44px}}
 @media(max-width:520px){.promo-period{grid-template-columns:1fr}.promo-period>#promoShow{grid-column:1/-1;width:100%}.promo-period .promo-range-trigger{font-size:14px}}
+
+/* Period comparisons and the same chart interaction used by Overview. */
+.promo-stats>div{padding:0}.promo-stats .promo-stat{display:flex;flex-direction:column;align-items:flex-start;width:100%;height:100%;padding:21px 22px;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--ink);text-align:left;transform:none;cursor:pointer}
+.promo-stats .promo-stat:hover,.promo-stats .promo-stat[aria-pressed=true]{background:var(--surface-2)}.promo-stat[aria-pressed=true] .promo-stat-name{color:var(--accent)}
+.promo-stats .promo-stat:focus-visible{outline:2px solid var(--accent);outline-offset:-4px}.promo-stats>div:first-child .promo-stat{border-radius:15px 0 0 15px}.promo-stats>div:last-child .promo-stat{border-radius:0 15px 15px 0}
+.promo-stat-name{line-height:18px;min-height:18px}.promo-stats .promo-stat-change{margin-top:12px;min-height:22px;font-size:12px}.promo-stats .kpi-delta{max-width:100%;flex-wrap:wrap;white-space:normal;gap:4px}
+.promo-comparison{font-size:12px;line-height:1.6;color:var(--ink-mute);margin:-10px 0 22px;overflow-wrap:anywhere}
+.promo-chart-panel{padding:20px 22px;margin-bottom:24px;min-width:0}.promo-chart-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:8px}.promo-chart-head h2{order:0}.promo-chart-head .trend-period-summary{order:1}.promo-chart-head label{order:2;margin:0 0 0 auto;gap:5px}.promo-chart-head select{width:230px;font-size:13px}.promo-chart-caption{font-size:12px;line-height:1.6;margin:0 0 12px}.promo-chart-wrap{position:relative;min-width:0;width:100%;height:290px}
+.promo-page #secTrend{margin-bottom:24px}
+@media(max-width:760px){.promo-stats .promo-stat{padding:18px}.promo-stats>div:first-child .promo-stat{border-radius:15px 0 0 0}.promo-stats>div:nth-child(2) .promo-stat{border-radius:0 15px 0 0}.promo-stats>div:nth-child(3) .promo-stat{border-radius:0 0 0 15px}.promo-stats>div:last-child .promo-stat{border-radius:0 0 15px 0}.promo-stat-name{min-height:36px}.promo-chart-panel{padding:18px}.promo-chart-head label{flex-basis:100%;margin:4px 0 0}.promo-chart-head select{width:100%;font-size:16px}.promo-chart-wrap{height:260px}}
+@media(max-width:370px){.promo-stats .promo-stat{padding:16px 12px}.promo-stats .promo-stat-change{min-height:38px}.promo-chart-panel{padding:16px 12px}}
+@media(max-width:600px){.promo-page #secTrend .trend-month.is-active+.trend-month>span,.promo-page #secTrend .trend-month:has(+.is-active)>span{visibility:hidden!important}}

@@ -9,6 +9,14 @@ const lower=(v:any)=>String(v??'').trim().toLowerCase();
 const month=(date:string)=>date.slice(0,7)+'-01';
 const endOfMonth=(date:string)=>new Date(Date.UTC(+date.slice(0,4),+date.slice(5,7),0)).toISOString().slice(0,10);
 const moscowToday=()=>new Date(Date.now()+10800000).toISOString().slice(0,10);
+const shiftDay=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
+const shiftMonth=(date:string,months:number)=>new Date(Date.UTC(+date.slice(0,4),+date.slice(5,7)-1+months,1)).toISOString().slice(0,10);
+export function previousPromoPeriod(p:any){
+  const fullMonths=p.dateFrom.endsWith('-01')&&p.dateTo===endOfMonth(p.dateTo);
+  const count=(+p.dateTo.slice(0,4)- +p.dateFrom.slice(0,4))*12+ +p.dateTo.slice(5,7)- +p.dateFrom.slice(5,7)+1;
+  const days=Math.round((Date.parse(p.dateTo)-Date.parse(p.dateFrom))/86400000)+1;
+  return {dateFrom:fullMonths?shiftMonth(p.dateFrom,-count):shiftDay(p.dateFrom,-days),dateTo:shiftDay(p.dateFrom,-1),basis:fullMonths?'calendar_months':'equal_days'};
+}
 
 export function promoPeriod(from:any,to:any){
   const p=validatePeriod(from,to),today=moscowToday();
@@ -74,7 +82,8 @@ export async function authorizePromo(admin:any,userId:string,shopId:string){
   throw new ApiError(403,'Доступ не выдан. Попросите владельца TOPLASH добавить ваш ник Telegram');
 }
 export async function readPromocodes(admin:any,p:any){
-  const ranges=periods(p),start=ranges[0].from,finish=ranges.at(-1)!.from;
+  const today=moscowToday(),history={dateFrom:shiftMonth(today,-11),dateTo:today};
+  const start=history.dateFrom,finish=month(today);
   const [normal,backfill,names,aliases]=await Promise.all([
     admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,row_count,cursor_id,updated_at,created_at,model:finance_model->promocodes').eq('shop_id',PROMO_SHOP).gte('date_from',start).lte('date_from',finish).order('created_at',{ascending:false}),
     admin.from('wb_promo_jobs').select('id,date_from,date_to,status,row_count,cursor_id,model,updated_at,created_at,error_message').eq('shop_id',PROMO_SHOP).gte('date_from',start).lte('date_from',finish).order('created_at',{ascending:false}),
@@ -94,25 +103,39 @@ export async function readPromocodes(admin:any,p:any){
     if(canonical.has(alias.alias_id)&&canonical.get(alias.alias_id)!==alias.promo_id)throw new ApiError(500,'Неоднозначные ID промокодов. Обратитесь к владельцу магазина');
     canonical.set(alias.alias_id,alias.promo_id);
   }
-  const rows=new Map<string,any>([...catalog.keys()].map(promo_id=>[promo_id,{promo_id,sold_qty:0,returned_qty:0,sold_amount:0n,returned_amount:0n}])),missing:string[]=[],loading:string[]=[],errors:string[]=[];let fetched:string|null=null;
-  for(const range of ranges){
-    const end=[range.to,p.dateTo].sort()[0];
+  const cached=new Map<string,any>();
+  function collect(period:any){
+    const key=period.dateFrom+':'+period.dateTo;if(cached.has(key))return cached.get(key);
+    const rows=new Map<string,any>([...catalog.keys()].map(promo_id=>[promo_id,{promo_id,sold_qty:0,returned_qty:0,sold_amount:0n,returned_amount:0n}])),missing:string[]=[],loading:string[]=[],errors:string[]=[];let fetched:string|null=null;
+    for(const range of periods(period)){
+    const end=[range.to,period.dateTo].sort()[0];
     const active=(backfill.data||[]).find((j:any)=>j.date_from===range.from&&j.status==='loading');if(active)loading.push(range.from.slice(0,7));
     const candidates=[...(normal.data||[]),...(backfill.data||[])].filter((j:any)=>j.date_from===range.from&&j.date_to>=end&&j.status==='complete'&&validModel(j)).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));
     const chosen=candidates[0];
     if(!chosen){missing.push(range.from.slice(0,7));
       const failure=(backfill.data||[]).find((j:any)=>j.date_from===range.from&&j.status==='error');if(failure)errors.push(failure.error_message||'Не удалось загрузить период');continue;}
     fetched=fetched==null||chosen.updated_at<fetched?chosen.updated_at:fetched;
-    for(const b of chosen.model.buckets){const id=canonical.get(b.promo_id);if(b.day<p.dateFrom||b.day>p.dateTo||!id)continue;
+    for(const b of chosen.model.buckets){const id=canonical.get(b.promo_id);if(b.day<period.dateFrom||b.day>period.dateTo||!id)continue;
       const old=rows.get(id);
       old.sold_qty+=b.sold_qty;old.returned_qty+=b.returned_qty;old.sold_amount+=cents(b.sold_amount);old.returned_amount+=cents(b.returned_amount);}
   }
   const result=[...rows.values()].map(r=>({...r,name:catalog.get(r.promo_id).name,code:catalog.get(r.promo_id).code||'',net_qty:r.sold_qty-r.returned_qty,
     net_amount:rub(r.sold_amount-r.returned_amount),sold_amount:rub(r.sold_amount),returned_amount:rub(r.returned_amount)}));
-  const ready=!missing.length;
-  return {status:ready?'ready':loading.length?'loading':errors.length?'error':'needs_preparation',period:p,fetched_at:fetched,
+    const ready=!missing.length;
+    const metrics=ready?{active_codes:result.filter(r=>r.sold_qty>0).length,sold_qty:result.reduce((n,r)=>n+r.sold_qty,0),sold_amount:rub(result.reduce((n,r)=>n+cents(r.sold_amount),0n)),net_amount:rub(result.reduce((n,r)=>n+cents(r.net_amount),0n))}:null;
+    const value={status:ready?'ready':loading.length?'loading':errors.length?'error':'needs_preparation',period,fetched_at:fetched,metrics,
     missing_months:missing,loading_months:loading,refreshing:loading.length>0,error:errors[0]||null,rows:ready?result:[],
     catalog_count:catalog.size,basis:'financial_operation_date',metric:'buyouts',currency:'RUB'};
+    cached.set(key,value);return value;
+  }
+  const current=collect(p),previous=previousPromoPeriod(p);
+  const prior=previous.dateFrom<history.dateFrom?{status:'outside_history',period:previous,metrics:null,missing_months:[],loading_months:[],refreshing:false,error:null}:collect(previous);
+  const {rows:_priorRows,...comparison}=prior;
+  const trendRows=periods(history).map(range=>{
+    const result=collect({dateFrom:range.from,dateTo:range.to});
+    return {year:+range.from.slice(0,4),month:+range.from.slice(5,7),status:result.status,partial:range.from===month(today),...(result.metrics||{active_codes:null,sold_qty:null,sold_amount:null,net_amount:null})};
+  });
+  return {...current,comparison,trend:{period:history,rows:trendRows,metrics:collect(history).metrics}};
 }
 export async function promoAction(admin:any,userId:string,shopId:string,body:any){
   const access=await authorizePromo(admin,userId,shopId);
@@ -145,9 +168,13 @@ export async function promoAction(admin:any,userId:string,shopId:string,body:any
   const p=promoPeriod(body.from,body.to);
   let result=await readPromocodes(admin,p);
   if(body.action==='promocodes_start'&&result.status!=='needs_catalog'){
+    const queued=new Set<string>();
     for(const range of periods(p))if(body.refresh===true||result.missing_months.includes(range.from.slice(0,7))){
       const {error}=await admin.rpc('wb_promo_queue_month',{p_month:range.from,p_refresh:body.refresh===true});
-      if(error)throw new ApiError(500,'Не удалось запустить загрузку промокодов');}
+      if(error)throw new ApiError(500,'Не удалось запустить загрузку промокодов');queued.add(range.from);}
+    if(result.comparison?.period&&result.comparison.status!=='outside_history')for(const range of periods(result.comparison.period))if(!queued.has(range.from)&&result.comparison.missing_months.includes(range.from.slice(0,7))){
+      const {error}=await admin.rpc('wb_promo_queue_month',{p_month:range.from,p_refresh:body.refresh===true&&result.comparison.status==='error'});
+      if(error)throw new ApiError(500,'Не удалось запустить загрузку сравнения');}
     result=await readPromocodes(admin,p);
   }
   return {...result,owner:access.owner};
