@@ -65,16 +65,25 @@ export async function authorizePromo(admin:any,userId:string,shopId:string){
 }
 export async function readPromocodes(admin:any,p:any){
   const ranges=periods(p),start=ranges[0].from,finish=ranges.at(-1)!.from;
-  const [normal,backfill,names]=await Promise.all([
+  const [normal,backfill,names,aliases]=await Promise.all([
     admin.from('wb_api_preview_jobs').select('id,date_from,date_to,status,row_count,cursor_id,updated_at,created_at,model:finance_model->promocodes').eq('shop_id',PROMO_SHOP).gte('date_from',start).lte('date_from',finish).order('created_at',{ascending:false}),
     admin.from('wb_promo_jobs').select('id,date_from,date_to,status,row_count,cursor_id,model,updated_at,created_at,error_message').eq('shop_id',PROMO_SHOP).gte('date_from',start).lte('date_from',finish).order('created_at',{ascending:false}),
     admin.from('wb_promo_names').select('promo_id,name,code').eq('shop_id',PROMO_SHOP),
+    admin.from('wb_promo_id_aliases').select('alias_id,promo_id').eq('shop_id',PROMO_SHOP),
   ]);
-  if(normal.error||backfill.error||names.error)throw new ApiError(500,'Не удалось прочитать статистику промокодов');
+  if(normal.error||backfill.error||names.error||aliases.error)throw new ApiError(500,'Не удалось прочитать статистику промокодов');
   // The saved catalogue is also the audience boundary: historical IDs that
   // are absent from the owner's verified WB list never reach this response.
   const catalog=new Map<string,any>((names.data||[]).map((n:any)=>[n.promo_id,n]));
   if(!catalog.size)return {status:'needs_catalog',period:p,fetched_at:null,missing_months:[],loading_months:[],refreshing:false,error:null,rows:[],catalog_count:0,basis:'financial_operation_date',metric:'buyouts',currency:'RUB'};
+  // WB's earlier financial rows can use the ID from the same card's URL.
+  // Only explicit, privately verified mappings may join that history to a card.
+  const canonical=new Map<string,string>([...catalog.keys()].map(id=>[id,id]));
+  for(const alias of aliases.data||[]){
+    if(!catalog.has(alias.promo_id))continue;
+    if(canonical.has(alias.alias_id)&&canonical.get(alias.alias_id)!==alias.promo_id)throw new ApiError(500,'Неоднозначные ID промокодов. Обратитесь к владельцу магазина');
+    canonical.set(alias.alias_id,alias.promo_id);
+  }
   const rows=new Map<string,any>([...catalog.keys()].map(promo_id=>[promo_id,{promo_id,sold_qty:0,returned_qty:0,sold_amount:0n,returned_amount:0n}])),missing:string[]=[],loading:string[]=[],errors:string[]=[];let fetched:string|null=null;
   for(const range of ranges){
     const end=[range.to,p.dateTo].sort()[0];
@@ -84,9 +93,9 @@ export async function readPromocodes(admin:any,p:any){
     if(!chosen){missing.push(range.from.slice(0,7));
       const failure=(backfill.data||[]).find((j:any)=>j.date_from===range.from&&j.status==='error');if(failure)errors.push(failure.error_message||'Не удалось загрузить период');continue;}
     fetched=fetched==null||chosen.updated_at<fetched?chosen.updated_at:fetched;
-    for(const b of chosen.model.buckets){if(b.day<p.dateFrom||b.day>p.dateTo||!catalog.has(b.promo_id))continue;
-      const old=rows.get(b.promo_id);
-      old.sold_qty+=b.sold_qty;old.returned_qty+=b.returned_qty;old.sold_amount+=cents(b.sold_amount);old.returned_amount+=cents(b.returned_amount);rows.set(b.promo_id,old);}
+    for(const b of chosen.model.buckets){const id=canonical.get(b.promo_id);if(b.day<p.dateFrom||b.day>p.dateTo||!id)continue;
+      const old=rows.get(id);
+      old.sold_qty+=b.sold_qty;old.returned_qty+=b.returned_qty;old.sold_amount+=cents(b.sold_amount);old.returned_amount+=cents(b.returned_amount);}
   }
   const result=[...rows.values()].map(r=>({...r,name:catalog.get(r.promo_id).name,code:catalog.get(r.promo_id).code||'',net_qty:r.sold_qty-r.returned_qty,
     net_amount:rub(r.sold_amount-r.returned_amount),sold_amount:rub(r.sold_amount),returned_amount:rub(r.returned_amount)}));

@@ -201,3 +201,20 @@ card requests for zero-expense campaigns, at most six requests if the last
 campaign needs interval statistics), preserving the personal-token limit.
 `node tests/wb-api-media-completed.mjs` replays the observed February response;
 `node tests/wb-api-media-diagnostic.mjs` checks safe failure metadata and retries.
+
+## Promo history identifiers
+
+The same verified WB Seller promo card can occur in financial history under
+its URL ID as well as the ID displayed inside the card. The private
+`wb_promo_id_aliases` table explicitly links those historical IDs to the saved
+canonical catalogue; names or similar codes never infer a relationship.
+Apply `20261118100530_promocode_historical_ids.sql` before deploying this reader.
+Verified account mappings are imported separately, never committed as fixtures.
+
+Period reads fold each matching historical bucket into one canonical promo row,
+including returns. Unmapped IDs remain excluded. A conflicting mapping fails
+closed, and deleting a catalogue entry removes its aliases. The table has RLS,
+no client grants and a composite shop/catalogue FK. No WB refetch, raw order
+storage or financial-model rewrite is required for the correction.
+`node tests/promocodes-history.mjs` exercises the real reader; the corresponding
+SQL test checks private access and referential integrity inside rollback.

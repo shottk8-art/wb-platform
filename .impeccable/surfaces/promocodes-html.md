@@ -62,7 +62,11 @@ identity spanning both columns. Management stacks; long names, codes and IDs wra
   financial-report ID, distinct from internal `data-row-key`. Initially 51 unique
   financial IDs with names/codes were verified and imported privately.
 - `wb_promo_names` is both the names/code catalogue and a strict server allowlist:
-  unlisted financial IDs never return or affect totals. Catalogue IDs receive zero
+  only its canonical IDs and explicitly verified historical aliases affect totals.
+  Older financial operations can use the ID from the same card's URL; the private
+  `wb_promo_id_aliases` table links that ID to the ID shown inside the card. They
+  form one row, including returns; names/codes never infer a match, and conflicts
+  fail closed. Unmapped financial IDs never return or affect totals. Catalogue IDs receive zero
   rows only with full-period coverage. Equal names/codes never merge different IDs.
 - Finance API remains `uuidPromocode`-only; `sellerPromoId` is a different identifier.
   Names were initially copied from WB Seller; the owner maintains future entries
