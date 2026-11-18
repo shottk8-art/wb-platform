@@ -22,7 +22,9 @@ function fixture(id='viewer'){
   f.el('promoSearch').value='save20';f.el('promoSearch').events.input();assert.equal(f.el('promoEmpty').hidden,true,'the code distinguishes promos sharing a generic name');assert.match(f.el('promoRows').innerHTML,/Код: SAVE20/);
   f.el('promoSearch').value='  20000000-0000-4000-8000-000000000002  ';f.el('promoSearch').events.input();
   assert.equal(f.el('promoEmpty').hidden,true,'ID copied from an older financial report must find the same saved campaign');
-  assert.match(f.el('promoRows').innerHTML,/ID в ранних отчётах: 20000000-0000-4000-8000-000000000002/);
+  assert.match(f.el('promoRows').innerHTML,/ID в карточке WB: 10000000-0000-4000-8000-000000000001/);
+  assert.match(f.el('promoRows').innerHTML,/ID в отчётах WB: 20000000-0000-4000-8000-000000000002/);
+  assert.doesNotMatch(f.el('promoRows').innerHTML,/ранни|прежни|старый|новый/i,'linked identifiers do not imply an ID changed over time');
   assert.equal(f.el('promoMatching').textContent,'1','old and current IDs cannot produce duplicate campaign rows');
   assert.equal(f.el('promoUnits').textContent,'2','historical search cannot change period totals');
   f.el('promoSearch').value='30000000-0000-4000-8000-000000000003';f.el('promoSearch').events.input();
