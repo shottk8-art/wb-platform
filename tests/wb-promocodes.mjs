@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {aggregatePromocodes,mergePromocodes,promoPeriod,authorizePromo,promoAction,readPromocodes,processPromoPage,PROMO_SHOP,PROMO_OWNER} from '../supabase/functions/wb-api/promocodes.ts';
 const id='10000000-0000-4000-8000-000000000001',from='2026-10-01',to='2026-10-31';
-const row=(rrdId=1,extra={})=>({rrdId,uuidPromocode:id,rrDate:'2026-10-15',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,retailPriceWithDisc:'100.25',...extra});
+const row=(rrdId=1,extra={})=>({rrdId,uuidPromocode:id,rrDate:'2026-10-15',sellerOperName:'Продажа',docTypeName:'Продажа',quantity:2,retailPriceWithDisc:'100.25',retailAmount:'140.37',...extra});
 const aggregate=rows=>aggregatePromocodes(rows,String(rows.at(-1)?.rrdId||0),{dateFrom:from,dateTo:to});
 let model=aggregate([row(),row(2,{sellerOperName:'Возврат',docTypeName:'Возврат',quantity:1}),row(3,{sellerOperName:'Логистика',quantity:1}),row(4,{uuidPromocode:'',quantity:5})]);
 assert.equal(model.row_count,4);assert.equal(model.covered_rows,4);assert.equal(model.buckets.length,1);
@@ -71,5 +71,9 @@ const job={id:'job',shop_id:PROMO_SHOP,date_from:from,date_to:to,cursor_id:'0',r
 wait=63;await processPromoPage(worker,job,fetcher);assert.equal(upstream,0);wait=0;
 await processPromoPage(worker,job,fetcher);assert.equal(committed.p_model.row_count,1);assert.equal(committed.p_model.cursor_id,'1');assert.equal(committed.p_expected_cursor,'0');assert.equal(committed.p_complete,false);
 await processPromoPage(worker,{...job,cursor_id:'1',row_count:1,model:committed.p_model},async()=>null);assert.equal(committed.p_complete,true);
+const saved=committed;const missingAmounts=aggregate([row(1,{retailAmount:null})]);
+await processPromoPage(worker,{...job,cursor_id:'1',row_count:1,model:missingAmounts},async()=>null);
+assert.equal(committed,saved,'missing buyer amounts cannot be committed as a complete snapshot');
+assert.equal(writes.at(-1).payload.status,'error');assert.match(writes.at(-1).payload.error_message,/Вайлдберриз реализовал/);
 assert.doesNotMatch(JSON.stringify(committed.p_model),/api_key|Bearer|rrdId|srid|orderUid|retailPriceWithDisc/);
 console.log('Promocodes PASS: exact seller-price units/returns, real uuid field, dated ranges, unknown coverage, owner/viewer isolation, no shop membership, thin quota-safe worker and atomic commits.');

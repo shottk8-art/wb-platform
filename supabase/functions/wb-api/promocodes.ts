@@ -210,6 +210,7 @@ export async function processPromoPage(admin:any,job:any,fetcher:any){
     const cursor=pageCursor(raw||[],String(job.cursor_id)),rows=sanitizeRows(raw||[],true).filter((r:any)=>BigInt(String(r.rrdId))>BigInt(job.cursor_id));
     const model=mergePromocodes(job.model,aggregatePromocodes(rows,cursor,{dateFrom:job.date_from,dateTo:job.date_to}));
     if(!raw?.length&&(model.covered_rows!==model.row_count||model.unallocated_rows))throw new ApiError(400,'WB не вернул полные ID или даты промокодов. Последний полный снимок сохранён');
+    if(!raw?.length&&model.buckets.some((b:any)=>b.sold_realized_amount==null||b.returned_realized_amount==null))throw new ApiError(400,'WB не вернул суммы «Вайлдберриз реализовал» по всем промокодам. Последний полный снимок сохранён');
     const {data:committed,error}=await admin.rpc('wb_promo_commit_page',{p_job_id:job.id,p_lease:job.lease_token,p_expected_cursor:String(job.cursor_id),p_expected_rows:Number(job.row_count),p_model:model,p_complete:!raw?.length});
     if(error||committed!==true)throw new ApiError(500,'Прогресс загрузки изменился. Повторим безопасно');
     return {processed:true};
