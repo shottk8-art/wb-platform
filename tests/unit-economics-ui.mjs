@@ -111,3 +111,12 @@ console.log('Ozon unit UI PASS: separate report ranges/cache, no WB preparation 
  f.invalidate();assert.equal(f.requests.length,2,'WB notifications must not flush an Ozon file cache');
  f.set(true,'owner','toplash',{marketplace:'ozon',months:['2026-10','2026-09']});assert.equal(f.requests.length,2,'opening Ozon joins the two-month preload');
 }
+{
+ const f=fixture(true);f.set();assert.equal(f.requests[0].payload.from,'2026-11-01');assert.equal(f.requests[0].payload.to,'2026-11-11');
+ f.requests[0].resolve(result());f.requests[1].resolve(result());await tick();
+ f.el('unitFrom').value='2026-11-03';f.el('unitTo').value='2026-11-08';f.el('unitFrom').events.change();f.set(false);f.set();
+ assert.equal(f.requests.length,3,'an arbitrary range cannot use an already warm full-month result');
+ assert.equal(f.requests[2].month,'2026-11');assert.equal(f.requests[2].payload.month_to,'2026-11');assert.equal(f.requests[2].payload.from,'2026-11-03');assert.equal(f.requests[2].payload.to,'2026-11-08');
+ f.set(false,'owner','other-shop');f.requests[2].resolve(result());await tick();assert.equal(f.el('unitResults').hidden,true,'late daily-range result cannot enter another shop');
+}
+console.log('Unit day-range UI PASS: exact date payload, separate partial-range cache and stale-shop protection.');

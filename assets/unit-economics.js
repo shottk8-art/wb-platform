@@ -7,6 +7,7 @@
   const metricMoney=value=>value==null?'—':Number(value).toLocaleString('ru-RU',{maximumFractionDigits:0})+' ₽';
   const rate=value=>value==null?'—':Number(value).toLocaleString('ru-RU',{maximumFractionDigits:1})+'%';
   const tone=value=>value==null?'':Number(value)<0?'loss':'gain';
+  let rangePicker=null;
   let context=null,active=false,epoch=0,busy=false,data=null,selected=null,timer=null,perUnit=false,showZero=false,segment='all',sortDirection='desc';
   let rowAnimations=[],detailAnimation=null;
   function stopMotion(){rowAnimations.forEach(a=>a.cancel());rowAnimations=[];detailAnimation?.cancel();detailAnimation=null;}
@@ -25,14 +26,15 @@
   let cache=new Map(),cacheGeneration=0,subscribed=false;
   const enabled=()=>window.WBDaily?.allowed(context?.userId,context?.shopId)===true;
   function read(from,to,force=false){
+    const dates=normalizeDates(from,to);from=dates.from;to=dates.to;
     const key=(context?.marketplace||'wildberries')+':'+from+':'+to,ownCache=cache,generation=cacheGeneration,entry=ownCache.get(key);
     if(entry?.promise)return entry.promise;
     if(!force && entry?.value && entry.expires>Date.now())return Promise.resolve(entry.value);
-    const promise=window.WBApi.cabinet('unit',from,false,{month_to:to,...(context?.marketplace==='ozon'?{marketplace:'ozon'}:{})}).then(result=>{
+    const promise=window.WBApi.cabinet('unit',from.slice(0,7),false,{month_to:to.slice(0,7),from,to,...(context?.marketplace==='ozon'?{marketplace:'ozon'}:{})}).then(result=>{
       if(cache===ownCache && generation===cacheGeneration && enabled()){
         if(result.status==='ready'){
           const current=new Date(Date.now()+3*3600000).toISOString().slice(0,7);
-          ownCache.set(key,{value:result,expires:Date.now()+(to===current?60000:300000)});
+          ownCache.set(key,{value:result,expires:Date.now()+(to.slice(0,7)===current?60000:300000)});
           while(ownCache.size>6)ownCache.delete(ownCache.keys().next().value);
         }else ownCache.delete(key);
       }
@@ -42,7 +44,7 @@
   }
   function prefetch(){
     if(!enabled())return;
-    if(context?.marketplace==='ozon'){for(const month of (context.months||[]).slice(0,2))read(month,month).catch(()=>{});return;}
+    if(context?.marketplace==='ozon'){for(const month of (context.months||[]).slice(0,2)){const p=context.monthPeriods?.find(p=>p.month===month);read(p?.dateFrom||month,p?.dateTo||month).catch(()=>{});}return;}
     if(window.WBApi?.connected!==true)return;
     const now=new Date(Date.now()+3*3600000);
     for(let i=0;i<2;i++){
@@ -54,13 +56,24 @@
   function sourceChanged(){if(!enabled() || context?.marketplace==='ozon')return;invalidate();cancelLoad();prefetch();if(active)load();}
   const status=(text,error=false)=>{el('unitStatus').textContent=text;el('unitStatus').dataset.error=String(error);};
   function reset(){stopCounter();stopMotion();clearTimeout(timer);data=null;selected=null;el('unitResults').hidden=true;el('unitRows').replaceChildren();el('unitExpenses').replaceChildren();el('unitCommon').replaceChildren();el('unitZeroCosts').hidden=true;el('unitPrepare').hidden=true;for(const id of ['unitSales','unitProfit','unitMargin','unitProfitability','unitAds','unitDrr','unitDetailDrr'])el(id).textContent='—';}
-  function cancelLoad(){epoch++;busy=false;reset();el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;}
-  function fillMonths(){
-    if(context?.marketplace==='ozon' && context.months){const options=context.months.map(m=>`<option value="${m}">${safe(new Date(m+'-01T12:00:00Z').toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');for(const id of ['unitFrom','unitTo']){el(id).innerHTML=options;el(id).value=context.months[0]||'';}return;}
-    const now=new Date(Date.now()+3*3600000),dates=Array.from({length:12},(_,i)=>new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)));
-    const options=dates.map(d=>`<option value="${d.toISOString().slice(0,7)}">${safe(d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}).replace(/\s*г\.$/,''))}</option>`).join('');
-    for(const id of ['unitFrom','unitTo']){el(id).innerHTML=options;el(id).value=dates[0].toISOString().slice(0,7);}
+  function cancelLoad(){epoch++;busy=false;reset();el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;el('unitRangeToggle').disabled=false;rangePicker?.close(false);rangePicker?.sync();}
+  const dateNow=()=>new Date(Date.now()+3*3600000).toISOString().slice(0,10);
+  function normalizeDates(from,to){
+    if(window.WBDayRange)return window.WBDayRange.normalize(from,to,dateNow());
+    const end=value=>new Date(Date.UTC(+value.slice(0,4),+value.slice(5,7),0)).toISOString().slice(0,10);
+    return {from:from.length===7?from+'-01':from,to:to.length===7?[end(to),dateNow()].sort()[0]:to};
   }
+  function fillMonths(){
+    const now=dateNow(),available=context?.marketplace==='ozon'?context.months:null,month=Array.isArray(available)?available[0]||'':now.slice(0,7);
+    const bounds=window.WBDayRange?.bounds(available,now)||{min:new Date(Date.UTC(+now.slice(0,4),+now.slice(5,7)-12,1)).toISOString().slice(0,10),max:now};
+    const coverage=context?.marketplace==='ozon'?context.monthPeriods?.find(p=>p.month===month):null;
+    el('unitFrom').value=coverage?.dateFrom||(month?month+'-01':'');
+    el('unitTo').value=coverage?.dateTo||(month?[new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).toISOString().slice(0,10),now].sort()[0]:'');
+    el('unitFrom').min=bounds.min;el('unitTo').max=bounds.max;
+    rangePicker?.close(false);rangePicker?.sync();
+    el('unitRangeToggle').disabled=Array.isArray(available)&&!available.length;
+  }
+
   function details(article){
     const product=data?.products.find(p=>p.article===article);if(!product)return;
     selected=article;el('unitDetailTitle').textContent=product.name||product.article;el('unitDetailArticle').textContent=product.article;
@@ -115,6 +128,7 @@
     const date=value=>new Date(value+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).replace(/\s*г\.$/,'');
     const unknown=result.products.filter(p=>p.advertising_unknown).length;
     status(`${date(result.period.dateFrom)} — ${date(result.period.dateTo)}${unknown?' У '+unknown+' товаров нет точного разделения денежной рекламы и бонусов — откройте товар для пояснения.':''}`);
+    if(result.excluded_expenses?.length||result.excluded_monthly_expenses?.length)el('unitStatus').textContent+=' Ручные расходы заданы за месяц: по дням они не распределяются и в прибыль товаров не включаются.';
     if(result.media_estimated)el('unitStatus').textContent+=' В общих расходах WB Media временно принята за 0 ₽; прямые расходы товаров не изменены.';
     el('unitCommon').innerHTML=result.common_expenses.filter(e=>e.amount==null || Number(e.amount)!==0).map(e=>`<div><dt>${safe(e.label)}</dt><dd>${safe(money(e.amount))}</dd></div>`).join('')||'<p class="hint">В полученных данных нет общих расходов.</p>';
     el('unitSearch').value=el('unitSearch').value||'';table();
@@ -129,7 +143,7 @@
     const ownEpoch=epoch,from=el('unitFrom').value,to=el('unitTo').value;
     if(from>to){reset();status('Начало периода должно быть раньше окончания.',true);return;}
     const pending=(data?.pending||[]).filter(p=>p.status!=='loading');
-    busy=true;el('unitPane').setAttribute('aria-busy','true');el('unitLoad').disabled=el('unitPrepare').disabled=true;
+    busy=true;el('unitRangeToggle').disabled=true;el('unitPane').setAttribute('aria-busy','true');el('unitLoad').disabled=el('unitPrepare').disabled=true;
     if(!background){reset();status(prepare?'Ставим подготовку выбранных месяцев в очередь…':'Загружаем расходы по артикулам…');}
     try{
       if(prepare && context?.marketplace!=='ozon'){invalidate();for(const item of pending){if(ownEpoch!==epoch)return;await window.WBApi.cabinet('daily_start',item.month);}}
@@ -137,12 +151,12 @@
       const result=await read(from,to,prepare||background||force);
       if(ownEpoch!==epoch)return;busy=false;render(result);
     }catch(error){if(ownEpoch!==epoch)return;reset();status(error.message||'Не удалось загрузить юнит-экономику. Повторите попытку.',true);}
-    finally{if(ownEpoch===epoch){busy=false;el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;schedule();}}
+    finally{if(ownEpoch===epoch){busy=false;el('unitPane').setAttribute('aria-busy','false');el('unitLoad').disabled=el('unitPrepare').disabled=false;el('unitRangeToggle').disabled=false;schedule();}}
   }
   function setContext(next){
     if(!subscribed){window.WBApi?.subscribe?.(sourceChanged);window.WBApiCabinet?.subscribe?.(sourceChanged);subscribed=true;}
     const enabled=window.WBDaily?.allowed(next.userId,next.shopId)===true;
-    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId || context?.marketplace!==next.marketplace || (context?.months||[]).join()!==(next.months||[]).join();
+    const changed=context?.shopId!==next.shopId || context?.userId!==next.userId || context?.marketplace!==next.marketplace || (context?.months||[]).join()!==(next.months||[]).join() || JSON.stringify(context?.monthPeriods||[])!==JSON.stringify(next.monthPeriods||[]);
     const wasActive=active;context=next;active=enabled&&next.active===true;
     if(el('unitAdsCaption'))el('unitAdsCaption').textContent=next.marketplace==='ozon'?'Расходы по отчёту':'Денежные расходы по товарам';
     if(el('unitAdsLabel'))el('unitAdsLabel').textContent=next.marketplace==='ozon'?'Продвижение и реклама':'Внутренняя реклама';
@@ -151,9 +165,10 @@
     if(el('unitWbAdMethod'))el('unitWbAdMethod').hidden=next.marketplace==='ozon';if(el('unitOzonAdMethod'))el('unitOzonAdMethod').hidden=next.marketplace!=='ozon';
     if(changed){invalidate();cancelLoad();fillMonths();el('unitSearch').value='';segment='all';sortDirection='desc';}
     if(enabled)prefetch();
-    if(!active){clearTimeout(timer);if(wasActive)cancelLoad();return;}
+    if(!active){rangePicker?.close(false);clearTimeout(timer);if(wasActive)cancelLoad();return;}
     if(changed||!wasActive)load();
   }
+  if(window.WBDateRange)rangePicker=window.WBDateRange.create({prefix:'unitRange',from:el('unitFrom'),to:el('unitTo'),trigger:el('unitRangeToggle'),onApply:()=>{cancelLoad();load();}});
   for(const id of ['unitFrom','unitTo'])el(id).addEventListener('change',()=>{cancelLoad();status('Выберите период и нажмите «Показать».');});
   el('unitLoad').addEventListener('click',()=>load(false,false,true));el('unitPrepare').addEventListener('click',()=>load(true));
   el('unitSearch').addEventListener('input',table);el('unitSort').addEventListener('change',event=>{if(!event?.detail?.unitHeader)sortDirection='desc';table();});

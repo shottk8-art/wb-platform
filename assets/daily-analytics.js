@@ -7,7 +7,8 @@
   const dateLabel=date=>date==='unallocated'?'Без даты операции':new Date(date+'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'});
   const safe=text=>String(text??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const currentMonth=()=>new Date(Date.now()+3*3600000).toISOString().slice(0,7);
-  let viewActive=false,subview='daily',marketplace='wildberries',availableMonths=null,monthRequest=0;
+  let viewActive=false,subview='daily',marketplace='wildberries',availableMonths=null,availablePeriods=null,monthRequest=0;
+  let rangePicker=null,defaultRange=true;
   let context=null,active=false,epoch=0,ticket=0,timer=null,busy=false,data=null,chart=null,selected=null,mode='daily',style='bar';
   const tone=value=>value==null?'':Number(value)<0?'loss':'gain';
   const changeMarkup=change=>{
@@ -29,13 +30,15 @@
     el('dailyResults').hidden=true;el('dailyUnallocated').hidden=true;el('dailyUnallocated').textContent='';
   }
   function fillMonths() {
-    if(marketplace==='ozon' && availableMonths){
-      el('dailyMonth').innerHTML=availableMonths.map(m=>`<option value="${m}">${safe(new Date(m+'-01T12:00:00Z').toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');
-      el('dailyMonth').value=availableMonths[0]||'';return;
-    }
-    const now=new Date(Date.now()+3*3600000),dates=Array.from({length:12},(_,i)=>new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-i,1)));
-    el('dailyMonth').innerHTML=dates.map(d=>`<option value="${d.toISOString().slice(0,7)}">${safe(d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}))}</option>`).join('');
-    el('dailyMonth').value=currentMonth();
+    const now=new Date(Date.now()+3*3600000).toISOString().slice(0,10),month=marketplace==='ozon'&&availableMonths?availableMonths[0]||'':now.slice(0,7);
+    el('dailyMonth').value=month;defaultRange=true;
+    const bounds=window.WBDayRange?.bounds(marketplace==='ozon'?availableMonths:null,now)||{min:now.slice(0,4)+'-01-01',max:now};
+    const coverage=marketplace==='ozon'?availablePeriods?.find(p=>p.month===month):null;
+    el('dailyFrom').value=coverage?.dateFrom||(month?month+'-01':'');
+    el('dailyTo').value=coverage?.dateTo||(month?[new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).toISOString().slice(0,10),now].sort()[0]:'');
+    el('dailyFrom').min=bounds.min;el('dailyTo').max=bounds.max;
+    rangePicker?.close(false);rangePicker?.sync();
+    el('dailyRangeToggle').disabled=marketplace==='ozon'&&Array.isArray(availableMonths)&&!availableMonths.length;
   }
   function status(text,error=false) {
     el('dailyStatus').textContent=text;el('dailyStatus').dataset.error=String(error);
@@ -64,21 +67,21 @@
     let previousSum=0,previousKnown=true;
     const previousValues=rows.map(d=>{
       const value=d.previous_period?.profit;
-      if(value==null){previousKnown=false;return null;}
+      if(value==null){if(cumulative&&d.previous_period?.calendar_gap)return previousKnown?previousSum:null;previousKnown=false;return null;}
       if(!cumulative)return Number(value);
       previousSum+=Number(value);return previousKnown?previousSum:null;
     });
     const metric={label:cumulative?'Накопленная прибыль':'Чистая прибыль',unit:'₽',color:color('--accent')};
     const known=values.filter(v=>v!=null);
     const interaction={rows,values,initial:Math.max(0,rows.findIndex(d=>d.date===selected)),selected,metric,
-      axisLabel:'Дни графика: используйте стрелки',shortLabels:rows.map(d=>String(Number(d.date.slice(-2)))),
-      labels:rows.map((d,i)=>i===0 || (i+1)%5===0 || i===rows.length-1?String(Number(d.date.slice(-2))):''),
+      axisLabel:'Дни графика: используйте стрелки',shortLabels:rows.map(d=>data.range?d.date.slice(8)+'.'+d.date.slice(5,7):String(Number(d.date.slice(-2)))),
+      labels:rows.map((d,i)=>i===0 || (i+1)%Math.max(5,Math.ceil(rows.length/10))===0 || i===rows.length-1?(data.range?d.date.slice(8)+'.'+d.date.slice(5,7):String(Number(d.date.slice(-2)))):''),
       average:known.length?known.reduce((a,b)=>a+b,0)/known.length:null,
       summaryText:rows.length+' дн.',summaryTitle:dateLabel(rows[0].date)+' — '+dateLabel(rows.at(-1).date),
       detail(index){const row=rows[index];if(!row)return null;const now=values[index],before=previousValues[index];
         const delta=now==null || before==null || before===0?null:(now-before)/Math.abs(before)*100;
-        return {month:dateLabel(row.date),value:now,secondary:before,secondaryLabel:'Предыдущий месяц',secondaryUnit:'₽',
-          comparisonLabel:row.previous_period?.date?'К '+dateLabel(row.previous_period.date):'К прошлому месяцу',delta,
+        return {month:dateLabel(row.date),value:now,secondary:before,secondaryLabel:'Предыдущий период',secondaryUnit:'₽',
+          comparisonLabel:row.previous_period?.date?'К '+dateLabel(row.previous_period.date):'К предыдущему периоду',delta,
           sentiment:delta==null || delta===0?'neutral':delta>0?'up':'down',deltaText:delta==null?'—':(delta>0?'+':'')+delta.toFixed(1)+'%'};},
       onChoose:index=>selectDay(rows[index].date),
     };
@@ -86,7 +89,7 @@
       borderColor:metric.color,backgroundColor:bar?window.WBDashboard?.trendBarColors(el('dailyChart'),rows,metric.color)||color('--accent-soft'):color('--accent-soft'),
       borderWidth:bar?0:2.5,tension:.38,fill:!bar,spanGaps:false,pointRadius:values.map((v,i)=>v!=null && values[i-1]==null && values[i+1]==null?4:0),pointHoverRadius:5,
       borderRadius:99,borderSkipped:false,maxBarThickness:30,barPercentage:.66,categoryPercentage:1}];
-    if(previousValues.some(v=>v!=null))datasets.push({type:'line',label:'Предыдущий месяц',data:previousValues,borderColor:color('--violet'),backgroundColor:'transparent',borderWidth:2,borderDash:[5,5],tension:.38,fill:false,spanGaps:false,pointRadius:0});
+    if(previousValues.some(v=>v!=null))datasets.push({type:'line',label:'Предыдущий период',data:previousValues,borderColor:color('--violet'),backgroundColor:'transparent',borderWidth:2,borderDash:[5,5],tension:.38,fill:false,spanGaps:false,pointRadius:0});
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     chart=new window.Chart(el('dailyChart'),{
       type:style,plugins:window.WBTrend?[window.WBTrend.plugin]:[],data:{labels:rows.map(d=>Number(d.date.slice(-2))),datasets},
@@ -96,7 +99,7 @@
           y:{beginAtZero:bar,border:{display:false,dash:[3,3]},grid:{color:color('--line'),tickLength:0},ticks:{color:color('--ink-mute'),maxTicksLimit:6,callback:v=>Number(v).toLocaleString('ru-RU',{notation:'compact',maximumFractionDigits:1})+' ₽'}}}},
     });
     el('dailyChart').setAttribute('aria-label',cumulative?'Накопленная чистая прибыль по дням':'Ежедневная чистая прибыль');
-    el('dailyChartValues').textContent=rows.map((d,i)=>`${dateLabel(d.date)}: ${money(values[i])}; предыдущий месяц: ${money(previousValues[i])}`).join('; ');
+    el('dailyChartValues').textContent=rows.map((d,i)=>`${dateLabel(d.date)}: ${money(values[i])}; предыдущий период: ${money(previousValues[i])}`).join('; ');
   }
 
   function render(result) {
@@ -106,8 +109,8 @@
     el('dailyResults').hidden=!ready;
     el('dailyRefresh').textContent=marketplace==='ozon'?(ready?'Обновить расчёт':'Загрузить отчёт'):ready?'Обновить данные':result.status==='loading'?'Данные загружаются':'Подготовить по дням';
     el('dailyRefresh').disabled=busy || result.refreshing || result.status==='loading';
-    if(!ready && marketplace==='ozon'){status(result.message||'Загрузите отчёт по начислениям Ozon за выбранный месяц.');return;}
-    if(!ready){status(result.status==='loading'?'Собираем ежедневные данные на сервере. Можно закрыть страницу.':result.refresh_error || 'За этот месяц сохранены только месячные итоги. Нажмите «Подготовить по дням» — загрузка продолжится в фоне.',!!result.refresh_error);return;}
+    if(!ready && marketplace==='ozon'){status(result.message||'Загрузите отчёт по начислениям Ozon за выбранный период.');return;}
+    if(!ready){const missing=(result.pending||[]).map(p=>p.month).join(', ');status(result.status==='loading'?'Собираем ежедневные данные на сервере. Можно закрыть страницу.':result.refresh_error || (result.message||'За часть периода сохранены только месячные итоги. Нажмите «Подготовить по дням» — загрузка продолжится в фоне.')+(missing?' Периоды: '+missing+'.':''),!!result.refresh_error);return;}
     const known=result.days.every(d=>d.net_profit!=null),sum=result.days.reduce((n,d)=>n+Number(d.net_profit||0),0);
     el('dailyProfit').textContent=money(result.monthly_profit);el('dailyProfit').dataset.tone=tone(result.monthly_profit);
     el('dailyAverage').textContent=money(known?sum/result.days.length:null);
@@ -132,8 +135,9 @@
       ? comparison.change ? `Сравнение с ${dateLabel(comparison.period.dateFrom)} — ${dateLabel(comparison.period.dateTo)}. Изменение в таблице — к предыдущему дню.`
         : 'Недостаточно данных для сравнения итогов предыдущего периода. Доступные дни показаны на графике.'
       : preparing?'Предыдущий период загружается на сервере. Текущие данные доступны.'
-        : comparison?.status==='needs_preparation'?'Для сравнения нужно подготовить ежедневные данные предыдущего месяца.'
+        : comparison?.status==='needs_preparation'?'Для сравнения нужно подготовить ежедневные данные предыдущего периода.'
           : comparison?.error?'Сравнение недоступно: '+comparison.error:'';
+    if(marketplace==='ozon')el('dailyPrepareComparison').hidden=true;
     if(marketplace==='ozon' && comparison?.status!=='ready')el('dailyComparisonInfo').textContent=comparison?.error||`Для сравнения загрузите отчёт Ozon за ${comparison?.month||'предыдущий месяц'}.`;
     const updated=result.updated_at?new Date(result.updated_at).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short',timeZone:'Europe/Moscow'}):'';
     status(result.refresh_error?'Не удалось обновить данные: '+result.refresh_error+'. Показана предыдущая готовая выгрузка.':result.refreshing?'Обновление идёт в фоне. Пока показана предыдущая готовая выгрузка.':`По данным ${marketplace==='ozon'?'отчёта Ozon':'WB'}${updated?' от '+updated+' (МСК)':''}. ${result.period.dateFrom.slice(0,7)===currentMonth()?'Текущий месяц предварительный.':''}`,!!result.refresh_error);
@@ -141,7 +145,7 @@
     el('dailyRows').innerHTML=result.days.map(row=>`<tr><th scope="row"><button type="button" data-daily-date="${row.date}" aria-pressed="false">${safe(dateLabel(row.date))}</button></th><td data-label="Продажи">${safe(money(row.sales))}</td><td data-label="Учтённые расходы">${safe(money(row.net_profit==null||row.sales==null?null:Number(row.sales)-Number(row.net_profit)))}</td><td data-label="Чистая прибыль" data-tone="${tone(row.net_profit)}">${safe(money(row.net_profit))}<small class="daily-row-change">${changeMarkup(row.previous_day?.change)}</small></td></tr>`).join('');
     if(result.unallocated) {
       el('dailyUnallocated').hidden=false;
-      el('dailyUnallocated').innerHTML=`<p>В месячном итоге есть операции без даты внутри периода: ${safe(money(result.unallocated.net_profit))} чистой прибыли. Они не нанесены на график.</p><button type="button" class="ghost small" data-unallocated>Посмотреть расходы</button>`;
+      el('dailyUnallocated').innerHTML=`<p>${safe(result.unallocated_notice||'В итоге есть операции без даты внутри периода: '+money(result.unallocated.net_profit)+' чистой прибыли. Они не нанесены на график.')}</p><button type="button" class="ghost small" data-unallocated>Посмотреть расходы</button>`;
     }
     selected=result.days.some(d=>d.date===selected)?selected:[...result.days].reverse().find(d=>d.rows)?.date || result.days[result.days.length-1].date;
     drawChart();selectDay(selected);
@@ -154,20 +158,26 @@
     if(!active || !context?.allowed || busy)return;
     if(marketplace==='ozon' && !availableMonths?.length){el('dailyRefresh').textContent=availableMonths?'Загрузить отчёт':'Обновить расчёт';status(availableMonths?'Загрузите отчёт по начислениям Ozon в разделе «Отчёты».':'Читаем периоды Ozon…');return;}
     const ownEpoch=epoch,ownTicket=++ticket,month=el('dailyMonth').value;
-    busy=true;el('secDailyAnalytics').setAttribute('aria-busy','true');el('dailyRefresh').disabled=true;
+    busy=true;el('dailyRangeToggle').disabled=true;el('secDailyAnalytics').setAttribute('aria-busy','true');el('dailyRefresh').disabled=true;
     if(!background){reset();status(refresh||comparisonMonth?'Ставим обновление в очередь сервера…':'Загружаем ежедневную аналитику…');}
     try {
-      if(marketplace!=='ozon' && (refresh || comparisonMonth))await window.WBApi.cabinet('daily_start',comparisonMonth||month);
+      if(marketplace!=='ozon' && (refresh || comparisonMonth)){
+        const requested=comparisonMonth?(Array.isArray(comparisonMonth)?comparisonMonth:[comparisonMonth]):rangePicker?window.WBDayRange.months(el('dailyFrom').value,el('dailyTo').value):[month];
+        for(const item of requested){if(ownEpoch!==epoch||ownTicket!==ticket)return;await window.WBApi.cabinet('daily_start',item);}
+      }
       if(ownEpoch!==epoch || ownTicket!==ticket)return;
-      const result=await window.WBApi.cabinet('daily',month,false,marketplace==='ozon'?{marketplace:'ozon'}:{});
+      const ownMarket=marketplace;
+      const result=rangePicker?await window.WBDayRange.load({from:el('dailyFrom').value,to:el('dailyTo').value,min:el('dailyFrom').min,marketplace:ownMarket,defaultCoverage:defaultRange,isCurrent:()=>ownEpoch===epoch&&ownTicket===ticket,read:m=>window.WBApi.cabinet('daily',m,false,ownMarket==='ozon'?{marketplace:'ozon'}:{})}):await window.WBApi.cabinet('daily',month,false,marketplace==='ozon'?{marketplace:'ozon'}:{});
       if(ownEpoch!==epoch || ownTicket!==ticket)return;
+      if(!result)return;
+      if(rangePicker&&defaultRange&&result.status==='ready'){el('dailyFrom').value=result.period.dateFrom;el('dailyTo').value=result.period.dateTo;rangePicker.sync();}
       busy=false;render(result);
     } catch(error) {
       if(ownEpoch!==epoch || ownTicket!==ticket)return;
       reset();status(error.message || 'Не удалось загрузить аналитику. Повторите попытку.',true);
       el('dailyRefresh').textContent='Повторить загрузку';
     } finally {
-      if(ownEpoch===epoch && ownTicket===ticket){busy=false;el('secDailyAnalytics').setAttribute('aria-busy','false');el('dailyRefresh').disabled=!!(data?.refreshing || data?.status==='loading');schedule();}
+      if(ownEpoch===epoch && ownTicket===ticket){busy=false;el('dailyRangeToggle').disabled=false;el('secDailyAnalytics').setAttribute('aria-busy','false');el('dailyRefresh').disabled=!!(data?.refreshing || data?.status==='loading');schedule();}
     }
   }
   function setContext(next) {
@@ -177,30 +187,31 @@
     marketplace=scope;
     if(marketplace==='ozon')el('dailyRefresh').textContent='Обновить расчёт';
     context={...next,allowed:enabled,marketplace};el('dailyAnalyticsLink').hidden=!enabled;
-    if(changed){monthRequest++;availableMonths=null;epoch++;ticket++;busy=false;reset();fillMonths();}
+    if(changed){monthRequest++;availableMonths=null;availablePeriods=null;epoch++;ticket++;busy=false;reset();fillMonths();}
     if(el('advancedScope'))for(const b of el('advancedScope').querySelectorAll('button')){const on=b.dataset.advancedScope===marketplace;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));}
     if(el('advancedOzonHelp'))el('advancedOzonHelp').hidden=marketplace!=='ozon';
     if(el('advancedWbMethod'))el('advancedWbMethod').hidden=marketplace==='ozon';
     const wasActive=active;
     viewActive=next.active===true;
-    window.WBUnit?.setContext({...next,marketplace,months:availableMonths,active:viewActive && subview==='unit'});
+    window.WBUnit?.setContext({...next,marketplace,months:availableMonths,monthPeriods:availablePeriods,active:viewActive && subview==='unit'});
     active=enabled && viewActive && subview==='daily';
     if(enabled && marketplace==='ozon' && changed){
       const own=monthRequest;
       window.WBApi.cabinet('ozon_months',null,false,{marketplace:'ozon'}).then(result=>{
         if(own!==monthRequest || !context?.allowed)return;
-        availableMonths=result.months;fillMonths();
-        window.WBUnit?.setContext({...context,marketplace,months:availableMonths,active:viewActive&&subview==='unit'});
+        availableMonths=result.months;availablePeriods=result.periods||null;fillMonths();
+        window.WBUnit?.setContext({...context,marketplace,months:availableMonths,monthPeriods:availablePeriods,active:viewActive&&subview==='unit'});
         if(active)load();
       }).catch(error=>{if(own===monthRequest){status(error.message,true);if(subview==='unit')el('unitStatus').textContent=error.message+' Нажмите «Показать», чтобы повторить.';}});
     }
 
-    if(!active){clearTimeout(timer);if(wasActive){epoch++;busy=false;reset();}return;}
+    if(!active){rangePicker?.close(false);clearTimeout(timer);if(wasActive){epoch++;busy=false;reset();}return;}
     if(changed || !wasActive)load();
   }
-  el('dailyMonth').addEventListener('change',()=>{epoch++;busy=false;reset();load();});
+  if(window.WBDateRange&&window.WBDayRange)rangePicker=window.WBDateRange.create({prefix:'dailyRange',from:el('dailyFrom'),to:el('dailyTo'),trigger:el('dailyRangeToggle'),onApply:()=>{defaultRange=false;epoch++;busy=false;reset();load();}});
+  el('dailyMonth').addEventListener('change',()=>{defaultRange=true;epoch++;busy=false;reset();load();});
   el('dailyRefresh').addEventListener('click',()=>{if(marketplace==='ozon' && availableMonths===null){window.WBDaily.reload();return;}if(marketplace==='ozon' && data?.status!=='ready'){document.dispatchEvent(new CustomEvent('open-ozon-report'));return;}load(marketplace!=='ozon' && ['needs_preparation','ready'].includes(data?.status));});
-  el('dailyPrepareComparison').addEventListener('click',()=>{if(data?.comparison?.month)load(false,false,data.comparison.month);});
+  el('dailyPrepareComparison').addEventListener('click',()=>{if(data?.comparison?.pending?.length)load(false,false,data.comparison.pending.filter(p=>p.status!=='loading').map(p=>p.month));else if(data?.comparison?.month)load(false,false,data.comparison.month);});
   el('dailyMode').addEventListener('click',event=>{
     const button=event.target.closest('[data-daily-mode]');if(!button)return;
     mode=button.dataset.dailyMode;

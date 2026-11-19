@@ -52,7 +52,9 @@ export async function processPage(admin: any, job: any, shopId: string, wbFetch:
   if(await privateShopAllowed(admin,shopId)) {
     model.daily=mergeDailyFinance(previousModel?.daily,
       aggregateDailyFinance(freshRows,{dateFrom:job.date_from,dateTo:job.date_to},cursor.toString()));
-    model.unit=mergeUnitFinance(previousModel?.unit,aggregateUnitFinance(freshRows,cursor.toString()));
+    model.unit=mergeUnitFinance(previousModel?.unit,
+      aggregateUnitFinance(freshRows,cursor.toString()),
+      {cursor_id:String(job.cursor_id),row_count:Number(job.row_count || 0)});
   }
   if (job.summary?.pilot) {
     const cards = new Map();

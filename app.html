@@ -21,13 +21,14 @@
 <link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
 <link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
 <link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
-<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261112-ozon1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261119-period2">
 <script src="/assets/corbel.js?v=20261019-icon1"></script>
 <script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
-<script src="/assets/corbel-components.js?v=20261023-margin1" defer></script>
+<script src="/assets/corbel-components.js?v=20261119-period2" defer></script>
 <script src="/assets/reference.js?v=20261118-access1" defer></script>
-<link rel="stylesheet" href="/assets/unit-economics.css?v=20261111-unitlayout1">
+<link rel="stylesheet" href="/assets/unit-economics.css?v=20261119-period2">
 <link rel="stylesheet" href="/assets/stocks.css?v=20261112-stocks1">
+<link rel="stylesheet" href="/assets/date-range.css?v=20261119-period2">
 </head>
 <body class="corbel">
 
@@ -549,7 +550,7 @@
       <div id="dailyPane" role="tabpanel" aria-labelledby="dailyTab">
       <div class="daily-toolbar">
         <div><h2>Чистая прибыль по дням</h2><span class="daily-pilot">Тест</span></div>
-        <div><label for="dailyMonth">Месяц</label><select id="dailyMonth" aria-label="Месяц ежедневной аналитики"></select><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
+        <div class="advanced-period-controls"><input type="hidden" id="dailyMonth"><input type="hidden" id="dailyFrom"><input type="hidden" id="dailyTo"><div class="advanced-period-field"><span id="dailyRangeLabel">Период</span><button type="button" id="dailyRangeToggle" class="promo-range-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="dailyRangePopover" aria-labelledby="dailyRangeLabel dailyRangeValue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5m9-5v5m-13 3.5h17"/></svg><span id="dailyRangeValue">Выбрать даты</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
       </div>
       <p class="daily-status" id="dailyStatus" role="status" aria-live="polite"></p>
       <p class="daily-note">Операционные расходы и внешнее продвижение не учитываются в ежедневной прибыли.</p>
@@ -562,7 +563,7 @@
         <div class="daily-compare-info"><p class="daily-note" id="dailyComparisonInfo" role="status"></p><button type="button" class="ghost small" id="dailyPrepareComparison" hidden>Подготовить сравнение</button></div>
         <div class="card daily-chart-card">
           <div class="daily-chart-heading"><h2>Динамика чистой прибыли</h2><div class="segmented-control" id="dailyMode" role="group" aria-label="Режим ежедневного графика"><button type="button" data-daily-mode="daily" class="active" aria-pressed="true">По дням</button><button type="button" data-daily-mode="cumulative" aria-pressed="false">Накопительно</button></div></div>
-          <div class="daily-chart-tools"><div class="daily-chart-legend"><span><i></i>Выбранный месяц</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий месяц</span></div><div class="segmented-control chart-style" id="dailyChartStyle" role="group" aria-label="Вид ежедневного графика"><button type="button" data-daily-style="line" aria-pressed="false">Линия</button><button type="button" data-daily-style="bar" class="active" aria-pressed="true">Столбцы</button></div></div>
+          <div class="daily-chart-tools"><div class="daily-chart-legend"><span><i></i>Выбранный период</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий период</span></div><div class="segmented-control chart-style" id="dailyChartStyle" role="group" aria-label="Вид ежедневного графика"><button type="button" data-daily-style="line" aria-pressed="false">Линия</button><button type="button" data-daily-style="bar" class="active" aria-pressed="true">Столбцы</button></div></div>
           <div class="daily-chart-wrap trend-chart"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
           <div class="sr-only" id="dailyChartValues"></div>
         </div>
@@ -584,8 +585,8 @@
       </div>
       <div id="unitPane" role="tabpanel" aria-labelledby="unitTab" aria-busy="false" hidden>
         <div class="unit-toolbar">
-          <div><label for="unitFrom">Начало периода</label><select id="unitFrom" aria-label="Начало периода юнит-экономики"></select></div>
-          <div><label for="unitTo">Конец периода</label><select id="unitTo" aria-label="Конец периода юнит-экономики"></select></div>
+          <input type="hidden" id="unitFrom"><input type="hidden" id="unitTo">
+          <div class="advanced-period-field"><span id="unitRangeLabel">Период</span><button type="button" id="unitRangeToggle" class="promo-range-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="unitRangePopover" aria-labelledby="unitRangeLabel unitRangeValue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5m9-5v5m-13 3.5h17"/></svg><span id="unitRangeValue">Выбрать даты</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div>
           <button type="button" class="ghost small" id="unitLoad">Показать</button>
           <button type="button" class="primary small" id="unitPrepare" hidden>Подготовить расходы по артикулам</button>
         </div>
@@ -684,11 +685,13 @@
 <script src="/assets/shop-name.js?v=20261022-rename1"></script>
 <script src="/assets/admin.js"></script>
 <script src="/assets/support.js"></script>
-<script src="/assets/ozon-model.js?v=20261112-ozon1"></script>
+<script src="/assets/ozon-model.js?v=20261119-unitdays1"></script>
 <script src="/assets/parse.js?v=20261112-ozon1"></script>
 <script src="/assets/upload.js?v=20261112-ozon1"></script>
-<script src="/assets/daily-analytics.js?v=20261118-access1"></script>
-<script src="/assets/unit-economics.js?v=20261113-media2"></script>
+<script src="/assets/promo-range.js?v=20261119-period2"></script>
+<script src="/assets/daily-range.js?v=20261119-period2"></script>
+<script src="/assets/daily-analytics.js?v=20261119-period2"></script>
+<script src="/assets/unit-economics.js?v=20261119-period2"></script>
 <script src="/assets/trend-interaction.js?v=20261113-media2"></script>
 <script src="/assets/expense-traffic.js?v=20261019-traffic1"></script>
 <script src="/assets/sku-products.js?v=20261019-products1"></script>

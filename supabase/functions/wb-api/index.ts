@@ -137,11 +137,11 @@ Deno.serve(async (req) => {
       if(body.marketplace==='ozon'){
         if(body.action==='daily_start')throw new ApiError(409,'Ozon обновляется из отчёта по начислениям');
         if(body.action==='daily')return json(await readOzonDaily(admin,shopId,body.month));
-        return json(await readOzonUnit(admin,shopId,body.month,body.month_to||body.month));
+        return json(await readOzonUnit(admin,shopId,body.month,body.month_to||body.month,body.from!==undefined||body.to!==undefined?{dateFrom:body.from,dateTo:body.to}:undefined));
       }
 
       if(body.action==='daily')return json(await readDaily(admin,shopId,cabinetPeriod(body.month)));
-      if(body.action==='unit')return json(await readUnit(admin,shopId,body.month,body.month_to || body.month));
+      if(body.action==='unit')return json(await readUnit(admin,shopId,body.month,body.month_to || body.month,body.from!==undefined||body.to!==undefined?{dateFrom:body.from,dateTo:body.to}:undefined));
       // Reuse the durable, rate-limited queue and its existing refresh snapshot.
       // No credentials or raw rows are exposed to the experimental screen.
       body.action='cabinet_start';

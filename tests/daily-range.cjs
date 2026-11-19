@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'),range=require('../assets/daily-range.js');
+const source=(month,value,limit)=>{const end=limit||+range.last(range.serial(month)).slice(-2),days=Array.from({length:end},(_,i)=>({date:month+'-'+String(i+1).padStart(2,'0'),rows:1,sales:'10.00',net_profit:value,cumulative_profit:'999.99',expenses:[],missing:[]}));return {status:'ready',period:{dateFrom:month+'-01',dateTo:days.at(-1).date},days,monthly_profit:(Number(value)*days.length).toFixed(2),unallocated:null};};
+(async()=>{
+ const data={'2026-10':source('2026-10','1.01'),'2026-11':source('2026-11','2.02',19)},reads=[];
+ const load=extra=>range.load({from:'2026-11-02',to:'2026-11-04',min:'2025-12-01',read:async month=>{reads.push(month);return data[month]||{status:'needs_preparation'};},...extra});
+ assert.deepEqual(range.previous('2026-01-01','2026-02-28'),{dateFrom:'2025-11-01',dateTo:'2025-12-31',calendarMonths:2});
+ assert.deepEqual(range.previous('2026-11-02','2026-11-04'),{dateFrom:'2026-10-30',dateTo:'2026-11-01',calendarMonths:0});
+ assert.deepEqual(range.normalize('2026-10','2026-11','2026-11-19'),{from:'2026-10-01',to:'2026-11-19'});
+ assert.throws(()=>range.months('2026-02-30','2026-03-01'));
+ let r=await load();assert.equal(r.monthly_profit,'6.06');assert.equal(r.days[0].cumulative_profit,'2.02');assert.equal(r.days.at(-1).cumulative_profit,'6.06');assert.equal(r.comparison.monthly_profit,'4.04');assert.equal(r.comparison.change.amount,'2.02');assert.equal(r.comparison.change.percent,50);
+ assert.equal(r.days[0].previous_day.date,'2026-11-01');assert.equal(r.days[0].previous_period.date,'2026-10-30');assert.equal(new Set(reads).size,reads.length,'each month is read once for current, comparison and boundary day');
+ r=await load({from:'2026-10-30',to:'2026-11-02'});assert.equal(r.monthly_profit,'6.06');assert.equal(r.days.length,4);
+ r=await load({from:'2026-11-01',to:'2026-11-19'});assert.equal(r,data['2026-11'],'the complete original month preserves its original calculations and comparison');
+ data['2026-11'].days[2].net_profit=null;r=await load();assert.equal(r.monthly_profit,null);assert.equal(r.days.at(-1).cumulative_profit,null);data['2026-11'].days[2].net_profit='2.02';
+ data['2026-10'].days.pop();r=await load({from:'2026-10-30',to:'2026-11-02'});assert.equal(r.status,'needs_preparation');assert.deepEqual(r.pending.map(p=>p.month),['2026-10'],'a gap queues only its actual missing month');
+ r=await load();assert.equal(r.status,'ready');assert.equal(r.comparison.status,'needs_preparation');assert.deepEqual(r.comparison.pending.map(p=>p.month),['2026-10'],'missing comparison dates remain actionable');
+ r=await load({min:'2026-11-01'});assert.equal(r.comparison.status,'outside_history');assert.equal(r.comparison.change,undefined);
+ data['2026-11'].unallocated={net_profit:'-3.00',expenses:[{key:'storage',label:'Хранение',amount:'3.00'}]};r=await load();assert.equal(r.monthly_profit,null);assert.match(r.unallocated_notice,/без даты/);assert.equal(r.unallocated.expenses[0].amount,'3.00');
+ let alive=true;r=await load({isCurrent:()=>alive,read:async()=>{alive=false;return data['2026-11'];}});assert.equal(r,null,'abandoned tenant/source/range cannot aggregate or render');
+ console.log('Daily date ranges PASS: exact cents, actual days, cross-month/year periods, preserved monthly behavior, unknowns/undated costs, missing-only preparation, bounded shared reads and stale context.');
+})().catch(e=>{console.error(e);process.exitCode=1});

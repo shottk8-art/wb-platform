@@ -3,25 +3,29 @@
   const key=v=>String(v??'').trim().toLowerCase();
   const cents=v=>{const n=typeof v==='number'?v:Number(String(v??'').replace(/\s/g,'').replace(',','.'));if(!Number.isFinite(n)||Math.abs(n)>1e12)throw Error('Некорректная сумма в отчёте Ozon');return BigInt(Math.round(n*100));};
   const rub=n=>`${n<0n?'-':''}${(n<0n?-n:n)/100n}.${String((n<0n?-n:n)%100n).padStart(2,'0')}`;
+  const productBucket=(article,name)=>({article,name:name||'',rows:0,sales:0n,net:0n,quantity:0,groups:new Map()});
   function create(coverage){return {coverage,rows:0,sales:0n,net:0n,quantity:0,days:new Map(),products:new Map()};}
   function add(model,row){
     const amount=cents(row.amount),article=String(row.article||'').trim(),k=key(article),sale=row.group==='Продажи'||row.group==='Возвраты';
     const qty=row.type==='Выручка'?Number(row.quantity):row.type==='Возврат выручки'?-Math.abs(Number(row.quantity)):0;
     if(!Number.isSafeInteger(qty))throw Error('Некорректное количество в отчёте Ozon');
     const day=model.days.get(row.date)||{rows:0,sales:0n,net:0n,quantity:0,groups:new Map(),products:new Map()};
-    const product=model.products.get(k)||{article,name:row.name||'',rows:0,sales:0n,net:0n,quantity:0,groups:new Map()};
-    for(const bucket of [model,day,product]){bucket.rows++;bucket.net+=amount;if(sale){bucket.sales+=amount;bucket.quantity+=qty;}}
-    for(const bucket of [day,product])if(!sale)bucket.groups.set(row.group||'Другие начисления',(bucket.groups.get(row.group||'Другие начисления')||0n)+amount);
-    if(sale&&qty)day.products.set(k,{article,quantity:(day.products.get(k)?.quantity||0)+qty});
-    if(!product.name&&row.name)product.name=row.name;
+    const product=model.products.get(k)||productBucket(article,row.name),dailyProduct=day.products.get(k)||productBucket(article,row.name);
+    // Each accrual updates its actual day and SKU, including expense-only and
+    // unassigned rows. Keep daily and monthly buckets independent.
+    for(const bucket of [model,day,product,dailyProduct]){bucket.rows++;bucket.net+=amount;if(sale){bucket.sales+=amount;bucket.quantity+=qty;}}
+    for(const bucket of [day,product,dailyProduct])if(!sale)bucket.groups.set(row.group||'Другие начисления',(bucket.groups.get(row.group||'Другие начисления')||0n)+amount);
+    for(const bucket of [product,dailyProduct])if(!bucket.name&&row.name)bucket.name=row.name;
+    day.products.set(k,dailyProduct);
     model.days.set(row.date,day);model.products.set(k,product);
   }
   function finish(model,names=new Map()){
     const fields=b=>({rows:b.rows,sales:rub(b.sales),net:rub(b.net),quantity:b.quantity});
     const groups=g=>Object.fromEntries([...g].map(([k,v])=>[k,rub(v)]));
+    const products=items=>[...items.values()].map(b=>({...fields(b),article:b.article,name:b.name||model.products.get(key(b.article))?.name||names.get(b.article)||'',groups:groups(b.groups)}));
     return {version:1,coverage:model.coverage,totals:fields(model),
-      days:Object.fromEntries([...model.days].sort(([a],[b])=>a.localeCompare(b)).map(([date,b])=>[date,{...fields(b),groups:groups(b.groups),products:[...b.products.values()]}])),
-      products:[...model.products.values()].map(b=>({...fields(b),article:b.article,name:b.name||names.get(b.article)||'',groups:groups(b.groups)}))};
+      days:Object.fromEntries([...model.days].sort(([a],[b])=>a.localeCompare(b)).map(([date,b])=>[date,{...fields(b),groups:groups(b.groups),products:products(b.products)}])),
+      products:products(model.products)};
   }
   function coverage(rows,year,month,dates){
     const first=`${year}-${String(month).padStart(2,'0')}-01`,last=new Date(Date.UTC(year,month,0)).toISOString().slice(0,10);

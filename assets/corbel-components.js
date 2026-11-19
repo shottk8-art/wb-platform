@@ -97,7 +97,7 @@
     if (!reduce()) state.menu.animate([{ opacity: 0, transform: 'translateY(-8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.34,1.56,.64,1)' });
   }
   function enhance(select) {
-    if (controls.has(select) || select.multiple || select.size > 1) return;
+    if (controls.has(select) || select.multiple || select.size > 1 || select.hasAttribute('data-native-control')) return;
     const wrap = document.createElement('span'); wrap.className = 'corbel-select';
     select.before(wrap); wrap.append(select); select.classList.add('corbel-select-native');
     select.tabIndex = -1; select.setAttribute('aria-hidden', 'true');
