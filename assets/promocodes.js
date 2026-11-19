@@ -78,8 +78,8 @@
     if(from>to){status('promoStatus','Начало периода должно быть не позже окончания',true);return;}
     const ticket=++epoch;busy=true;if(reset)clear();controls();status('promoStatus',refresh?'Запускаем обновление…':'Читаем статистику…');
     try{
-      let value=await request(refresh?'promocodes_start':'promocodes_read',{from,to,refresh});if(ticket!==epoch)return;
-      if(value.owner&&(value.status==='needs_preparation'||value.comparison?.status==='needs_preparation')&&!refresh){value=await request('promocodes_start',{from,to});if(ticket!==epoch)return;}
+      let value=await request(refresh?'promocodes_start':'promocodes_read',{from,to,refresh,amount_basis:'retail_amount'});if(ticket!==epoch)return;
+      if(value.owner&&(value.status==='needs_preparation'||value.comparison?.status==='needs_preparation')&&!refresh){value=await request('promocodes_start',{from,to,amount_basis:'retail_amount'});if(ticket!==epoch)return;}
       owner=!!value.owner;result=value;el('promoAccessStatus').hidden=true;el('promoAccessRetry').hidden=true;el('promoLogin').hidden=true;el('promoMain').hidden=false;render();
       if(owner&&!el('promoViewers').dataset.loaded)await viewers(ticket);
     }catch(error){if(ticket!==epoch)return;

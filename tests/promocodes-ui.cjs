@@ -15,7 +15,7 @@ function fixture(id='viewer'){
 }
 (async()=>{
  {
-  const f=fixture();await tick();assert.equal(f.requests[0].body.action,'promocodes_read');f.requests[0].resolve(response());await tick();
+  const f=fixture();await tick();assert.equal(f.requests[0].body.action,'promocodes_read');assert.equal(f.requests[0].body.amount_basis,'retail_amount');f.requests[0].resolve(response());await tick();
   assert.equal(f.el('promoMain').hidden,false);assert.equal(f.el('promoManagement').hidden,true);assert.equal(f.el('promoRefresh').hidden,true);assert.equal(f.el('promoCabinetLink').hidden,true);
   assert.match(f.el('promoRows').innerHTML,/Promo &lt;unsafe&gt;/);assert.doesNotMatch(f.el('promoRows').innerHTML,/data-promo-edit/);assert.equal(f.el('promoUnits').textContent,'2');
   f.el('promoSearch').value='missing';f.el('promoSearch').events.input();assert.equal(f.el('promoEmpty').hidden,false);assert.equal(f.el('promoUnits').textContent,'2','search does not change period totals');
