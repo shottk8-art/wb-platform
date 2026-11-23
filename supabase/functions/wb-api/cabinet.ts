@@ -1,6 +1,6 @@
 import { ApiError, cents, rub, summarize, validateKey, validatePeriod, validateShopId } from './core.ts';
 import { advertising, economy } from './economy.ts';
-import { articleKey, costCatalogue } from './articles.ts';
+import { articleKey, costCatalogue, hasCostPrice } from './articles.ts';
 import {deferRequest} from './rate-limit.ts';
 import { campaignDebits, campaignStats } from './article-ads.ts';
 import { privateShopAllowed } from './daily-access.ts';
@@ -26,7 +26,7 @@ const oldestMonth = () => {
 export async function readCostPrices(admin:any,shopId:string) {
   const rows:any[]=[];
   for(let offset=0;;offset+=1000) {
-    const {data,error}=await admin.from('sku_costs').select('article,cost_price,updated_at').eq('shop_id',shopId).order('article').range(offset,offset+999);
+    const {data,error}=await admin.from('sku_costs').select('article,cost_price,zero_cost_confirmed,updated_at').eq('shop_id',shopId).order('article').range(offset,offset+999);
     if(error) throw new ApiError(500,'Не удалось прочитать себестоимость');
     rows.push(...(data || []));
     if(!data || data.length<1000) return {data:rows,error:null};
@@ -392,12 +392,12 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   const { data: costs, error: costError } = catalog ? {data:catalog.costs,error:null} : await readCostPrices(admin,shopId);
   if (costError) throw new ApiError(500, 'Не удалось прочитать себестоимость');
   const prices = costCatalogue(costs || []);
-  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: p.revenue == null ? null : rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null }));
+  const safeProducts = [...products.values()].map(p => ({ ...p, for_pay: rub(p.for_pay), revenue: p.revenue == null ? null : rub(p.revenue), cost_price: prices.get(articleKey(p.article))?.cost_price ?? null, zero_cost_confirmed:prices.get(articleKey(p.article))?.zero_cost_confirmed===true }));
   const financialComplete = job.status === 'complete' || !!sources.financial_extended || !!job.summary?.pilot?.finance_complete;
   const media = mediaFinancialSource(job.summary?.deductions, financialComplete, period.dateFrom, period.dateTo, job.updated_at ?? null, model)
     || mediaSource(sources.media, period.dateFrom, period.dateTo);
   const complete = financialComplete && sources.orders?.status === 'downloaded' && sources.internal_ads?.status === 'downloaded' && ['downloaded','estimated'].includes(media.status);
-  const missing = safeProducts.filter(p => p.bought_qty !== 0 && !(Number(p.cost_price) > 0)).map(p => p.article);
+  const missing = safeProducts.filter(p => p.bought_qty !== 0 && !hasCostPrice(p)).map(p => p.article);
   const cogs = financialComplete && !missing.length ? rub(safeProducts.reduce((sum, p) => sum + BigInt(p.bought_qty) * cents(p.cost_price), 0n)) : null;
   const finance = financialComplete ? {...model.totals,salesAmount:model.sales_covered_rows === model.row_count ? model.totals.salesAmount ?? null : null,bought_qty:model.bought_qty} : null;
   const calculated = economy(finance, cogs, settings, media.amount, advertising(sources.internal_ads?.period_totals), shop.tax_rate, sources.orders?.orders_amount, complete, sources.internal_ads?.undated_operations);

@@ -1,4 +1,4 @@
-import {articleKey} from '../wb-api/articles.ts';
+import {articleKey,hasCostPrice} from '../wb-api/articles.ts';
 export const num = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
 const known = (value: unknown) => value == null || value === '' ? null : Number.isFinite(Number(value)) ? Number(value) : null;
 
@@ -27,7 +27,7 @@ export function apiProducts(cabinet: any) {
   return (cabinet.products || []).map((p:any)=>{
     const revenue=known(p.revenue), cost=known(p.cost_price), units=num(p.bought_qty);
     return {marketplace:'wildberries',article:p.article,name:p.name || p.article,units,revenue,
-      gross_profit:revenue==null || (units!==0 && !(cost!=null && cost>0)) ? null : Math.round((revenue-units*num(cost))*100)/100};
+      gross_profit:revenue==null || (units!==0 && !hasCostPrice(p)) ? null : Math.round((revenue-units*num(cost))*100)/100};
   });
 }
 

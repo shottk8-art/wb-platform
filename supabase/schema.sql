@@ -93,6 +93,7 @@ create table if not exists sku_costs (
   article     text not null,
   name        text not null default '',
   cost_price  numeric not null default 0,
+  zero_cost_confirmed boolean not null default false,
   updated_at  timestamptz not null default now(),
   unique (shop_id, article)
 );

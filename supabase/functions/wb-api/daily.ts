@@ -1,7 +1,7 @@
 import { ApiError, cents, rub } from './core.ts';
 import { aggregateFinanceRows, readCabinet, cabinetPeriod } from './cabinet.ts';
 import { advertising, economy } from './economy.ts';
-import { articleKey } from './articles.ts';
+import { articleKey, hasCostPrice } from './articles.ts';
 
 // Dates with no offset are WB's Moscow calendar dates. Offset timestamps are
 // converted to Moscow, matching advertising. Never substitute the sale date
@@ -63,8 +63,8 @@ function financeCogs(bucket:any,prices:Map<string,any>) {
   let cost=0n;const missing:string[]=[];
   for(const product of bucket.products || []) {
     const price=prices.get(articleKey(product.article));
-    if(product.quantity!==0 && !(Number(price)>0)){missing.push(product.article);continue;}
-    cost+=BigInt(product.quantity)*cents(price);
+    if(product.quantity!==0 && !hasCostPrice(price)){missing.push(product.article);continue;}
+    cost+=BigInt(product.quantity)*cents(price?.cost_price);
   }
   return {amount:missing.length?null:rub(cost),missing};
 }
@@ -99,7 +99,7 @@ export function calculateDaily(cabinet:any,daily:any,adsDaily:any) {
   }
   if(paid!==cents(cabinet.economy.internal_ads) || bonus!==cents(cabinet.economy.promo))
     throw new ApiError(409,'Не все рекламные расходы распределены по дням. Обновите месяц.');
-  const prices=new Map<string,any>(cabinet.products.map((p:any)=>[articleKey(p.article),p.cost_price]));
+  const prices=new Map<string,any>(cabinet.products.map((p:any)=>[articleKey(p.article),p]));
   const financialMedia=cabinet.sources.media.source==='wb_financial_deductions';
   const mediaAllocation=financialMedia ? null : allocateAmount(cabinet.sources.media.amount,dates);
   const makeRow=(date:string)=>{

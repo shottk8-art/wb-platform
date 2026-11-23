@@ -9,9 +9,15 @@
   }
   const sb = () => window.supabaseClient;
   const articleKey = value => String(value ?? '').trim().toLowerCase();
+  function hasCostPrice(row) {
+    const value=row?.cost_price;
+    return value!=null && String(value).trim()!=='' && Number.isFinite(Number(value))
+      && (Number(value)>0 || Number(value)===0 && row.zero_cost_confirmed===true);
+  }
   function costCatalogue(rows) {
     const selected = new Map();
-    const ordered = [...rows].sort((a, b) => Number(Number(b.cost_price) > 0) - Number(Number(a.cost_price) > 0)
+    const rank=row=>Number(row.cost_price)>0?2:hasCostPrice(row)?1:0;
+    const ordered = [...rows].sort((a, b) => rank(b) - rank(a)
       || String(b.updated_at || '').localeCompare(String(a.updated_at || ''))
       || (a.article < b.article ? -1 : a.article > b.article ? 1 : 0));
     for (const row of ordered) {
@@ -238,7 +244,7 @@
     };
     const skuRows = (c.finance ? c.products || [] : []).map(p => {
       const quantity = n(p.bought_qty) || 0, cost = n(p.cost_price), revenue = n(p.revenue);
-      const totalCost = quantity === 0 ? 0 : cost > 0 ? Math.round(quantity*cost*100)/100 : null;
+      const totalCost = quantity === 0 ? 0 : hasCostPrice(p) ? Math.round(quantity*cost*100)/100 : null;
       return {article:p.article,name:p.name,bought_qty:quantity,revenue,cost_price:cost,total_cost:totalCost,profit:revenue==null || totalCost==null ? null : Math.round((revenue-totalCost)*100)/100};
     }).sort((a,b)=>b.bought_qty-a.bought_qty);
     assignAbc(skuRows);

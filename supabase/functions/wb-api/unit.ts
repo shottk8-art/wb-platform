@@ -1,6 +1,6 @@
 import { ApiError, cents, rub, validatePeriod, validateShopId } from './core.ts';
 import { aggregateFinanceRows, mergeFinanceModels, readCabinet, readCostPrices, cabinetPeriod } from './cabinet.ts';
-import { articleKey } from './articles.ts';
+import { articleKey, hasCostPrice } from './articles.ts';
 import { articleAdvertising, clipArticleAdvertising } from './article-ads.ts';
 import { advertising, economy } from './economy.ts';
 import { operationDay } from './daily.ts';
@@ -194,7 +194,7 @@ export function calculateUnit(cabinet:any,unit:any) {
   const catalogue=new Map(cabinet.products.map((p:any)=>[articleKey(p.article),p]));
   const make=(bucket:any)=>{
     const product:any=catalogue.get(bucket.key),price=product?.cost_price;
-    const cogs=bucket.quantity!==0 && !(Number(price)>0)?null:rub(BigInt(bucket.quantity)*cents(price));
+    const cogs=bucket.quantity!==0 && !hasCostPrice(product)?null:rub(BigInt(bucket.quantity)*cents(price));
     const e=economy(bucket.totals,cogs,{operational_expenses:'0.00',external_promotion_expenses:'0.00'},'0.00',{paid:'0.00',bonus:'0.00',unknown:[]},cabinet.shop.tax_rate,0,true)!;
     // Direct advertising is the deduction identified by WB on this article.
     // Do not add it back or subtract the shop's advertising totals a second time.

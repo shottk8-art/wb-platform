@@ -1,5 +1,5 @@
 import {ApiError,cents as sourceCents,rub} from './core.ts';
-import {articleKey,costCatalogue} from './articles.ts';
+import {articleKey,costCatalogue,hasCostPrice} from './articles.ts';
 import {readCostPrices} from './cabinet.ts';
 import {compareDaily} from './daily.ts';
 
@@ -59,7 +59,7 @@ export function validateOzonModel(model:any,report:any){
 }
 function cogs(products:any[],prices:Map<string,any>){
  let total=0n;const missing:string[]=[];
- for(const p of products){if(!p.quantity)continue;const price=prices.get(articleKey(p.article))?.cost_price;if(!p.article||!(Number(price)>0)){missing.push(p.article||'Товар без артикула');continue;}total+=BigInt(p.quantity)*cents(price);}
+ for(const p of products){if(!p.quantity)continue;const price=prices.get(articleKey(p.article));if(!p.article||!hasCostPrice(price)){missing.push(p.article||'Товар без артикула');continue;}total+=BigInt(p.quantity)*cents(price.cost_price);}
  return {amount:missing.length?null:rub(total),missing};
 }
 function roundTax(rows:any[],sales:any,rate:any){
