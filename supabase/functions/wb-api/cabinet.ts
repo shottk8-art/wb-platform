@@ -325,6 +325,12 @@ export function aggregateFinanceRows(rows: any[], cursor = '0') {
 // Merge in integer kopecks; the first nonempty product title remains stable.
 export function mergeFinanceModels(previous: any, page: any) {
   if (!previous) return page;
+  // An old empty SQL preview has no unknown operations. Do not let its
+  // missing sales metadata poison the first financial worker page.
+  if(previous.version===1 && previous.row_count===0 && previous.cursor_id==='0' && previous.bought_qty===0
+    && previous.sales_covered_rows==null && previous.totals && !Object.hasOwn(previous.totals,'salesAmount')
+    && Array.isArray(previous.products) && previous.products.length===0
+    && Object.values(previous.totals).every(v=>v!=null && /^-?\d+(?:\.\d{1,2})?$/.test(String(v)) && cents(v)===0n))previous=aggregateFinanceRows([]);
   const products = new Map(previous.products.map((p: any) => [p.article, {...p}]));
   for (const p of page.products) {
     const old: any = products.get(p.article);
@@ -344,6 +350,33 @@ export function mergeFinanceModels(previous: any, page: any) {
     media_deduction_count:(previous.media_deduction_count || 0) + (page.media_deduction_count || 0),
     totals:{...Object.fromEntries([...keys].filter(key=>key !== 'salesAmount').map(key=>[key,rub(cents(previous.totals[key]) + cents(page.totals[key]))])),salesAmount:sales},
     products:[...products.values()]};
+}
+
+// Recover a saved cold-preview failure only when two complete ledgers agree
+// on every amount and quantity. Actual unknown prices remain unavailable.
+function recoverSalesAmount(model:any,period:any) {
+  if(model?.totals?.salesAmount!=null || model?.version!==1 || !Number.isSafeInteger(model.row_count)
+    || model.row_count<=0 || model.sales_covered_rows!==model.row_count)return model;
+  const unit=model.unit,daily=model.daily;
+  if(unit?.version!==1 || unit.incomplete || !Array.isArray(unit.buckets) || daily?.version!==1
+    || !daily.days || typeof daily.days!=='object' || Array.isArray(daily.days)
+    || daily.date_from!==period.dateFrom || daily.date_to!==period.dateTo
+    || [unit,daily].some(s=>s.row_count!==model.row_count || s.cursor_id!==model.cursor_id))return model;
+  const keys=Object.keys(aggregateFinanceRows([]).totals);
+  const money=(v:any)=>typeof v==='string' && /^-?\d+\.\d{2}$/.test(v);
+  const reduce=(buckets:any[],quantity:string)=>{
+    let rows=0,qty=0;const totals=Object.fromEntries(keys.map(k=>[k,0n]));
+    for(const b of buckets){
+      if(!b || !Number.isSafeInteger(b.rows) || b.rows<0 || !Number.isSafeInteger(b[quantity])
+        || !b.totals || keys.some(k=>!money(b.totals[k])))return null;
+      rows+=b.rows;qty+=b[quantity];for(const k of keys)totals[k]+=cents(b.totals[k]);
+    }
+    return rows===model.row_count && qty===model.bought_qty?totals:null;
+  };
+  const bySku=reduce(unit.buckets,'quantity'),byDay=reduce(Object.values(daily.days),'quantity');
+  if(!bySku || !byDay || keys.some(k=>bySku[k]!==byDay[k]
+    || k!=='salesAmount' && (!money(model.totals[k]) || cents(model.totals[k])!==bySku[k])))return model;
+  return {...model,totals:{...model.totals,salesAmount:rub(bySku.salesAmount)}};
 }
 
 export async function readCabinet(admin: any, shopId: string, period: any, completedJobId?: string, catalog?: any) {
@@ -380,10 +413,16 @@ export async function readCabinet(admin: any, shopId: string, period: any, compl
   }
   let model = job.finance_model;
   if (model?.version !== 1 || Number(model.row_count) !== Number(job.row_count) || model.cursor_id !== String(job.cursor_id)) {
+    // Keep opening a queued empty month read-only; its first worker page
+    // must not inherit the old SQL model's missing seller-price metadata.
+    if(Number(job.row_count)===0 && String(job.cursor_id)==='0')model=aggregateFinanceRows([]);
+    else {
     const {data,error} = await admin.rpc('wb_api_finance_read_model',{p_job_id:job.id});
     if (error || !data) throw new ApiError(500,'Не удалось прочитать финансовые итоги');
     model = data;
+    }
   }
+  model=recoverSalesAmount(model,period);
   for (const p of model.products) {
     const row = products.get(p.article) || {article:p.article,name:p.name,orders_count:null,orders_amount:null};
     products.set(p.article,{...row,name:row.name || p.name,bought_qty:p.bought_qty,for_pay:cents(p.for_pay),
@@ -434,7 +473,7 @@ export async function readCabinetStatus(admin: any, shopId: string) {
   const jobs = (data || []).map((j:any)=>({id:j.id,date_from:j.date_from,date_to:j.date_to,status:j.status,row_count:j.row_count,stage:j.stage}));
   return {history_loading:jobs.some((j:any)=>j.status==='loading'),
     jobs,
-    revision:JSON.stringify((data || []).map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage,'seller-sales-v1',j.status === 'complete' ? j.sales_covered ?? null : null])
+    revision:JSON.stringify((data || []).map((j:any)=>[j.id,j.date_from,j.date_to,j.status,j.stage,'seller-sales-v2',j.status === 'complete' ? j.sales_covered ?? null : null])
       .sort((a:any,b:any)=>a[0].localeCompare(b[0])))};
 }
 
