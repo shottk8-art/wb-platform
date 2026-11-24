@@ -1,14 +1,296 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><title>Демо-магазин — Панель продавца</title>
-<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1"><link rel="stylesheet" href="/assets/corbel.css?v=20261019-blocks3"><link rel="stylesheet" href="/assets/reference.css?v=20261019-center1"><link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1"><link rel="stylesheet" href="/assets/client-start.css?v=20261019-start2">
-<script src="/assets/corbel.js?v=20261019-icon1"></script><script defer src="/assets/corbel-components.js?v=20261019-shop1"></script></head><body class="corbel demo-mode">
-<svg class="icon-sprite" aria-hidden="true"><symbol id="icon-trend-up" viewBox="0 0 24 24"><path d="m5 15 5-5 4 4 5-6m0 0h-5m5 0v5"/></symbol><symbol id="icon-trend-down" viewBox="0 0 24 24"><path d="m5 9 5 5 4-4 5 6m0 0h-5m5 0v-5"/></symbol><symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol></svg>
-<aside class="client-demo-banner"><span><strong>Демо-магазин</strong> · Все данные вымышлены. Настоящие магазины не подключены.</span><a href="/app.html">Открыть свой кабинет</a></aside>
-<main class="client-demo-main"><div class="page-heading"><div><h1>Обзор демо-магазина</h1><p>Переключайте площадки и месяцы, нажимайте на показатели — как в настоящем кабинете.</p></div><button class="shell-icon-button" data-theme-toggle type="button" aria-label="Переключить тему"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg></button><div class="overview-controls"><div class="segmented-control" id="demoScope" role="group" aria-label="Площадка"><button type="button" data-demo-scope="wildberries">Wildberries</button><button type="button" data-demo-scope="ozon">Ozon</button><button type="button" data-demo-scope="all">Все вместе</button></div><div class="period-bar"><label><span class="sr-only">Период</span><select id="periodSelect" aria-label="Период демо-магазина"></select></label></div></div></div>
-<section class="section"><div class="kpi-row" id="kpiRow"></div></section>
-<section class="section" id="secTrend"><div class="section-head"><h2>Динамика магазина</h2><span class="hint">Нажмите на показатель сверху, чтобы сменить график</span></div><div class="card trend-card"><div class="trend-toolbar"><div class="trend-legend" id="trendLegend"></div><div class="segmented-control chart-style" aria-label="Вид графика"><button type="button" data-chart-style="line" class="active" aria-pressed="true">Линия</button><button type="button" data-chart-style="bar" aria-pressed="false">Столбцы</button></div></div><div class="trend-chart"><canvas id="trendChart" role="img" aria-label="Динамика вымышленных показателей" aria-describedby="trendValues"></canvas><p id="trendEmpty" hidden></p></div><div id="trendValues" class="sr-only"></div></div></section>
-<section class="section" id="secAnalytics"><div class="analytics-details-grid"><div><div class="section-head expense-section-head"><h2>Структура расходов</h2></div><div class="card analytics-card expense-card"><div class="exp-body"><div class="exp-content"><div class="exp-summary"><strong id="expHeroTotal">—</strong><div id="expHeroDelta"></div><div class="exp-sales-share"><span id="expSalesShare">—</span> от суммы продаж</div></div><div id="expList" role="list" aria-label="Статьи расходов"></div></div><div class="exp-chart"><canvas id="expChart" role="img" aria-label="Демо: структура расходов"></canvas><div class="exp-chart-center" aria-hidden="true"><strong id="expCenterValue">—</strong><span id="expCenterLabel">расходы</span></div><p class="exp-basis" id="expBasis" hidden></p></div></div><span class="sr-only" id="expTotal"></span></div></div>
-<div><div class="card analytics-card sku-card"><div class="section-head panel-heading sku-panel-head"><div class="sku-title"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div><div class="sku-actions"><button type="button" id="skuFilterToggle" aria-expanded="false" aria-controls="skuToolbar">Фильтры</button><button type="button" id="skuDetailsToggle" aria-expanded="false" aria-controls="skuTable">Все показатели</button></div></div><div class="sku-toolbar" id="skuToolbar" hidden><input id="skuSearch" type="search" aria-label="Поиск товаров" placeholder="Найти товар"><div class="sku-filters" id="skuAbcFilters"><button type="button" data-abc="all" class="active">Все</button><button type="button" data-abc="A">A</button><button type="button" data-abc="B">B</button><button type="button" data-abc="C">C</button></div><select id="skuSort" aria-label="Сортировка товаров"><option value="qty">По выкупам</option><option value="revenue">По выручке</option><option value="profit">По валовой прибыли</option></select></div><div class="skubar" hidden><canvas id="skuChart"></canvas></div><div class="tablewrap"><table class="sku" id="skuTable"><colgroup><col class="sku-col-rank"><col class="sku-col-product"><col class="sku-col-units"><col class="sku-col-revenue"><col class="sku-detail sku-col-cost"><col class="sku-detail sku-col-profit"><col class="sku-col-bar"></colgroup><thead><tr><th scope="col" class="sku-rank">#</th><th scope="col">Товар</th><th scope="col" class="num">Выкупили</th><th scope="col" class="num">Выручка, ₽</th><th scope="col" class="num sku-detail">Себестоимость, ₽</th><th scope="col" class="num sku-detail">Валовая прибыль, ₽</th><th scope="col" class="sku-revenue-bar"><span class="sr-only">Доля выручки</span></th></tr></thead><tbody id="skuBody"></tbody><tfoot id="skuFoot"></tfoot></table></div></div></div></div></section>
-<p class="hint">Пример расчёта: налог 6%, условные себестоимость и расходы. Это не прогноз доходности вашего магазина.</p></main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script><script src="/assets/trend-interaction.js?v=20261019-trend2"></script><script src="/assets/expense-traffic.js?v=20261019-traffic1"></script><script src="/assets/sku-products.js?v=20261019-products1"></script><script src="/assets/dashboard.js?v=20261123-zero1"></script><script src="/assets/period-range.js?v=20261027-sales1"></script><script src="/assets/demo-data.js?v=20261019-start1"></script><script src="/assets/demo.js?v=20261019-start1"></script>
-</body></html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Демомагазин — Панель продавца WB и Ozon</title>
+<meta name="robots" content="noindex">
+
+<link rel="icon" href="/assets/icons/icon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/assets/icons/icon-16.png" type="image/png" sizes="16x16">
+<link rel="icon" data-app-favicon href="/assets/icons/icon.svg?v=20261019-icon1" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="/assets/icons/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#f5f5f7">
+
+<link rel="stylesheet" href="/assets/styles.css?v=20261012-no-orders1">
+<link rel="stylesheet" href="/assets/responsive.css?v=20261010-settings2">
+<link rel="stylesheet" href="/assets/corbel.css?v=20261019-demo-settings1">
+<link rel="stylesheet" href="/assets/reference.css?v=20261118-access1">
+<link rel="stylesheet" href="/assets/sku-products.css?v=20261019-headers1">
+<link rel="stylesheet" href="/assets/shop-name.css?v=20261022-rename1">
+<link rel="stylesheet" href="/assets/profit-notice.css?v=20261023-profit1">
+<link rel="stylesheet" href="/assets/daily-analytics.css?v=20261119-period2">
+<script src="/assets/corbel.js?v=20261019-icon1"></script>
+<script src="/assets/corbel-motion.js?v=20261019-motion2" defer></script>
+<script src="/assets/corbel-components.js?v=20261119-period2" defer></script>
+<script src="/assets/reference.js?v=20261118-access1" defer></script>
+<link rel="stylesheet" href="/assets/unit-economics.css?v=20261119-period2">
+<link rel="stylesheet" href="/assets/stocks.css?v=20261112-stocks1">
+<link rel="stylesheet" href="/assets/date-range.css?v=20261119-period2">
+
+<link rel="stylesheet" href="/assets/demo.css?v=20261124-demo1">
+</head><body class="corbel demo-workspace"><svg class="icon-sprite" aria-hidden="true">
+  <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"/></symbol>
+  <symbol id="icon-external" viewBox="0 0 24 24"><path d="M15 4h5v5m0-5-9 9M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16m-10 4v6m4-6v6M9 7V4h6v3m3 0-1 13H7L6 7"/></symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="icon-logout" viewBox="0 0 24 24"><path d="M10 5H5v14h5m5-3 4-4-4-4m4 4H9"/></symbol>
+  <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></symbol>
+  <symbol id="icon-trend-up" viewBox="0 0 24 24"><path d="m5 15 5-5 4 4 5-6m0 0h-5m5 0v5"/></symbol>
+  <symbol id="icon-trend-down" viewBox="0 0 24 24"><path d="m5 9 5 5 4-4 5 6m0 0h-5m5 0v-5"/></symbol>
+  <symbol id="icon-trend-flat" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></symbol>
+  <symbol id="icon-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.4 1.1-1.4 2.3M12 17h.01"/></symbol>
+  <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m21 15-4-4L7 20"/></symbol>
+  <symbol id="icon-dashboard" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+  <symbol id="icon-store" viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7m-8 4v10"/></symbol>
+  <symbol id="icon-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Zm8 0v5h5M9 13h6m-6 4h6"/></symbol>
+  <symbol id="icon-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.5a3 3 0 0 1 0 5M17 14.5a5 5 0 0 1 3.5 4.5"/></symbol>
+  <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
+  <symbol id="icon-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Zm-3 9 2 2 4-4"/></symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></symbol>
+  <symbol id="icon-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+  <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5L3 9m0 0V3m0 6h6m-5 4a8 8 0 0 0 14 5l3-3m0 0v6m0-6h-6"/></symbol>
+  <symbol id="icon-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Zm6 10 .8 2.2L21 16l-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13ZM6 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3Z"/></symbol>
+</svg><div id="appScreen"><a class="sr-only demo-skip" href="#demoMain">К содержимому</a><header class="topnav" id="mobileSidebar"><div class="sidebar-inner"><div class="sidebar-brand"><div class="brandmark brandmark--logo"><img class="brandmark-light" src="/assets/icons/icon-light.svg" width="128" height="128" alt=""><img class="brandmark-dark" src="/assets/icons/icon-dark.svg" width="128" height="128" alt=""></div><div><strong>Панель продавца</strong><span>WB · Ozon</span></div></div><button class="shell-icon-button sidebar-collapse" id="sidebarCollapse" type="button" aria-label="Свернуть боковое меню" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-12-4 4 4 4"/></svg></button><div class="shop-context shop-context--unified"><strong id="demoShopName">NOVALAB · демомагазин</strong><span class="marketplace-badge">WB · Ozon</span></div><nav class="side-menu" aria-label="Основная навигация"><p class="nav-group-label">Рабочее пространство</p><a href="#overview" data-view="overview" class="active" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#icon-dashboard"/></svg><span>Обзор</span></a><a href="#daily" data-view="daily" id="dailyAnalyticsLink"><svg class="icon" aria-hidden="true"><use href="#icon-trend-up"/></svg><span>Углублённая аналитика</span></a><a href="#stocks" data-view="stocks" id="stocksLink"><svg class="icon" aria-hidden="true"><use href="#icon-store"/></svg><span>Остатки</span></a><a href="#promos" data-view="promos"><svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg><span>Промокоды</span></a><a href="#reports" data-view="reports"><svg class="icon" aria-hidden="true"><use href="#icon-upload"/></svg><span>Отчёты</span></a><a href="#costs" data-view="costs"><svg class="icon" aria-hidden="true"><use href="#icon-store"/></svg><span>Себестоимость</span></a><a href="#settings" data-view="settings"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg><span>Настройки</span></a></nav><div class="sidebar-actions"><button class="sidebar-action" id="demoHelp" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-help"/></svg>Задать вопрос</button><a class="sidebar-action" href="/app.html"><svg class="icon" aria-hidden="true"><use href="#icon-logout"/></svg>Открыть свой кабинет</a></div><div class="sidebar-user"><span>Демо-доступ · без регистрации</span></div></div></header><div class="mobile-toolbar"><button class="mobile-menu-button" id="mobileMenuBtn" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobileSidebar"><span></span><span></span><span></span></button><strong>Демомагазин</strong></div><button class="menu-scrim" id="menuScrim" aria-label="Закрыть меню" type="button"></button><main class="app-main" id="demoMain"><div class="page-heading"><div><div class="page-title-row"><h1 id="pageTitle" tabindex="-1">Обзор</h1></div><p id="pageSubtitle">Главные показатели магазина за выбранный период</p></div><div class="shell-actions"><button class="shell-icon-button stock-bell" id="stockBell" type="button" aria-label="Уведомления об остатках" aria-expanded="false" aria-controls="stockNotifications"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-bell"/></svg><span id="stockBellCount" hidden></span></button><button class="shell-icon-button" type="button" data-theme-toggle aria-label="Включить тёмную тему" aria-pressed="false"><svg data-moon viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg><svg data-sun viewBox="0 0 24 24" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button><a class="primary demo-login-link" href="/app.html">Свой кабинет<svg class="icon icon-sm" aria-hidden="true"><use href="#icon-external"/></svg></a></div></div><aside class="demo-banner"><svg class="icon" aria-hidden="true"><use href="#icon-store"/></svg><p><strong>Все данные вымышлены.</strong> Изучайте разделы и меняйте настройки — изменения действуют только до перезагрузки страницы.</p><a href="#settings" data-demo-view="settings">Как устроен пример</a></aside><div class="stock-notifications" id="stockNotifications" role="dialog" aria-labelledby="stockNotificationsTitle" hidden><div class="stock-notification-head"><h2 id="stockNotificationsTitle">Пора пополнить</h2><button type="button" class="shell-icon-button" id="stockNotificationsClose" aria-label="Закрыть уведомления"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p class="stock-caption" id="stockNotificationInfo"></p><div id="stockNotificationList"></div><button type="button" class="stock-text-action" id="stockOpenAttention">Открыть остатки</button></div><section class="demo-overview-tools app-view" data-view="overview"><div class="overview-controls" id="overviewControls">
+        <div class="segmented-control" id="overviewScope" aria-label="Показывать данные">
+          <button type="button" data-scope="wildberries">Wildberries</button>
+          <button type="button" data-scope="ozon">Ozon</button>
+          <button type="button" data-scope="all">Все вместе</button>
+        </div>
+        <div class="period-mode segmented-control" role="group" aria-label="Длительность периода"><button type="button" id="periodModeMonth" class="active" aria-pressed="true">Месяц</button><button type="button" id="periodModeRange" aria-pressed="false">Диапазон</button></div>
+        <div class="period-bar period-selection">
+          <label id="periodStartField" hidden><span>С</span><select id="periodStart" aria-label="Начало периода"></select></label>
+          <label><span id="periodEndLabel" hidden>По</span><select id="periodSelect" aria-label="Период отчёта"></select></label>
+        </div>
+        <button type="button" class="ghost overview-refresh" id="overviewRefresh" title="Пересчитать демонстрационные данные">Обновить пример</button>
+      </div><p class="range-summary" id="rangeNotice" role="status" hidden></p></section><section class="section app-view" id="secKpis" data-view="overview">
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="profit-notice" id="profitNotice" role="status" aria-live="polite" aria-atomic="true" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#icon-help"/></svg>
+        <div class="profit-notice-copy"><strong id="profitNoticeTitle"></strong><p id="profitNoticeText"></p></div>
+        <button class="ghost small" id="profitNoticeAction" type="button"></button>
+      </div>
+    </section>
+<section class="section app-view" id="secTrend" data-view="overview">
+      <div class="section-head">
+        <h2>Динамика магазина</h2>
+        <span class="hint" id="trendHint" aria-live="polite">Нажмите на карточку показателя, чтобы увидеть его динамику</span>
+      </div>
+      <div class="card trend-card">
+        <div class="trend-toolbar">
+          <div class="trend-legend" id="trendLegend" aria-hidden="true"><span><i class="trend-dot trend-dot--sales"></i>Сумма продаж</span></div>
+          <div class="segmented-control chart-style" aria-label="Вид графика"><button type="button" data-chart-style="line" class="active" aria-pressed="true">Линия</button><button type="button" data-chart-style="bar" aria-pressed="false">Столбцы</button></div>
+        </div>
+        <div class="trend-chart"><canvas id="trendChart" role="img" aria-label="График динамики магазина за последние 12 месяцев" aria-describedby="trendValues"></canvas><p class="trend-empty" id="trendEmpty" hidden>Загрузите отчёты, чтобы увидеть динамику</p></div><div id="trendValues" class="sr-only" aria-live="polite"></div>
+      </div>
+    </section>
+<section class="section app-view" id="secManualExpenses" data-view="overview">
+      <div class="section-head">
+        <h2>Ручные расходы</h2>
+        <span class="hint" id="manualExpensesHint">укажите расходы за выбранный месяц — они уменьшают чистую прибыль</span>
+      </div>
+      <div class="card manual-expenses-card">
+        <div class="manual-expenses-grid">
+          <div>
+            <label for="operationalExpensesInput">Операционные расходы, ₽</label>
+            <input id="operationalExpensesInput" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+            <span class="field-help">зарплаты, сервисы, упаковка и другие расходы магазина</span>
+          </div>
+          <div>
+            <label for="externalPromotionInput">Расходы на внешнее продвижение, ₽</label>
+            <input id="externalPromotionInput" type="number" min="0" step="1" inputmode="decimal" placeholder="0">
+            <span class="field-help">блогеры, посевы и реклама вне кабинета маркетплейса</span>
+          </div>
+          <button class="primary" id="saveManualExpensesBtn" disabled>Сохранить</button>
+        </div>
+      </div>
+    </section>
+<section class="section app-view analytics-section" id="secAnalytics" data-view="overview">
+      <div class="grid-2 analytics-grid">
+        <div>
+          <div class="section-head expense-section-head"><h2>Структура расходов <span class="metric-help"><button type="button" class="help-button" aria-label="Как показаны расходы" aria-expanded="false" aria-controls="expensesHelpText"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></button><span class="help-popover" id="expensesHelpText" role="tooltip">Итог из API учитывает возвраты и компенсации со знаком минус. Доли на кольце — от суммы абсолютных значений известных статей, а не от итоговых расходов. Неизвестная сумма показана прочерком, а не нулём.</span></span></h2></div>
+          <div class="card analytics-card expense-card">
+            <div class="exp-body">
+              <div class="exp-content">
+                <div class="exp-summary">
+                  <strong id="expHeroTotal">—</strong>
+                  <div id="expHeroDelta"></div>
+                  <div class="exp-sales-share"><span id="expSalesShare">—</span> от суммы продаж</div>
+                </div>
+                <div id="expList" role="list" aria-label="Статьи расходов"></div>
+              </div>
+              <div class="exp-chart">
+                <canvas id="expChart" role="img" aria-label="Диаграмма структуры расходов за выбранный период"></canvas>
+                <div class="exp-chart-center" aria-hidden="true"><strong id="expCenterValue">—</strong><span id="expCenterLabel">нет данных</span></div>
+                <p class="exp-basis" id="expBasis" hidden></p>
+              </div>
+            </div>
+            <span class="sr-only" id="expTotal">—</span>
+          </div>
+        </div>
+        <div>
+          <div class="card analytics-card sku-card">
+            <div class="section-head panel-heading sku-panel-head">
+              <div class="sku-title"><h2>Продажи по артикулам</h2><span class="hint" id="skuHint"></span></div>
+              <div class="sku-actions"><button type="button" id="skuFilterToggle" aria-expanded="false" aria-controls="skuToolbar">Фильтры</button><button type="button" id="skuDetailsToggle" aria-expanded="false" aria-controls="skuTable">Все показатели</button></div>
+            </div>
+            <div class="sku-toolbar" id="skuToolbar" hidden>
+              <div class="sku-search-wrap">
+                <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-search"/></svg>
+                <input id="skuSearch" type="search" placeholder="Найти артикул или товар" aria-label="Поиск по товарам">
+              </div>
+              <div class="sku-filters" id="skuAbcFilters" aria-label="Фильтр ABC">
+                <button type="button" data-abc="all" class="active">Все</button>
+                <button type="button" data-abc="A">A</button>
+                <button type="button" data-abc="B">B</button>
+                <button type="button" data-abc="C">C</button>
+              </div>
+              <select id="skuSort" aria-label="Сортировка товаров">
+                <option value="qty">По выкупам</option>
+                <option value="revenue">По выручке</option>
+                <option value="profit">По валовой прибыли</option>
+              </select>
+            </div>
+            <div class="skubar" hidden><canvas id="skuChart"></canvas></div>
+            <div class="tablewrap">
+              <table class="sku" id="skuTable">
+                <caption class="sr-only">Продажи всех артикулов за выбранный период. Полоса показывает выручку относительно лидера списка.</caption>
+                <colgroup><col class="sku-col-rank"><col class="sku-col-product"><col class="sku-col-units"><col class="sku-col-revenue"><col class="sku-detail sku-col-cost"><col class="sku-detail sku-col-profit"><col class="sku-col-bar"></colgroup>
+                <thead><tr><th scope="col" class="sku-rank">#</th><th scope="col">Товар</th><th scope="col" class="num">Выкупили</th><th scope="col" class="num">Выручка, ₽</th><th scope="col" class="num sku-detail">Себестоимость, ₽</th><th scope="col" class="num sku-detail" title="Выручка минус себестоимость товара">Валовая прибыль, ₽</th><th scope="col" class="sku-revenue-bar"><span class="sr-only">Выручка относительно лидера</span></th></tr></thead>
+                <tbody id="skuBody"></tbody>
+                <tfoot id="skuFoot"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+<section class="section app-view" id="secDailyAnalytics" data-view="daily" aria-busy="false">
+      <div class="advanced-marketplace"><div class="segmented-control" id="advancedScope" role="group" aria-label="Площадка углублённой аналитики"><button type="button" data-advanced-scope="wildberries" class="active" aria-pressed="true">Wildberries</button><button type="button" data-advanced-scope="ozon" aria-pressed="false">Ozon</button></div></div>
+      <p class="daily-note advanced-ozon-help" id="advancedOzonHelp" hidden>Ozon рассчитывается из «Отчёта по начислениям» по датам начисления. После загрузки нового файла расчёты обновляются. <a href="#reports">Загрузить отчёт</a></p>
+      <div class="advanced-tabs" id="advancedTabs" role="tablist" aria-label="Углублённая аналитика">
+        <button type="button" id="dailyTab" role="tab" data-advanced-tab="daily" aria-selected="true" aria-controls="dailyPane">Ежедневная прибыль</button>
+        <button type="button" id="unitTab" role="tab" data-advanced-tab="unit" aria-selected="false" aria-controls="unitPane" tabindex="-1">Юнит-экономика</button>
+      </div>
+      <div id="dailyPane" role="tabpanel" aria-labelledby="dailyTab">
+      <div class="daily-toolbar">
+        <div><h2>Чистая прибыль по дням</h2></div>
+        <div class="advanced-period-controls"><input type="hidden" id="dailyMonth"><input type="hidden" id="dailyFrom"><input type="hidden" id="dailyTo"><div class="advanced-period-field"><span id="dailyRangeLabel">Период</span><button type="button" id="dailyRangeToggle" class="promo-range-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="dailyRangePopover" aria-labelledby="dailyRangeLabel dailyRangeValue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5m9-5v5m-13 3.5h17"/></svg><span id="dailyRangeValue">Выбрать даты</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div><button class="ghost small" id="dailyRefresh" type="button">Обновить данные</button></div>
+      </div>
+      <p class="daily-status" id="dailyStatus" role="status" aria-live="polite"></p>
+      <p class="daily-note">Операционные расходы и внешнее продвижение не учитываются в ежедневной прибыли.</p>
+      <div id="dailyResults" hidden>
+        <dl class="card daily-summary">
+          <div><dt>Чистая прибыль за период</dt><dd id="dailyProfit">—</dd><p class="daily-comparison" id="dailyProfitChange"></p></div>
+          <div><dt>В среднем за день</dt><dd id="dailyAverage">—</dd><p class="daily-comparison" id="dailyAverageChange"></p></div>
+          <div><dt>Дней с прибылью</dt><dd id="dailyPositive">—</dd><p class="daily-comparison" id="dailyPositiveChange"></p></div>
+        </dl>
+        <div class="daily-compare-info"><p class="daily-note" id="dailyComparisonInfo" role="status"></p><button type="button" class="ghost small" id="dailyPrepareComparison" hidden>Подготовить сравнение</button></div>
+        <div class="card daily-chart-card">
+          <div class="daily-chart-heading"><h2>Динамика чистой прибыли</h2><div class="segmented-control" id="dailyMode" role="group" aria-label="Режим ежедневного графика"><button type="button" data-daily-mode="daily" class="active" aria-pressed="true">По дням</button><button type="button" data-daily-mode="cumulative" aria-pressed="false">Накопительно</button></div></div>
+          <div class="daily-chart-tools"><div class="daily-chart-legend"><span><i></i>Выбранный период</span><span id="dailyPreviousLegend" hidden><i class="daily-previous-key"></i>Предыдущий период</span></div><div class="segmented-control chart-style" id="dailyChartStyle" role="group" aria-label="Вид ежедневного графика"><button type="button" data-daily-style="line" aria-pressed="false">Линия</button><button type="button" data-daily-style="bar" class="active" aria-pressed="true">Столбцы</button></div></div>
+          <div class="daily-chart-wrap trend-chart"><canvas id="dailyChart" role="img" aria-label="Ежедневная чистая прибыль" aria-describedby="dailyChartValues"></canvas></div>
+          <div class="sr-only" id="dailyChartValues"></div>
+        </div>
+        <div id="dailyUnallocated" class="daily-unallocated" hidden></div>
+        <div class="daily-lower">
+          <div class="card daily-table-card"><h2 class="daily-table-title">Результаты по дням</h2><div class="daily-table-wrap"><table class="daily-table"><thead><tr><th scope="col">День</th><th scope="col">Продажи, ₽</th><th scope="col">Учтённые расходы, ₽</th><th scope="col">Чистая прибыль, ₽<span class="daily-column-note">к предыдущему дню</span></th></tr></thead><tbody id="dailyRows"></tbody></table></div></div>
+          <div class="card daily-breakdown"><h2 id="dailyDetailTitle">Расходы за день</h2><p class="daily-note" id="dailyNoOperations" hidden>В полученной выгрузке нет финансовых операций за этот день. Рекламные списания могут быть учтены.</p><p class="daily-note" id="dailyMissing" hidden></p><dl id="dailyDetails"></dl><div class="daily-detail-total"><span>Чистая прибыль</span><strong id="dailyDetailProfit">—</strong></div><p id="dailyDetailChange"></p></div>
+        </div>
+      </div>
+      <details class="daily-method" id="advancedWbMethod"><summary>Как считается ежедневная прибыль</summary><ul>
+        <li>В демо показаны вымышленные ежедневные операции. Для каждой площадки используются свои продажи и расходы; себестоимость общая.</li>
+        <li>Продажи, возвраты и удержания относятся к дате финансовой операции WB (rrDate), а не к дате заказа. Время — московское. WB может добавлять и корректировать операции, особенно в текущем месяце.</li>
+        <li>Из стоимости выкупов вычитаются комиссия и расчёты WB, логистика, хранение, приёмка, штрафы, прочие удержания, корректировки, отзывы и лояльность, себестоимость, налог и денежная реклама. Реклама из удержаний не вычитается повторно; промобонусы прибыль не уменьшают.</li>
+        <li>Внутренняя реклама учитывается по дате списания. WB Медиа — по датам удержаний финансового отчёта; при отсутствии дневных дат полученная месячная сумма распределяется равномерно и помечается «распределено».</li>
+        <li>Операционные расходы и внешнее продвижение не распределяются по дням и не вычитаются из ежедневной прибыли. В месячном обзоре они учитываются по-прежнему, поэтому итоги могут различаться на сумму этих расходов.</li>
+        <li>На графике показан тот же календарный день предыдущего месяца. Незакрытый месяц сравнивается с таким же числом прошедших дней, закрытый — с полным предыдущим месяцем. В таблице изменение прибыли считается к предыдущему календарному дню. Нет данных или нулевая база — нет выдуманного процента.</li>
+        <li>Используются текущие себестоимость и ставка налога магазина, как в обзоре. Налог округляется до месячного итога; разница в копейках относится к последнему дню с продажами. Пропуски не заменяются нулём. Операции без подходящей даты показаны отдельно от графика.</li>
+      </ul></details>
+      </div>
+      <div id="unitPane" role="tabpanel" aria-labelledby="unitTab" aria-busy="false" hidden>
+        <div class="unit-toolbar">
+          <input type="hidden" id="unitFrom"><input type="hidden" id="unitTo">
+          <div class="advanced-period-field"><span id="unitRangeLabel">Период</span><button type="button" id="unitRangeToggle" class="promo-range-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="unitRangePopover" aria-labelledby="unitRangeLabel unitRangeValue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M7.5 3v5m9-5v5m-13 3.5h17"/></svg><span id="unitRangeValue">Выбрать даты</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button></div>
+          <button type="button" class="ghost small" id="unitLoad">Показать</button>
+          <button type="button" class="primary small" id="unitPrepare" hidden>Подготовить расходы по артикулам</button>
+        </div>
+        <div class="unit-context"><p class="unit-status" id="unitStatus" role="status" aria-live="polite"></p><details class="unit-info unit-method-tip"><summary>Только прямые расходы <svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover">Расходы маркетплейса, прямо связанные с артикулом, себестоимость и налог. Общие расходы магазина не распределяются между товарами, поэтому итог может отличаться от прибыли в обзоре.</span></details></div>
+        <div id="unitResults" hidden>
+          <dl class="unit-summary">
+            <div class="unit-stat"><dt class="unit-stat-label">Продажи по артикулам</dt><dd class="unit-stat-value" id="unitSales">—</dd><dd class="unit-stat-caption">Выкупы за вычетом возвратов</dd></div>
+            <div class="unit-stat unit-stat--profit"><dt class="unit-stat-label">Чистая прибыль</dt><dd class="unit-stat-value" id="unitProfit">—</dd><dd class="unit-stat-caption">По прямым расходам</dd></div>
+            <div class="unit-stat"><dt class="unit-stat-label" id="unitAdsLabel">Внутренняя реклама</dt><dd class="unit-stat-value" id="unitAds">—</dd><dd class="unit-stat-caption" id="unitAdsCaption">Денежные расходы по товарам</dd></div>
+            <div class="unit-stat"><dt class="unit-stat-label">ДРР от продаж <details class="unit-info"><summary aria-label="Формула ДРР"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-help"/></svg></summary><span class="unit-popover" id="unitDrrHelpText">Денежные расходы внутренней рекламы / продажи этих же товаров × 100%. Промобонусы не включены.</span></details></dt><dd class="unit-stat-value" id="unitDrr">—</dd><dd class="unit-stat-caption" id="unitDrrCaption">Внутренняя реклама / продажи</dd></div>
+          </dl>
+          <div class="unit-workspace">
+          <div class="card unit-table-card">
+            <div class="unit-table-tools"><div><h2 id="unitTableTitle" tabindex="-1"><span id="unitSegmentTitle">Экономика товаров</span><span class="unit-showing" id="unitShowing"></span></h2><p class="unit-table-hint">Выберите товар, чтобы увидеть его расходы</p></div><div class="unit-filters"><label class="unit-search"><svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m20 20-4-4M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0"/></svg><input type="search" id="unitSearch" aria-label="Поиск в юнит-экономике" placeholder="Название или артикул"></label><select id="unitSort" aria-label="Сортировка юнит-экономики"><option value="sales">По продажам</option><option value="net_profit">По чистой прибыли</option><option value="internal_ads">По рекламе</option><option value="drr">По ДРР</option><option value="margin">По маржинальности</option><option value="profitability">По рентабельности</option></select><button type="button" id="unitShowAll" class="unit-text-action" aria-expanded="false" aria-controls="unitTable">Все показатели</button></div></div>
+            <div class="unit-segments" id="unitSegments" role="group" aria-label="Фильтр товаров"><button type="button" data-unit-segment="all" aria-pressed="true">Все <span id="unitSegmentCountAll"></span></button><button type="button" data-unit-segment="gain" aria-pressed="false">С прибылью <span id="unitSegmentCountGain"></span></button><button type="button" data-unit-segment="loss" aria-pressed="false">Убыточные <span id="unitSegmentCountLoss"></span></button><button type="button" data-unit-segment="ads" aria-pressed="false">С рекламой <span id="unitSegmentCountAds"></span></button><button type="button" id="unitUnknownSegment" data-unit-segment="unknown" aria-pressed="false" hidden>Нет расчёта <span id="unitSegmentCountUnknown"></span></button></div>
+            <div class="unit-table-scroll"><table class="unit-table" id="unitTable"><caption class="sr-only">Нажмите на товар, чтобы увидеть все прямые расходы. Общие расходы не распределены.</caption><thead><tr><th scope="col">Товар</th><th scope="col" class="unit-extra-col">Выкупили</th><th scope="col" data-unit-sort-head="sales"><button type="button" data-unit-sort="sales">Продажи, ₽<svg class="icon unit-sort-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4m-5 5 5-5 5 5"/></svg></button></th><th scope="col" data-unit-sort-head="internal_ads"><button type="button" data-unit-sort="internal_ads">Реклама, ₽<svg class="icon unit-sort-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4m-5 5 5-5 5 5"/></svg></button></th><th scope="col" title="Денежные расходы внутренней рекламы / продажи артикула × 100%">ДРР</th><th scope="col" class="unit-extra-col">Прямые расходы, ₽</th><th scope="col" data-unit-sort-head="net_profit"><button type="button" data-unit-sort="net_profit">Чистая прибыль, ₽<svg class="icon unit-sort-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V4m-5 5 5-5 5 5"/></svg></button></th><th scope="col" class="unit-extra-col" title="Чистая прибыль по прямым расходам / продажи × 100%">Маржинальность</th><th scope="col" class="unit-extra-col" title="Чистая прибыль по прямым расходам / прямые расходы × 100%">Рентабельность</th></tr></thead><tbody id="unitRows"></tbody></table></div>
+            <p class="unit-count" id="unitCount"></p>
+          </div>
+            <div class="card unit-detail" id="unitDetail" tabindex="-1">
+              <button type="button" id="unitBackToTable" class="unit-text-action unit-back"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-chevron"/></svg> К списку товаров</button>
+              <div class="unit-detail-head"><div><h2 id="unitDetailTitle">Расходы по товару</h2><span class="hint" id="unitDetailArticle"></span></div><div class="segmented-control" id="unitBasis" role="group" aria-label="Суммы расходов по товару"><button type="button" data-unit-basis="period" class="active" aria-pressed="true">За период</button><button type="button" data-unit-basis="unit" aria-pressed="false">На единицу</button></div></div>
+              <p class="unit-note" id="unitUnitNotice"></p><p class="unit-note" id="unitDetailMissing" hidden></p><p class="unit-note" id="unitAdNotice" hidden></p>
+              <div class="unit-detail-total"><span>Чистая прибыль<small>По прямым расходам</small></span><strong id="unitDetailProfit">—</strong></div>
+              <dl class="unit-detail-ratios"><div><dt>Маржинальность</dt><dd id="unitMargin">—</dd></div><div><dt>Рентабельность</dt><dd id="unitProfitability">—</dd></div><div><dt>ДРР</dt><dd id="unitDetailDrr">—</dd></div></dl>
+              <dl class="unit-ledger"><div><dt>Продажи</dt><dd id="unitDetailSales">—</dd></div></dl>
+              <h3 class="unit-ledger-title">Прямые расходы</h3><dl class="unit-ledger" id="unitExpenses"></dl>
+              <button type="button" class="unit-text-action" id="unitZeroCosts" aria-expanded="false" aria-controls="unitExpenses" hidden>Показать нулевые статьи</button>
+            </div>
+          </div>
+          <details class="card unit-common" id="unitCommonPanel"><summary><span>Расходы магазина без привязки к товару</span><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-chevron"/></svg></summary><div><p class="unit-note">Показаны для сведения и не уменьшают прибыль конкретного артикула.</p><dl class="unit-ledger" id="unitCommon"></dl></div></details>
+        </div>
+        <details class="unit-help"><summary>Формулы и состав расходов</summary>
+          <p>Чистая прибыль по прямым расходам = продажи − расходы маркетплейса, прямо связанные с артикулом, − себестоимость − налог. Удержания, возвраты, компенсации и корректировки сохраняют свой знак. Налог считается по текущей ставке магазина; себестоимость берётся из общего справочника.</p>
+          <p>Маржинальность = эта прибыль / продажи × 100%. Рентабельность = эта прибыль / прямые расходы × 100%. При нулевой или отрицательной базе процент не рассчитывается. На единицу: сумма за период / выкупы за вычетом возвратов.</p>
+          <p id="unitWbAdMethod">Внутренняя реклама привязана к товару по статистике кампаний WB, денежные списания — по истории затрат. У кампании с одним товаром берём её денежные расходы целиком. У кампании с несколькими товарами используем точные расходы по товарам, только если они совпадают с денежными списаниями и не смешаны с бонусами. Если точной привязки нет, показываем прочерк с пояснением. Повторно удержанную рекламу не вычитаем. Промобонусы прибыль не уменьшают. ДРР = денежные расходы внутренней рекламы / продажи того же артикула × 100%.</p>
+          <p id="unitOzonAdMethod" hidden>Для Ozon берём все начисления, прямо связанные с артикулом. Реклама и ДРР включают только расходы группы «Продвижение и реклама» с этим артикулом. Общая реклама и услуги без артикула показаны отдельно и не распределяются. ДРР = эти расходы / продажи артикула × 100%. Данные относятся к датам начисления, а не к датам заказа.</p>
+          <p>В отличие от обзора, расходы без артикула, операционные расходы и внешнее продвижение не вычитаются из прибыли товара. Для диапазона нужны готовые расходы каждого выбранного месяца; неполный период не показывается как полный.</p>
+        </details>
+      </div>
+    </section>
+<section class="section app-view stock-section" id="secStocks" data-view="stocks" aria-busy="false" hidden>
+      <div class="stock-heading"><div><h2>Остатки на складах</h2><p>Wildberries · демонстрационный снимок</p></div><button class="ghost small" id="stockRefresh" type="button"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-refresh"/></svg> Обновить</button></div>
+      <p class="stock-status" id="stockStatus" role="status" aria-live="polite">Загружаем остатки…</p>
+      <p class="stock-warning" id="stockWarning" hidden></p>
+      <p class="stock-action-status" id="stockActionStatus" role="status" aria-live="polite"></p>
+      <div id="stockResults" hidden>
+        <dl class="stock-summary"><div class="stock-stat stock-stat--primary"><dt>Доступно к заказу</dt><dd id="stockTotal">—</dd><dd class="stock-stat-caption">На всех складах, шт.</dd></div><div class="stock-stat"><dt>Пора пополнить</dt><dd id="stockLow">—</dd><dd class="stock-stat-caption">Низкий запас и отсутствие</dd></div><div class="stock-stat"><dt>Нет в наличии</dt><dd id="stockOut">—</dd><dd class="stock-stat-caption">Товаров с нулевым остатком</dd></div><div class="stock-stat"><dt>Склады</dt><dd id="stockWarehouses">—</dd><dd class="stock-stat-caption">Склады WB и продавца</dd></div></dl>
+        <div class="stock-workspace">
+          <div class="card stock-table-card"><div class="stock-table-tools"><h2>Товары <span id="stockShowing"></span></h2><div class="stock-filters"><label class="stock-search"><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-search"/></svg><input id="stockSearch" type="search" placeholder="Название или артикул" aria-label="Поиск по остаткам"></label><select id="stockWarehouse" aria-label="Склад остатков"><option value="all">Все склады</option></select><select id="stockSort" aria-label="Сортировка остатков"><option value="priority">Пополнение</option><option value="quantity">По остатку</option><option value="name">По названию</option></select></div></div>
+            <div class="stock-segments" id="stockSegments" role="group" aria-label="Статус запаса"><button type="button" data-stock-segment="all" aria-pressed="true">Все <span id="stockCountAll"></span></button><button type="button" data-stock-segment="attention" aria-pressed="false">Пора пополнить <span id="stockCountAttention"></span></button><button type="button" data-stock-segment="excluded" aria-pressed="false">Исключённые <span id="stockCountExcluded"></span></button><button type="button" data-stock-segment="out" aria-pressed="false">Нет в наличии <span id="stockCountOut"></span></button><button type="button" data-stock-segment="unknown" aria-pressed="false">Нет прогноза <span id="stockCountUnknown"></span></button></div>
+            <div class="stock-table-scroll"><table class="stock-table"><caption class="sr-only">Выберите товар, чтобы увидеть остатки по всем его складам и размерам</caption><thead><tr><th scope="col">Товар</th><th scope="col">Доступно, шт.</th><th scope="col">Заказов в день</th><th scope="col">Запас, все склады</th><th scope="col">Статус</th></tr></thead><tbody id="stockRows"></tbody></table></div><p class="stock-count" id="stockCount"></p>
+          </div>
+          <div class="card stock-detail" id="stockDetail" tabindex="-1" hidden><button class="stock-text-action stock-back" type="button" id="stockBack">К списку товаров</button><h2 id="stockDetailTitle"></h2><p class="stock-caption" id="stockDetailArticle"></p><div class="stock-detail-total"><span>Доступно к заказу</span><strong id="stockDetailQuantity">—</strong></div><p class="stock-recommendation" id="stockRecommendation"></p><dl class="stock-detail-metrics"><div><dt>На складах WB</dt><dd id="stockDetailWb">—</dd></div><div><dt>На складах продавца</dt><dd id="stockDetailSeller">—</dd></div><div><dt>В пути к покупателям</dt><dd id="stockDetailToClient">—</dd></div><div><dt>Возвращается от покупателей</dt><dd id="stockDetailFromClient">—</dd></div></dl><h3>По складам</h3><div id="stockLocations"></div><div class="stock-tracking"><p class="stock-caption" id="stockTrackingNote"></p><button type="button" class="stock-text-action" id="stockTrackToggle">Не отслеживать</button></div></div>
+        </div>
+      </div>
+      <details class="stock-settings card"><summary>Правила уведомлений и расчёт запаса</summary><div><form id="stockSettingsForm"><label>Предупреждать за, дней<input type="number" id="stockAlertDays" min="1" max="180" step="1" required value="14"></label><label>Целевой запас, дней<input type="number" id="stockTargetDays" min="1" max="365" step="1" required value="30"></label><button type="submit" class="primary small" id="stockSaveSettings" disabled>Сохранить</button><p class="stock-status" id="stockSettingsStatus" role="status" aria-live="polite"></p></form><p class="stock-caption" id="stockDemandPeriod"></p><p>В примере средний спрос рассчитан по вымышленным заказам за последний закрытый месяц. Запас в днях = доступное количество на всех складах / средний спрос. Порог по умолчанию — 14 дней; объём пополнения рассчитан до целевого запаса в 30 дней.</p><p>Товары можно исключить из отслеживания в карточке товара. Они не участвуют в показателях остатков и уведомлениях. Вернуть товар можно через фильтр «Исключённые». В демо настройка действует до перезагрузки страницы.</p><p>Об отсутствии товара уведомляем, если за расчётный период были заказы. Карточки без остатка и без заказов остаются в таблице без уведомления о пополнении.</p><p>Это ориентир по прошлому спросу, без прогноза сезонности. Товары в пути к покупателям и обратно ещё недоступны для заказа и не увеличивают запас. Будущие поставки в расчёт не включены. При отсутствии заказов или данных о спросе срок не прогнозируется.</p><p>В своём кабинете остатки обновляются раз в сутки. Здесь кнопка «Обновить» заново показывает вымышленный снимок, без обращения к WB.</p><a href="https://dev.wildberries.ru/docs/openapi/analytics#tag/stocksReport" target="_blank" rel="noopener">Документация WB об остатках</a></div></details>
+    </section>
+<section class="section app-view" id="demoPromos" data-view="promos" hidden>
+ <div class="demo-section-tools"><div class="advanced-period-field"><span id="demoPromoLabel">Период выкупов</span><input type="hidden" id="demoPromoFrom"><input type="hidden" id="demoPromoTo"><button class="promo-range-trigger" id="demoPromoToggle" aria-haspopup="dialog" aria-expanded="false" aria-controls="demoPromoRangePopover" aria-labelledby="demoPromoLabel demoPromoRangeValue"><svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg><span id="demoPromoRangeValue">Выбрать даты</span><svg class="icon icon-sm" aria-hidden="true"><use href="#icon-chevron"/></svg></button></div><p class="hint">Wildberries · цены «Вайлдберриз реализовал»</p></div>
+ <div class="demo-promo-kpis" id="demoPromoKpis"></div><p class="hint" id="demoPromoComparison"></p>
+ <div class="card demo-promo-chart"><div class="section-head panel-heading"><h2>Динамика выкупов по промокодам</h2><label class="sr-only" for="demoPromoMetric">Показатель графика промокодов</label><select id="demoPromoMetric"><option value="sales">Сумма выкупов</option><option value="quantity">Выкуплено товаров</option><option value="net">После возвратов</option><option value="active">Промокодов с выкупами</option></select></div><div class="demo-promo-canvas trend-chart"><canvas id="demoPromoChart" role="img" aria-label="Вымышленные выкупы по промокодам" aria-describedby="demoPromoChartValues"></canvas></div><p class="sr-only" id="demoPromoChartValues"></p></div>
+ <div class="card demo-table-card"><div class="demo-table-tools"><h2>Промокоды <span id="demoPromoCount" class="demo-count"></span></h2><label><span class="sr-only">Поиск промокодов</span><input id="demoPromoSearch" type="search" placeholder="Название, код или ID"></label></div><div class="tablewrap"><table class="demo-table"><thead><tr><th>Промо и ID</th><th>Выкуплено</th><th>Сумма выкупов</th><th>Возвраты</th><th>После возвратов</th></tr></thead><tbody id="demoPromoRows"></tbody></table></div></div>
+ <details class="demo-disclosure"><summary>Как считаются показатели</summary><p>Учитываются выкупленные товары, отражённые в финансовом отчёте, и возвраты за выбранные даты. Денежные суммы — в ценах «Вайлдберриз реализовал». Это не все оформленные заказы и не сумма к перечислению. Названия, коды и ID в этом примере вымышлены.</p></details>
+</section>
+<section class="section app-view" data-view="reports" hidden>
+ <div class="demo-report-sources"><div class="card demo-settings-card"><div class="demo-card-title"><svg class="icon" aria-hidden="true"><use href="#icon-refresh"/></svg><h2>Wildberries · через API</h2><span class="demo-state">Пример подключён</span></div><p>Финансы, заказы, внутренняя реклама и WB Медиа собраны в один расчёт. В своём кабинете ключ добавляется в настройках.</p><dl class="demo-source-list"><div><dt>Финансовые операции</dt><dd>Готово</dd></div><div><dt>Заказы и продвижение</dt><dd>Готово</dd></div><div><dt>Обновление остатков</dt><dd>Раз в сутки</dd></div></dl><a href="#settings" data-demo-view="settings">Посмотреть настройки подключения</a></div>
+ <div class="card demo-settings-card"><div class="demo-card-title"><svg class="icon" aria-hidden="true"><use href="#icon-upload"/></svg><h2>Ozon · из отчётов</h2></div><p>Для расчёта используется «Отчёт по начислениям». Операции распределяются по датам, FBO и FBS учитываются вместе.</p><form id="demoImportForm"><label for="demoImportMonth">Месяц примера</label><div class="demo-inline"><select id="demoImportMonth"></select><button class="primary" type="submit">Добавить пример отчёта</button></div></form><p class="hint">Никакие файлы и ключи здесь не нужны. Кнопка восстанавливает вымышленные данные выбранного месяца.</p></div></div>
+ <div class="card demo-table-card"><div class="demo-table-tools"><div><h2>Журнал отчётов Ozon</h2><p class="hint">Удаление примера уберёт его месяц из расчётов Ozon. Его можно добавить снова.</p></div></div><div class="tablewrap"><table class="demo-table"><thead><tr><th>Файл</th><th>Период</th><th>Статус</th><th><span class="sr-only">Действия</span></th></tr></thead><tbody id="demoReportRows"></tbody></table></div></div>
+</section>
+<section class="section app-view" data-view="costs" hidden><div class="card demo-table-card"><div class="demo-table-tools"><div><h2>Себестоимость товаров</h2><p class="hint">Единая для WB и Ozon. Измените цену и посмотрите, как меняется прибыль.</p></div></div><form id="demoCostsForm"><div class="tablewrap"><table class="demo-table"><thead><tr><th>Товар</th><th>Артикул</th><th>Себестоимость за штуку, ₽</th></tr></thead><tbody id="demoCostRows"></tbody></table></div><div class="demo-card-footer"><button class="primary" type="submit">Сохранить цены в демо</button><span id="demoCostStatus" class="hint" role="status"></span></div></form></div></section>
+<section class="section app-view" data-view="settings" hidden>
+ <div class="demo-settings-grid"><div class="card demo-settings-card"><h2>Магазин</h2><p>Название изменится в меню. Изменения действуют только в этом примере.</p><form id="demoNameForm"><label for="demoName">Название</label><input id="demoName" required maxlength="80"><button class="primary" type="submit">Переименовать</button></form></div>
+ <div class="card demo-settings-card"><h2>Подключения</h2><div class="demo-connection"><span class="demo-marketmark">WB</span><div><strong>Wildberries</strong><p>Демонстрация API-подключения</p></div><span class="demo-state">Подключено</span></div><div class="demo-connection"><span class="demo-marketmark demo-marketmark--ozon">Ozon</span><div><strong>Ozon</strong><p>Загрузка отчёта по начислениям</p></div><span class="demo-state">Из файлов</span></div><p class="hint">Настоящие ключи добавляются в своём кабинете. Демо не обращается к API маркетплейсов.</p><a href="/app.html">Подключить свой магазин</a></div></div>
+ <details class="card demo-settings-card demo-settings-disclosure" open><summary><span>Налог</span><span class="hint">От суммы продаж</span></summary><form id="demoTaxForm"><label for="demoTax">Ставка налога, %</label><div class="demo-inline"><input id="demoTax" type="number" min="0" max="100" step="1" required value="6"><button class="primary" type="submit">Пересчитать пример</button></div><p class="hint">Целый процент от 0 до 100. Налог вычитается при расчёте чистой прибыли WB и Ozon.</p></form></details>
+ <details class="card demo-settings-card demo-settings-disclosure"><summary><span>Участники</span><span id="demoMemberCount" class="hint"></span></summary><p>Пример команды магазина. Здесь можно добавить ник или удалить участника; приглашения в Telegram не отправляются.</p><form id="demoMembersForm"><label for="demoUsername">Ник в Telegram</label><div class="demo-inline"><input id="demoUsername" placeholder="@username" maxlength="33" required autocomplete="off"><button class="primary" type="submit">Добавить в пример</button></div></form><ul class="demo-members" id="demoMembers"></ul></details>
+ <div class="card demo-settings-card demo-reset"><div><h2>Начать заново</h2><p>Вернуть исходные цены, налог, отчёты и правила отслеживания остатков.</p></div><button class="ghost" id="demoReset" type="button">Сбросить демо</button></div>
+</section>
+<div class="demo-toast" id="demoToast" role="status" aria-live="polite" hidden></div><footer class="demo-footer"><span>Демонстрационные данные · WB + Ozon</span><a href="/app.html">Перейти к своему магазину</a></footer></main></div><dialog class="demo-help-dialog" id="demoHelpDialog" aria-labelledby="demoHelpTitle"><h2 id="demoHelpTitle">Задать вопрос</h2><p>В своём кабинете можно отправить вопрос с фотографией. Он появится у владельца платформы и продублируется в Telegram.</p><p class="hint">В демо сообщения не отправляются.</p><div class="demo-dialog-actions"><button class="ghost" type="button" id="demoHelpClose">Закрыть</button><a class="primary" href="/app.html">Войти и задать вопрос</a></div></dialog><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<script src="/assets/dashboard.js?v=20261123-zero1"></script><script src="/assets/trend-interaction.js?v=20261113-media2"></script><script src="/assets/expense-traffic.js?v=20261019-traffic1"></script><script src="/assets/sku-products.js?v=20261019-products1"></script><script src="/assets/period-range.js?v=20261027-sales1"></script><script src="/assets/promo-range.js?v=20261119-period2"></script><script src="/assets/daily-range.js?v=20261119-period2"></script>
+<script src="/assets/demo-model.js?v=20261124-demo1"></script><script src="/assets/demo-provider.js?v=20261124-demo1"></script><script src="/assets/daily-analytics.js?v=20261119-period2"></script><script src="/assets/unit-economics.js?v=20261119-period2"></script><script src="/assets/stocks.js?v=20261112-stocks1"></script><script src="/assets/demo-promos.js?v=20261124-demo1"></script><script src="/assets/demo.js?v=20261124-demo1"></script></body></html>

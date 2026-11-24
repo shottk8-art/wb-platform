@@ -33,7 +33,7 @@ assert(!/supabase|config\.js|auth\.js|wb-api|analysis\.js/.test(demo));assert(!/
 assert(app.includes('const accessibleShops = await window.WBAuth.listMyShops()'));assert(!app.includes('shop = await window.WBAuth.ensureShop()'));assert(!app.includes('WBClientStart'),'archived first-run/payment module is disconnected');
 assert(!client.includes('name="marketplace"'));assert(!client.includes('form.elements.marketplace'));assert(client.includes('await createShop(name)'),'first creation is not a marketplace choice');
 assert(demo.includes('Все данные вымышлены'));assert(client.includes('Wildberries и Ozon считаются двумя магазинами'));
-assert(demo.includes('id="periodSelect"'));assert(logic.includes('period.value=key(sample.periods[11])'));assert(logic.includes('sample.periods.findIndex(p=>key(p)===period.value)'));
+assert(demo.includes('id="periodSelect"'));assert(demo.includes('assets/demo-model.js'));assert(demo.includes('assets/demo-provider.js'));
 assert(client.indexOf('store.finish(status,attemptId)')<client.indexOf('await new Promise(resolve=>setTimeout(resolve,350))'));assert(client.includes("dataset.guideMarketplace='ozon'"));assert(app.includes('async function selectReportMarketplace(marketplace)'));
 for(const step of [0,1,2])assert(client.includes(`data-client-step="${step}"`));
 assert(client.includes("root.querySelector('[data-create-shop]').onclick=async"));
