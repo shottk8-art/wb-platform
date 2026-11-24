@@ -374,7 +374,8 @@ async function parseSyntheticAccruals(rows,declared){
  const sheet={},workbook={SheetNames:['Начисления'],Sheets:{Начисления:sheet}},app={XLSX:{read(buffer,options){assert.ok(buffer instanceof ArrayBuffer);assert.equal(options.type,'array');return workbook;},utils:{sheet_to_json(value,options){assert.equal(value,sheet);assert.equal(options.header,1);return aoa;}}}};
  // Only workbook decoding is supplied in memory. Run the current production
  // parser and writer unchanged; loading libraries or making requests fails.
- const context={window:app,Map,BigInt,Number,Date,document:{createElement(){throw Error('Synthetic parser tests must not load external libraries');}},fetch(){throw Error('No network calls in synthetic parser tests');}};
+ app.fflate={unzipSync:()=>({'xl/worksheets/sheet1.xml':new TextEncoder().encode('<worksheet/>')})};
+ const context={window:app,Map,BigInt,Number,Date,TextDecoder,Uint8Array,document:{createElement(){throw Error('Synthetic parser tests must not load external libraries');}},fetch(){throw Error('No network calls in synthetic parser tests');}};
  vm.runInNewContext(readFileSync(new URL('../assets/ozon-model.js',import.meta.url),'utf8'),context);
  vm.runInNewContext(readFileSync(new URL('../assets/parse.js',import.meta.url),'utf8'),context);
  return JSON.parse(JSON.stringify(await app.WBParse.parseOzonAccruals({name:'synthetic-ozon.xlsx',arrayBuffer:async()=>new ArrayBuffer(0)})));

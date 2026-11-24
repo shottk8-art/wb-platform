@@ -91,50 +91,52 @@
     return knownValues.find((known) => text === known || text === sheetJsLegacyText(known)) || text;
   }
 
-  function safeOzonProductName(value) {
-    const text = String(value ?? "").trim();
-    return Array.from(text).some((char) => char.codePointAt(0) > 0xFFFF) ? "" : text;
+  function ozonProductName(value) { return String(value ?? '').trim(); }
+
+  function ozonXmlText(value) {
+    const entities={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"};
+    return String(value).replace(/&(amp|lt|gt|quot|apos);|&#(x[\da-f]+|\d+);/gi,(_match,named,code)=>{
+      if(named)return entities[named.toLowerCase()];
+      const n=code[0].toLowerCase()==='x'?parseInt(code.slice(1),16):Number(code);
+      return n>0&&n<=0x10ffff?String.fromCodePoint(n):'\ufffd';
+    }).replace(/_x([\da-f]{4})_/gi,(_match,code)=>String.fromCharCode(parseInt(code,16)));
   }
 
-  // В Ozon XLSX произвольные кириллические строки записаны как t="str".
-  // SheetJS 0.18.5 иногда повреждает их при декодировании, поэтому названия
-  // товаров дочитываем напрямую из XML внутри XLSX (ZIP), не затрагивая
-  // финансовые расчёты основного парсера.
-  async function extractOzonProductNames(file, articleIndex, nameIndex, targetArticles) {
-    if (articleIndex < 0 || nameIndex < 0 || !targetArticles.size) return new Map();
-    try {
-      await loadLibrary('fflate','https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js');
-      const files = window.fflate.unzipSync(new Uint8Array(await file.arrayBuffer()), {
-        filter: (entry) => /^xl\/worksheets\/sheet\d+\.xml$/.test(entry.name),
-      });
-      const sheetPath = Object.keys(files).sort()[0];
-      if (!sheetPath) return new Map();
-      const xml = new TextDecoder("utf-8").decode(files[sheetPath]);
-      const decode = (text) => {
-        const area = document.createElement("textarea");
-        area.innerHTML = String(text || "").replace(/<[^>]+>/g, "");
-        return area.value.trim();
-      };
-      const names = new Map();
-      const rows = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
-      let match;
-      while ((match = rows.exec(xml))) {
-        const values = [];
-        const cells = /<c\b[^>]*>([\s\S]*?)<\/c>/g;
-        let cell;
-        while ((cell = cells.exec(match[1]))) {
-          const value = /<v>([\s\S]*?)<\/v>/.exec(cell[1]);
-          values.push(value ? decode(value[1]) : "");
-        }
-        const article = values[articleIndex] || "";
-        if (!article || !targetArticles.has(article) || names.has(article)) continue;
-        const name = values[nameIndex] || "";
-        if (name) names.set(article, name);
-        if (names.size === targetArticles.size) break;
+  // Recover text from the actual cells, before grouping by article. The old
+  // name-only fallback could not match a Cyrillic article already damaged by
+  // SheetJS's t="str" decoder. Financial numeric cells are never rewritten.
+  async function restoreOzonText(file, workbook, sheetName) {
+    await loadLibrary('fflate','https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js');
+    const files=window.fflate.unzipSync(new Uint8Array(await file.arrayBuffer()),{
+      filter:entry=>/^xl\/(?:workbook\.xml|_rels\/workbook\.xml\.rels|worksheets\/[^/]+\.xml)$/.test(entry.name),
+    });
+    const xml=path=>files[path]?new TextDecoder('utf-8',{fatal:true}).decode(files[path]):'';
+    const attr=(text,key)=>new RegExp('(?:^|\\s)'+key+'=["\']([^"\']*)["\']').exec(text)?.[1];
+    const sheetTag=[...xml('xl/workbook.xml').matchAll(/<sheet\b([^>]*)\/?\s*>/g)].find(m=>ozonXmlText(attr(m[1],'name')||'')===sheetName);
+    const relation=sheetTag&&[...xml('xl/_rels/workbook.xml.rels').matchAll(/<Relationship\b([^>]*)\/?\s*>/g)].find(m=>attr(m[1],'Id')===attr(sheetTag[1],'r:id'));
+    let path;
+    if(relation){
+      const target=ozonXmlText(attr(relation[1],'Target')||''),parts=[];
+      for(const part of (target.startsWith('/')?target.slice(1):'xl/'+target).split('/')){if(part==='..')parts.pop();else if(part&&part!=='.')parts.push(part);}
+      path=parts.join('/');
+    }else{
+      const sheets=Object.keys(files).filter(p=>p.startsWith('xl/worksheets/'));
+      if(sheets.length===1)path=sheets[0];
+    }
+    if(!path||!files[path])throw Error('Не удалось прочитать текст листа Ozon. Скачайте исходный XLSX и повторите загрузку.');
+    const sheet=workbook.Sheets[sheetName],source=xml(path),rows=/<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g;
+    let rowIndex=-1,row;
+    while((row=rows.exec(source))){
+      rowIndex=attr(row[1],'r')?Number(attr(row[1],'r'))-1:rowIndex+1;
+      const cells=/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;let column=-1,cell;
+      while((cell=cells.exec(row[2]||''))){
+        const reference=attr(cell[1],'r');column=reference?window.XLSX.utils.decode_cell(reference).c:column+1;
+        if(attr(cell[1],'t')!=='str')continue;
+        const value=/<v(?:\s[^>]*)?>([\s\S]*?)<\/v>/.exec(cell[2]||'');if(!value)continue;
+        const address=reference||window.XLSX.utils.encode_cell({r:rowIndex,c:column});
+        const target=sheet[address];if(!target)continue;
+        target.v=ozonXmlText(value[1]);target.t='s';delete target.w;
       }
-      return names;
-    } catch (_error) {
-      return new Map();
     }
   }
 
@@ -440,6 +442,7 @@
   async function parseOzonAccruals(file) {
     const wb = await readWorkbook(file);
     const sheetName = wb.SheetNames.find((name) => name.toLowerCase().includes("начислен")) || wb.SheetNames[0];
+    await restoreOzonText(file, wb, sheetName);
     const sheet = wb.Sheets[sheetName];
     const aoa = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
     const requiredHeaders = ["Дата начисления", "Группа услуг", "Тип начисления", "Сумма итого, руб."];
@@ -471,7 +474,7 @@
       if(window.WBOzonModel){
         if(!details.has(key))details.set(key,window.WBOzonModel.create(null));
         const day=`${year}-${String(month).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-        window.WBOzonModel.add(details.get(key),{date:day,group,type,amount:row[i.total],article:String(row[i.article]??row[i.sku]??'').trim(),name:safeOzonProductName(row[i.name]),quantity:num(row[i.qty])});
+        window.WBOzonModel.add(details.get(key),{date:day,group,type,amount:row[i.total],article:String(row[i.article]??row[i.sku]??'').trim(),name:ozonProductName(row[i.name]),quantity:num(row[i.qty])});
       }
       period.totalNet += amount;
       period.groups.set(group, (period.groups.get(group) || 0) + amount);
@@ -487,11 +490,11 @@
       if (isSale || isReturn) {
         const article = String(row[i.article] ?? row[i.sku] ?? "").trim();
         if (article) {
-          const sku = period.skus.get(article) || { article, name: safeOzonProductName(row[i.name]), bought_qty: 0, revenue: 0 };
+          const sku = period.skus.get(article) || { article, name: ozonProductName(row[i.name]), bought_qty: 0, revenue: 0 };
           sku.revenue += amount;
           if (type === "Выручка") sku.bought_qty += Math.round(num(row[i.qty]));
           if (type === "Возврат выручки") sku.bought_qty -= Math.round(Math.abs(num(row[i.qty])));
-          if (!sku.name && row[i.name]) sku.name = safeOzonProductName(row[i.name]);
+          if (!sku.name && row[i.name]) sku.name = ozonProductName(row[i.name]);
           period.skus.set(article, sku);
         }
       }
@@ -518,15 +521,10 @@
         skus: Array.from(p.skus.values()),
       };
     }).sort((a, b) => a.report.year - b.report.year || a.report.month - b.report.month);
-    const targetArticles = new Set(periods.flatMap((period) => period.skus.filter((sku) => !sku.name).map((sku) => sku.article)));
-    const recoveredNames = await extractOzonProductNames(file, i.article, i.name, targetArticles);
-    periods.forEach((period) => period.skus.forEach((sku) => {
-      if (!sku.name && recoveredNames.has(sku.article)) sku.name = recoveredNames.get(sku.article);
-    }));
     if(window.WBOzonModel)for(const p of periods){
       const detail=details.get(`${p.report.year}-${p.report.month}`),dates=[...detail.days.keys()].sort();
       detail.coverage=window.WBOzonModel.coverage(aoa.slice(0,headerIdx),p.report.year,p.report.month,dates);
-      p.analytics=window.WBOzonModel.finish(detail,recoveredNames);
+      p.analytics=window.WBOzonModel.finish(detail);
     }
     if (!periods.length) throw new Error("В отчёте Ozon не найдено ни одной операции с датой начисления.");
     return { periods, transactionCount };
